@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import {Merriweather} from "next/font/google";
 import localFont from "next/font/local";
 
 const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
+});
+
+const merriweather = Merriweather({
+  subsets: ['latin'],
+  weight: ['300', '400', '700'],
+  variable: '--font-merriweather',
 });
 
 const geistMono = Geist_Mono({
@@ -31,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${vgaFont.variable}`}
+        className={`${vgaFont.variable} ${merriweather.variable}`}
       >
         {children}
       </body>
