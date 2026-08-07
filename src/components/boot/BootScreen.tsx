@@ -91,7 +91,7 @@ export default function BootScreen({
     <main className="relative flex h-screen flex-col overflow-hidden bg-black px-10 py-6 text-[#d4d4d4]">
 
       <div
-        style={{ paddingLeft: "10px", paddingRight: "24px", paddingTop: "24px" }}
+        style={{ paddingLeft: "10px", paddingRight: "24px", paddingTop: "10px" }}
         className="flex h-full flex-col"
       >
 
