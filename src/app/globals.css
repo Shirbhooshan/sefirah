@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: black;
+}
+
+body {
+  font-family: var(--font-vga);
+  color: #D8D8D8;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.sefirah-spinner {
+  animation: spinOnce 1.8s linear forwards;
+}
+
+.sefirah-spinner circle {
+  stroke-dasharray: 32 113;
+  stroke-dashoffset: 0;
+}
+
+@keyframes spinOnce {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
