@@ -1,37 +1,31 @@
 "use client";
 
 import MenuBar from "./MenuBar";
+import Dock from "./Dock";
+import wallpaper from "../../assets/wallpapers/wallpaper-2.png";
+import Wallpaper from "./Wallpaper";
 
 export default function Desktop() {
   return (
     <main
       style={{
+        position: "relative",
         width: "100vw",
         height: "100vh",
         overflow: "hidden",
-        backgroundColor: "#292929",
-        display: "flex",
-        flexDirection: "column",
+        background: "#222222",
       }}
     >
-
       <MenuBar />
 
-      <section
-        style={{
-          position: "relative",
-          width: "100%",
-          flex: 1,
-          minHeight: 0,
-          overflow: "hidden",
-          backgroundColor: "#292929",
+      <Wallpaper />
+
+      <Dock
+        openApps={[]}
+        onOpenApp={(id) => {
+          console.log("Opening:", id);
         }}
-      >
-
-        {/* Desktop content will go here */}
-
-      </section>
-
+      />
     </main>
   );
 }

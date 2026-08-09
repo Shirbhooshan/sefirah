@@ -1,12 +1,24 @@
-import wallpaperImg from '@/assets/wallpapers/wallpaper.png';
+"use client";
+
+import wallpaper from "../../assets/wallpapers/wallpaper-2.png";
 
 export default function Wallpaper() {
-    return (
-        <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-                backgroundImage: `linear-gradient(to bottom, rgba(11, 11, 15, 0.6), rgba(0, 0, 0, 0.8)), url(${wallpaperImg.src})`
-            }}
-        />
-    );
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "40px", // menu bar height
+        left: 0,
+        right: 0,
+        bottom: 0,
+
+        backgroundImage: `url(${typeof wallpaper === "string" ? wallpaper : wallpaper.src})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+
+        zIndex: 0,
+      }}
+    />
+  );
 }
