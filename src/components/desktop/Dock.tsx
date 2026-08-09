@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import fileExplorerIcon from "../../assets/icons/file_explorer.png";
+import notesIcon from "../../assets/icons/notes.png";
+import recycleIcon from "../../assets/icons/recycle.png";
+import settingsIcon from "../../assets/icons/settings.png";
+import youtubeIcon from "../../assets/icons/youtube.png";
 
 interface DockApp {
   id: string;
@@ -13,46 +18,31 @@ interface DockProps {
   onOpenApp?: (id: string) => void;
 }
 
-const dockApps: DockApp[] = [
+const dockApps = [
   {
-    id: "messages",
-    name: "Messages",
-    icon: "/icons/messages.svg",
+    id: "files",
+    name: "File Explorer",
+    icon: fileExplorerIcon,
   },
   {
-    id: "video",
-    name: "Video",
-    icon: "/icons/video.svg",
+    id: "notes",
+    name: "Notes",
+    icon: notesIcon,
   },
   {
-    id: "whatsapp",
-    name: "WhatsApp",
-    icon: "/icons/whatsapp.svg",
-  },
-  {
-    id: "spotify",
-    name: "Spotify",
-    icon: "/icons/spotify.svg",
-  },
-  {
-    id: "discord",
-    name: "Discord",
-    icon: "/icons/discord.svg",
-  },
-  {
-    id: "appstore",
-    name: "App Store",
-    icon: "/icons/appstore.svg",
-  },
-  {
-    id: "github",
-    name: "GitHub",
-    icon: "/icons/github.svg",
+    id: "youtube",
+    name: "YouTube",
+    icon: youtubeIcon,
   },
   {
     id: "settings",
     name: "Settings",
-    icon: "/icons/settings.svg",
+    icon: settingsIcon,
+  },
+  {
+    id: "recycle",
+    name: "Recycle Bin",
+    icon: recycleIcon,
   },
 ];
 
@@ -139,7 +129,11 @@ export default function Dock({
               }}
             >
               <img
-                src={app.icon}
+                src={
+                  typeof app.icon === "string"
+                    ? app.icon
+                    : app.icon.src
+                }
                 alt={app.name}
                 style={{
                   width: "58px",
@@ -154,20 +148,20 @@ export default function Dock({
                 <span
                   style={{
                     position: "absolute",
-                    bottom: "-7px",
+                    bottom: "-5px",
                     left: "50%",
                     transform: "translateX(-50%)",
 
-                    width: "5px",
-                    height: "5px",
+                    width: "26px",
+                    height: "2px",
 
-                    borderRadius: "2px",
+                    borderRadius: "999px",
 
                     backgroundColor:
-                      "var(--dock-active-color, #ffffff)",
+                      "var(--dock-active-color, #3fa9ff)",
 
                     boxShadow:
-                      "0 0 6px var(--dock-active-color, #ffffff)",
+                      "0 0 5px var(--dock-active-color, #3fa9ff)",
                   }}
                 />
               )}
@@ -175,22 +169,6 @@ export default function Dock({
           );
         })}
       </div>
-
-      {/* Bottom line */}
-      {openApps.length > 0 && (
-        <div
-          style={{
-            marginTop: "7px",
-            width: "100%",
-            height: "2px",
-            background:
-              "var(--dock-line-color, #3fa9ff)",
-            borderRadius: "999px",
-            boxShadow:
-              "0 0 5px var(--dock-line-color, #3fa9ff)",
-          }}
-        />
-      )}
     </div>
   );
 }
