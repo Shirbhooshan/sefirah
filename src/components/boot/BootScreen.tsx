@@ -88,7 +88,12 @@ export default function BootScreen({
   }
 
   return (
-    <main className="relative flex h-screen flex-col overflow-hidden bg-black px-10 py-6 text-[#d4d4d4]">
+    <main
+      className="relative h-screen overflow-hidden bg-black text-[#d4d4d4]"
+      style={{
+        fontFamily: "var(--font-vga)",
+      }}
+    >
 
       <div
         style={{ paddingLeft: "10px", paddingRight: "24px", paddingTop: "10px" }}

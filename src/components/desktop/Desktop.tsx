@@ -1,20 +1,36 @@
 "use client";
 
-import Wallpaper from "./Wallpaper";
-import TopBar from "./TopBar";
-import Dock from "./Dock";
+import MenuBar from "./MenuBar";
 
 export default function Desktop() {
   return (
-    <main className="relative h-screen overflow-hidden bg-[#080808]">
+    <main
+      style={{
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
+        backgroundColor: "#292929",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
 
-      <Wallpaper />
+      <MenuBar />
 
-      <TopBar />
+      <section
+        style={{
+          position: "relative",
+          width: "100%",
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          backgroundColor: "#292929",
+        }}
+      >
 
-      {/* Apps & windows go here */}
+        {/* Desktop content will go here */}
 
-      <Dock />
+      </section>
 
     </main>
   );

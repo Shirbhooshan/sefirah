@@ -16,9 +16,6 @@ export default function BootHeader() {
                     <h1 className="text-2xl tracking-[0.45em]">
                         sefirah
                     </h1>
-                    <p className="mt-2 text-neutral-500">
-                        Virtual Operating Environment
-                    </p>
                     <p className="text-sm text-neutral-600">
                         Firmware v0.1.0
                     </p>
