@@ -39,6 +39,9 @@ const dockApps = [
     name: "Settings",
     icon: settingsIcon,
   },
+];
+
+const systemApps = [
   {
     id: "recycle",
     name: "Recycle Bin",
@@ -60,7 +63,7 @@ export default function Dock({
       style={{
         position: "absolute",
         left: "50%",
-        bottom: "18px",
+        bottom: "8px",
         transform: "translateX(-50%)",
 
         display: "flex",
@@ -79,15 +82,20 @@ export default function Dock({
 
           padding: "10px 14px 8px",
 
-          background: "rgba(25, 25, 25, 0.82)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10))",
 
-          border: "1px solid rgba(255,255,255,0.18)",
-          borderRadius: "18px",
+          backdropFilter: "blur(30px) saturate(180%)",
+          WebkitBackdropFilter: "blur(30px) saturate(180%)",
 
-          boxShadow:
-            "0 8px 30px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(255,255,255,0.28)",
+          borderRadius: "20px",
+
+          boxShadow: `
+  0 10px 35px rgba(0,0,0,0.35),
+  inset 0 1px 0 rgba(255,255,255,0.20),
+  inset 0 -1px 0 rgba(255,255,255,0.06)
+`,
 
           minHeight: "76px",
         }}
@@ -102,22 +110,16 @@ export default function Dock({
               title={app.name}
               style={{
                 position: "relative",
-
                 width: "62px",
                 height: "62px",
-
                 padding: 0,
                 border: 0,
                 background: "transparent",
-
                 cursor: "pointer",
-
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-
-                transition:
-                  "transform 150ms ease",
+                transition: "transform 150ms ease",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform =
@@ -143,7 +145,6 @@ export default function Dock({
                 }}
               />
 
-              {/* Open indicator */}
               {isOpen && (
                 <span
                   style={{
@@ -151,15 +152,89 @@ export default function Dock({
                     bottom: "-5px",
                     left: "50%",
                     transform: "translateX(-50%)",
-
                     width: "26px",
                     height: "2px",
-
                     borderRadius: "999px",
-
                     backgroundColor:
                       "var(--dock-active-color, #3fa9ff)",
+                    boxShadow:
+                      "0 0 5px var(--dock-active-color, #3fa9ff)",
+                  }}
+                />
+              )}
+            </button>
+          );
+        })}
 
+        {/* Divider before Recycle Bin */}
+        <div
+          style={{
+            width: "1px",
+            height: "42px",
+            margin: "0 6px",
+            backgroundColor: "rgba(255,255,255,0.20)",
+            alignSelf: "center",
+          }}
+        />
+
+        {/* System Apps */}
+        {systemApps.map((app) => {
+          const isOpen = openApps.includes(app.id);
+
+          return (
+            <button
+              key={app.id}
+              onClick={() => handleClick(app.id)}
+              title={app.name}
+              style={{
+                position: "relative",
+                width: "62px",
+                height: "62px",
+                padding: 0,
+                border: 0,
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "transform 150ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform =
+                  "translateY(-6px) scale(1.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform =
+                  "translateY(0) scale(1)";
+              }}
+            >
+              <img
+                src={
+                  typeof app.icon === "string"
+                    ? app.icon
+                    : app.icon.src
+                }
+                alt={app.name}
+                style={{
+                  width: "58px",
+                  height: "58px",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+
+              {isOpen && (
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: "-5px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "26px",
+                    height: "2px",
+                    borderRadius: "999px",
+                    backgroundColor:
+                      "var(--dock-active-color, #3fa9ff)",
                     boxShadow:
                       "0 0 5px var(--dock-active-color, #3fa9ff)",
                   }}

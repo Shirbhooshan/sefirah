@@ -45,19 +45,31 @@ export default function MenuBar({
   return (
     <header
       style={{
-        height: "40px",
-        width: "100%",
-        paddingLeft: "10px",
-        paddingRight: "18px",
-        backgroundColor: "#111111",
-        color: "#ffffff",
+        position: "relative",
+        zIndex: 50,
+
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+
+        width: "100%",
+        height: "40px",
+
+        padding: "0 12px",
+
+        color: "#ffffff",
+
+        /* Subtle dark glass */
+        background: "rgba(10, 10, 10, 0.48)",
+
+        /* Much lighter blur than the dock */
+        backdropFilter: "blur(16px) saturate(120%)",
+        WebkitBackdropFilter: "blur(16px) saturate(120%)",
+
+        /* Very subtle separation */
+        borderBottom: "1px solid rgba(255, 255, 255, 0.07)",
+
         boxSizing: "border-box",
-        fontFamily: "Inter, Arial, sans-serif",
-        position: "relative",
-        zIndex: 50,
       }}
     >
 
@@ -234,43 +246,184 @@ export default function MenuBar({
             <div
               style={{
                 position: "absolute",
-                top: "38px",
+                top: "42px",
                 right: 0,
-                width: "190px",
-                padding: "12px",
-                backgroundColor: "#222222",
+
+                width: "300px",
+                padding: "18px 18px 15px",
+
+                background: "rgba(32, 32, 32, 0.88)",
+                backdropFilter: "blur(24px) saturate(140%)",
+                WebkitBackdropFilter: "blur(24px) saturate(140%)",
+
                 border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: "10px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+                borderRadius: "14px",
+
+                boxShadow:
+                  "0 12px 35px rgba(0,0,0,0.45)",
+
                 boxSizing: "border-box",
+                color: "#ffffff",
               }}
             >
-
+              {/* Volume row */}
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                  fontSize: "12px",
-                  color: "rgba(255,255,255,0.7)",
+                  alignItems: "center",
+                  gap: "14px",
                 }}
               >
-                <span>Volume</span>
-                <span>{volume}%</span>
+                {/* Speaker */}
+                <div
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {volume === 0 ? (
+                    <svg
+                      width="21"
+                      height="21"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                      <line x1="23" y1="9" x2="17" y2="15" />
+                      <line x1="17" y1="9" x2="23" y2="15" />
+                    </svg>
+                  ) : volume < 50 ? (
+                    <svg
+                      width="21"
+                      height="21"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                      <path d="M15 9a4 4 0 0 1 0 6" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="21"
+                      height="21"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11" />
+                      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                      <path d="M19 5a9 9 0 0 1 0 14" />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Slider */}
+                <div
+                  style={{
+                    position: "relative",
+                    flex: 1,
+                    height: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Track */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      height: "4px",
+                      borderRadius: "999px",
+                      background: "rgba(255,255,255,0.28)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Filled portion */}
+                    <div
+                      style={{
+                        width: `${volume}%`,
+                        height: "100%",
+                        background: "var(--dock-active-color, #3fa9ff)",
+                        borderRadius: "999px",
+                        transition: "width 80ms ease",
+                      }}
+                    />
+                  </div>
+
+                  {/* Actual input */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume}
+                    onChange={(e) =>
+                      setVolume(Number(e.target.value))
+                    }
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+
+                      width: "100%",
+                      height: "24px",
+
+                      margin: 0,
+                      opacity: 0,
+
+                      cursor: "pointer",
+                    }}
+                  />
+
+                  {/* Thumb */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: `calc(${volume}% - 7px)`,
+
+                      width: "14px",
+                      height: "14px",
+
+                      borderRadius: "50%",
+
+                      background: "#ffffff",
+
+                      boxShadow:
+                        "0 1px 4px rgba(0,0,0,0.5)",
+
+                      pointerEvents: "none",
+
+                      transition: "left 80ms ease",
+                    }}
+                  />
+                </div>
               </div>
 
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
+              {/* Volume percentage */}
+              <div
                 style={{
-                  width: "100%",
-                  cursor: "pointer",
+                  marginTop: "8px",
+                  marginLeft: "38px",
+                  fontSize: "12px",
+                  color: "rgba(255,255,255,0.62)",
                 }}
-              />
-
+              >
+                {volume}% volume
+              </div>
             </div>
           )}
 
