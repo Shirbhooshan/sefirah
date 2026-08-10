@@ -1,37 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import BootScreen from "@/components/boot/BootScreen";
 import StartupScreen from "@/components/startup/StartupScreen";
+import AccountScreen from "@/components/account/AccountScreen";
+import LoginScreen from "@/components/account/LoginScreen";
 import Desktop from "@/components/desktop/Desktop";
 
 export default function Home() {
   const [stage, setStage] = useState<
-    "checking" | "boot" | "startup" | "desktop"
-  >("checking");
+    "boot" | "startup" | "account" | "login" | "desktop"
+  >("boot");
+
+  const [hasAccount, setHasAccount] = useState<boolean | null>(
+    null
+  );
 
   useEffect(() => {
-    const hasBooted = localStorage.getItem("sefirah-booted");
+    const account = localStorage.getItem("sefirah-account");
 
-    if (hasBooted === "true") {
-      setStage("startup");
-    } else {
-      setStage("boot");
-    }
+    setHasAccount(!!account);
   }, []);
-
-  // Wait until we know whether this is the first visit.
-  if (stage === "checking") {
-    return <div className="h-screen bg-black" />;
-  }
 
   if (stage === "boot") {
     return (
       <BootScreen
-        onFinished={() => {
-          localStorage.setItem("sefirah-booted", "true");
-          setStage("startup");
-        }}
+        onFinished={() => setStage("startup")}
       />
     );
   }
@@ -39,6 +34,31 @@ export default function Home() {
   if (stage === "startup") {
     return (
       <StartupScreen
+        onFinished={() => {
+          if (hasAccount) {
+            setStage("login");
+          } else {
+            setStage("account");
+          }
+        }}
+      />
+    );
+  }
+
+  if (stage === "account") {
+    return (
+      <AccountScreen
+        onFinished={() => {
+          setHasAccount(true);
+          setStage("desktop");
+        }}
+      />
+    );
+  }
+
+  if (stage === "login") {
+    return (
+      <LoginScreen
         onFinished={() => setStage("desktop")}
       />
     );
