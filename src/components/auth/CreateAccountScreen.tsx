@@ -4,10 +4,12 @@ import { useState } from "react";
 
 interface CreateAccountScreenProps {
   onCreated: () => void;
+  onBack: () => void;
 }
 
 export default function CreateAccountScreen({
   onCreated,
+  onBack,
 }: CreateAccountScreenProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +56,7 @@ export default function CreateAccountScreen({
       if (!response.ok || !data.success) {
         setError(
           data.message ||
-            "account creation failed"
+          "account creation failed"
         );
         setLoading(false);
         return;
@@ -129,6 +131,37 @@ export default function CreateAccountScreen({
           alignItems: "center",
         }}
       >
+        <button
+          onClick={onBack}
+          aria-label="Back to login"
+          style={{
+            alignSelf: "flex-start",
+            marginBottom: "16px",
+            padding: 0,
+            background: "transparent",
+            border: "none",
+            color: "#ffffff",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5" />
+            <path d="M12 19L5 12L12 5" />
+          </svg>
+        </button>
+
         {/* Username */}
         <input
           type="text"

@@ -9,15 +9,18 @@ export type BootPhase =
     | "fading";
 
 export function useBoot(totalEntries: number) {
-    const [phase, setPhase] = useState<BootPhase>("black");
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [phase, setPhase] =
+        useState<BootPhase>("black");
+
+    const [currentIndex, setCurrentIndex] =
+        useState(0);
 
     useEffect(() => {
         if (phase !== "black") return;
 
         const timer = setTimeout(() => {
             setPhase("booting");
-        }, 1500);
+        }, 600);
 
         return () => clearTimeout(timer);
     }, [phase]);

@@ -35,13 +35,14 @@ export default function BootScreen({
 
       setTimeout(() => {
         onFinished?.();
-      }, 700);
+      }, 300);
     };
 
     window.addEventListener("keydown", handleKey);
 
-    return () =>
+    return () => {
       window.removeEventListener("keydown", handleKey);
+    };
   }, [phase, onFinished, setPhase]);
 
   // Automatically advance normal text lines
@@ -53,6 +54,12 @@ export default function BootScreen({
     if (!entry) return;
 
     if (entry.type === "text") {
+      // Keep the final "Press any key..." line on screen
+      if (currentIndex === bootSequence.length - 1) {
+        setPhase("waiting");
+        return;
+      }
+
       const timer = setTimeout(() => {
         next();
       }, entry.delay ?? 150);
@@ -71,7 +78,8 @@ export default function BootScreen({
 
   // Auto-scroll
   useEffect(() => {
-    const container = document.getElementById("boot-scroll");
+    const container =
+      document.getElementById("boot-scroll");
 
     if (!container) return;
 
@@ -94,23 +102,24 @@ export default function BootScreen({
         fontFamily: "var(--font-vga)",
       }}
     >
-
       <div
-        style={{ paddingLeft: "10px", paddingRight: "24px", paddingTop: "10px" }}
+        style={{
+          paddingLeft: "10px",
+          paddingRight: "24px",
+          paddingTop: "10px",
+        }}
         className="flex h-full flex-col"
       >
-
         <BootHeader />
 
         <BootLog>
-
           {bootSequence
             .slice(0, currentIndex + 1)
             .map((entry, index) => {
-              const isCurrent = index === currentIndex;
+              const isCurrent =
+                index === currentIndex;
 
               switch (entry.type) {
-
                 case "text":
                   return (
                     <BootLine
@@ -123,7 +132,6 @@ export default function BootScreen({
                   return <br key={index} />;
 
                 case "task":
-
                   if (!isCurrent) {
                     return (
                       <BootLine
@@ -145,7 +153,6 @@ export default function BootScreen({
                   );
 
                 case "typewriter":
-
                   if (!isCurrent) {
                     return (
                       <BootLine
@@ -168,16 +175,16 @@ export default function BootScreen({
                   return null;
               }
             })}
-
         </BootLog>
       </div>
 
       {/* Fade Overlay */}
       <div
-        className={`pointer-events-none absolute inset-0 bg-black transition-opacity duration-700 ${phase === "fading" ? "opacity-100" : "opacity-0"
+        className={`pointer-events-none absolute inset-0 bg-black transition-opacity duration-300 ${phase === "fading"
+          ? "opacity-100"
+          : "opacity-0"
           }`}
       />
-
     </main>
   );
 }
