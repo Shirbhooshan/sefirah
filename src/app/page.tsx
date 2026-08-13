@@ -3,55 +3,65 @@
 import { useEffect, useState } from "react";
 
 import BootScreen from "@/components/boot/BootScreen";
+import LoginScreen from "@/components/auth/LoginScreen";
+import CreateAccountScreen from "@/components/auth/CreateAccountScreen";
 import StartupScreen from "@/components/startup/StartupScreen";
-import AccountScreen from "@/components/account/AccountScreen";
-import LoginScreen from "@/components/account/LoginScreen";
 import Desktop from "@/components/desktop/Desktop";
 
+type Stage =
+  | "boot"
+  | "login"
+  | "create-account"
+  | "startup"
+  | "desktop";
+
 export default function Home() {
-  const [stage, setStage] = useState<
-    "boot" | "startup" | "account" | "login" | "desktop"
-  >("boot");
+  const [stage, setStage] = useState<Stage>("boot");
 
-  const [hasAccount, setHasAccount] = useState<boolean | null>(
-    null
-  );
-
+  // S + F + R → restart boot sequence
   useEffect(() => {
-    const account = localStorage.getItem("sefirah-account");
+    if (process.env.NODE_ENV !== "development") {
+      return;
+    }
 
-    setHasAccount(!!account);
+    const keys = new Set<string>();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keys.add(e.key.toLowerCase());
+
+      if (
+        keys.has("s") &&
+        keys.has("f") &&
+        keys.has("r")
+      ) {
+        setStage("boot");
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keys.delete(e.key.toLowerCase());
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+
+      window.removeEventListener(
+        "keyup",
+        handleKeyUp
+      );
+    };
   }, []);
 
   if (stage === "boot") {
     return (
       <BootScreen
-        onFinished={() => setStage("startup")}
-      />
-    );
-  }
-
-  if (stage === "startup") {
-    return (
-      <StartupScreen
-        onFinished={() => {
-          if (hasAccount) {
-            setStage("login");
-          } else {
-            setStage("account");
-          }
-        }}
-      />
-    );
-  }
-
-  if (stage === "account") {
-    return (
-      <AccountScreen
-        onFinished={() => {
-          setHasAccount(true);
-          setStage("desktop");
-        }}
+        onFinished={() => setStage("login")}
       />
     );
   }
@@ -59,6 +69,25 @@ export default function Home() {
   if (stage === "login") {
     return (
       <LoginScreen
+        onLogin={() => setStage("startup")}
+        onCreateAccount={() =>
+          setStage("create-account")
+        }
+      />
+    );
+  }
+
+  if (stage === "create-account") {
+    return (
+      <CreateAccountScreen
+        onCreated={() => setStage("login")}
+      />
+    );
+  }
+
+  if (stage === "startup") {
+    return (
+      <StartupScreen
         onFinished={() => setStage("desktop")}
       />
     );
