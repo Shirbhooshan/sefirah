@@ -9,11 +9,17 @@ import FileExplorer from "@/components/filesystem/FileExplorer";
 
 interface ExplorerWindow {
   id: string;
-  location: "home" | "recycle" | "folder";
-  folderId?: string | null;
+
+  location:
+    | "home"
+    | "recycle";
+
   left: number;
   top: number;
+
   zIndex: number;
+
+  centered: boolean;
 }
 
 const MAX_WINDOWS = 5;
@@ -22,9 +28,7 @@ export default function Desktop() {
   const [
     explorerWindows,
     setExplorerWindows,
-  ] = useState<
-    ExplorerWindow[]
-  >([]);
+  ] = useState<ExplorerWindow[]>([]);
 
   const [
     nextZIndex,
@@ -33,68 +37,94 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * WINDOW POSITION
+   * RANDOM WINDOW POSITIONS
    * =========================================================
+   *
+   * These are only used for windows AFTER
+   * the first one.
    */
 
-  const getWindowPosition =
-    () => {
-      const positions = [
-        { left: 8, top: 10 },
-        { left: 14, top: 15 },
-        { left: 20, top: 8 },
-        { left: 11, top: 22 },
-        { left: 24, top: 17 },
-      ];
+  const getWindowPosition = () => {
+    const positions = [
+      {
+        left: 8,
+        top: 10,
+      },
+      {
+        left: 14,
+        top: 15,
+      },
+      {
+        left: 20,
+        top: 8,
+      },
+      {
+        left: 11,
+        top: 22,
+      },
+      {
+        left: 24,
+        top: 17,
+      },
+    ];
 
-      const available =
-        positions.filter(
-          (position) =>
-            !explorerWindows.some(
-              (window) =>
-                Math.abs(
-                  window.left -
-                    position.left
-                ) < 3 &&
-                Math.abs(
-                  window.top -
-                    position.top
-                ) < 3
-            )
-        );
-
-      if (
-        available.length > 0
-      ) {
-        return available[
-          Math.floor(
-            Math.random() *
-              available.length
+    const available =
+      positions.filter(
+        (position) =>
+          !explorerWindows.some(
+            (window) =>
+              Math.abs(
+                window.left -
+                  position.left
+              ) < 3 &&
+              Math.abs(
+                window.top -
+                  position.top
+              ) < 3
           )
-        ];
-      }
+      );
 
-      return positions[
+    if (
+      available.length > 0
+    ) {
+      return available[
         Math.floor(
           Math.random() *
-            positions.length
+            available.length
         )
       ];
-    };
+    }
+
+    return positions[
+      Math.floor(
+        Math.random() *
+          positions.length
+      )
+    ];
+  };
 
   /*
    * =========================================================
-   * OPEN EXPLORER
+   * OPEN EXPLORER WINDOW
    * =========================================================
+   *
+   * IMPORTANT:
+   *
+   * 1st window:
+   *     EXACT CENTER
+   *
+   * 2nd - 5th:
+   *     RANDOM POSITION
+   *
+   * Folders do NOT call this function anymore.
+   * Double-clicking a folder navigates inside the
+   * existing Explorer window.
    */
 
   const openExplorer = (
     location:
       | "home"
       | "recycle"
-      | "folder",
-    folderId:
-      string | null = null
   ) => {
     if (
       explorerWindows.length >=
@@ -103,8 +133,16 @@ export default function Desktop() {
       return;
     }
 
+    const isFirstWindow =
+      explorerWindows.length === 0;
+
     const position =
-      getWindowPosition();
+      isFirstWindow
+        ? {
+            left: 0,
+            top: 0,
+          }
+        : getWindowPosition();
 
     const zIndex =
       nextZIndex;
@@ -112,11 +150,11 @@ export default function Desktop() {
     const newWindow: ExplorerWindow =
       {
         id:
-          `explorer-${Date.now()}-${Math.random()}`,
+          `explorer-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 10)}`,
 
         location,
-
-        folderId,
 
         left:
           position.left,
@@ -125,6 +163,9 @@ export default function Desktop() {
           position.top,
 
         zIndex,
+
+        centered:
+          isFirstWindow,
       };
 
     setExplorerWindows(
@@ -198,6 +239,13 @@ export default function Desktop() {
   const handleOpenApp = (
     id: string
   ) => {
+    /*
+     * FILE EXPLORER
+     *
+     * Every click from the Dock creates
+     * a new independent Explorer window.
+     */
+
     if (
       id === "files"
     ) {
@@ -207,6 +255,12 @@ export default function Desktop() {
 
       return;
     }
+
+    /*
+     * RECYCLE BIN
+     *
+     * Also opens as its own independent window.
+     */
 
     if (
       id === "recycle"
@@ -265,29 +319,12 @@ export default function Desktop() {
             }
 
             initialLocation={
-              window.location ===
-              "recycle"
-                ? "recycle"
-                : "home"
-            }
-
-            initialFolderId={
-              window.folderId ??
-              null
+              window.location
             }
 
             onClose={() =>
               closeExplorer(
                 window.id
-              )
-            }
-
-            onOpenFolder={(
-              folderId
-            ) =>
-              openExplorer(
-                "folder",
-                folderId
               )
             }
 
@@ -300,6 +337,9 @@ export default function Desktop() {
 
               zIndex:
                 window.zIndex,
+
+              centered:
+                window.centered,
             }}
 
             onFocus={() =>
@@ -311,6 +351,10 @@ export default function Desktop() {
         )
       )}
 
+      {/* =====================================================
+          DOCK
+      ====================================================== */}
+
       <Dock
         openApps={
           explorerWindows.length >
@@ -318,6 +362,7 @@ export default function Desktop() {
             ? ["files"]
             : []
         }
+
         onOpenApp={
           handleOpenApp
         }

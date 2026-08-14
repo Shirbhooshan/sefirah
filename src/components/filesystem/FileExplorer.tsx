@@ -19,7 +19,8 @@ import fileIcon from "@/assets/icons/notes.png";
 import recycleIcon from "@/assets/icons/recycle.png";
 
 interface FileSystemItem {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   type: "folder" | "file";
   parentId?: string | null;
@@ -29,7 +30,10 @@ interface ExplorerTab {
   id: string;
   folderId: string | null;
   title: string;
-  isRecycleBin?: boolean;
+  isRecycleBin: boolean;
+
+  history: (string | null)[];
+  historyIndex: number;
 }
 
 interface FileExplorerProps {
@@ -38,14 +42,11 @@ interface FileExplorerProps {
 
   onClose?: () => void;
 
-  onOpenFolder?: (
-    folderId: string
-  ) => void;
-
   windowPosition?: {
     left: number;
     top: number;
     zIndex: number;
+    centered?: boolean;
   };
 
   onFocus?: () => void;
@@ -53,59 +54,66 @@ interface FileExplorerProps {
 
 const ROOT_FOLDER_ID = null;
 
+function createTabId() {
+  return `tab-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}
+
 export default function FileExplorer({
   initialLocation = "home",
   initialFolderId = null,
   onClose,
-  onOpenFolder,
   windowPosition = {
     left: 10,
     top: 10,
     zIndex: 30,
+    centered: false,
   },
   onFocus,
 }: FileExplorerProps) {
   /*
    * =========================================================
-   * STATE
+   * INITIAL TAB
    * =========================================================
    */
 
-  const initialTabId =
-    `tab-${Date.now()}-${Math.random()}`;
+  const [tabs, setTabs] = useState<ExplorerTab[]>(() => {
+    const isRecycleBin =
+      initialLocation === "recycle";
 
-  const initialHistory =
-    initialLocation === "recycle"
+    const startingHistory = isRecycleBin
       ? []
       : initialFolderId
         ? [ROOT_FOLDER_ID, initialFolderId]
         : [ROOT_FOLDER_ID];
 
-  const [tabs, setTabs] = useState<
-    ExplorerTab[]
-  >([
-    {
-      id: initialTabId,
+    return [
+      {
+        id: createTabId(),
 
-      folderId:
-        initialLocation === "recycle"
+        folderId: isRecycleBin
           ? null
           : initialFolderId,
 
-      title:
-        initialLocation === "recycle"
+        title: isRecycleBin
           ? "Recycle Bin"
           : initialFolderId
             ? "Folder"
             : "Home",
 
-      isRecycleBin:
-        initialLocation === "recycle",
-    },
-  ]);
+        isRecycleBin,
+
+        history: startingHistory,
+
+        historyIndex:
+          startingHistory.length - 1,
+      },
+    ];
+  });
 
   const [activeTabId, setActiveTabId] =
-    useState(initialTabId);
+    useState(() => tabs[0]?.id);
 
   const [items, setItems] =
     useState<FileSystemItem[]>([]);
@@ -116,16 +124,6 @@ export default function FileExplorer({
   const [search, setSearch] =
     useState("");
 
-  const [history, setHistory] =
-    useState<(string | null)[]>(
-      initialHistory
-    );
-
-  const [historyIndex, setHistoryIndex] =
-    useState(
-      initialHistory.length - 1
-    );
-
   /*
    * =========================================================
    * ACTIVE TAB
@@ -134,8 +132,7 @@ export default function FileExplorer({
 
   const activeTab =
     tabs.find(
-      (tab) =>
-        tab.id === activeTabId
+      (tab) => tab.id === activeTabId
     ) ?? tabs[0];
 
   /*
@@ -146,25 +143,44 @@ export default function FileExplorer({
 
   const loadItems = async () => {
     try {
-      const response =
-        await fetch(
-          "/api/filesystem",
-          {
-            credentials:
-              "include",
-          }
-        );
+      const response = await fetch(
+        "/api/filesystem",
+        {
+          credentials: "include",
+        }
+      );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
-      if (
-        response.ok &&
-        data.success
-      ) {
-        setItems(
-          data.items ?? []
-        );
+      if (response.ok && data.success) {
+        const normalizedItems: FileSystemItem[] =
+          (data.items ?? [])
+            .map((item: any) => {
+              const id =
+                item._id?.toString() ??
+                item.id?.toString();
+
+              if (!id) {
+                console.warn(
+                  "Filesystem item has no ID:",
+                  item
+                );
+                return null;
+              }
+
+              return {
+                ...item,
+                _id: id,
+              };
+            })
+            .filter(
+              (
+                item
+              ): item is FileSystemItem =>
+                item !== null
+            );
+
+        setItems(normalizedItems);
       }
     } catch (error) {
       console.error(
@@ -187,9 +203,7 @@ export default function FileExplorer({
   const getTabIcon = (
     tab: ExplorerTab
   ) => {
-    if (
-      tab.isRecycleBin
-    ) {
+    if (tab.isRecycleBin) {
       return recycleIcon;
     }
 
@@ -210,33 +224,24 @@ export default function FileExplorer({
 
       /*
        * Recycle Bin
-       *
-       * This will stay empty until deleted
-       * filesystem items are connected to it.
        */
 
-      if (
-        activeTab.isRecycleBin
-      ) {
+      if (activeTab.isRecycleBin) {
         return [];
       }
 
       let result =
         items.filter(
           (item) =>
-            (item.parentId ??
-              null) ===
-            (activeTab.folderId ??
-              null)
+            (item.parentId ?? null) ===
+            (activeTab.folderId ?? null)
         );
 
       /*
-       * Search
+       * SEARCH
        */
 
-      if (
-        search.trim()
-      ) {
+      if (search.trim()) {
         const query =
           search
             .trim()
@@ -266,36 +271,37 @@ export default function FileExplorer({
 
   const createTab = () => {
     const id =
-      `tab-${Date.now()}-${Math.random()}`;
+      createTabId();
+
+    const newTab: ExplorerTab = {
+      id,
+
+      folderId:
+        ROOT_FOLDER_ID,
+
+      title:
+        "Home",
+
+      isRecycleBin:
+        false,
+
+      history: [
+        ROOT_FOLDER_ID,
+      ],
+
+      historyIndex: 0,
+    };
 
     setTabs(
       (previous) => [
         ...previous,
-
-        {
-          id,
-
-          folderId:
-            ROOT_FOLDER_ID,
-
-          title:
-            "Home",
-
-          isRecycleBin:
-            false,
-        },
+        newTab,
       ]
     );
 
     setActiveTabId(id);
 
     setSelectedItem(null);
-
-    setHistory([
-      ROOT_FOLDER_ID,
-    ]);
-
-    setHistoryIndex(0);
 
     setSearch("");
 
@@ -316,9 +322,7 @@ export default function FileExplorer({
      * close the entire Explorer window.
      */
 
-    if (
-      tabs.length === 1
-    ) {
+    if (tabs.length === 1) {
       onClose?.();
       return;
     }
@@ -339,9 +343,7 @@ export default function FileExplorer({
       remaining
     );
 
-    if (
-      id === activeTabId
-    ) {
+    if (id === activeTabId) {
       const newIndex =
         Math.max(
           0,
@@ -349,9 +351,7 @@ export default function FileExplorer({
         );
 
       setActiveTabId(
-        remaining[
-          newIndex
-        ].id
+        remaining[newIndex].id
       );
     }
 
@@ -360,8 +360,35 @@ export default function FileExplorer({
 
   /*
    * =========================================================
-   * NAVIGATION
+   * UPDATE ACTIVE TAB
    * =========================================================
+   */
+
+  const updateActiveTab = (
+    updater: (
+      tab: ExplorerTab
+    ) => ExplorerTab
+  ) => {
+    setTabs(
+      (previous) =>
+        previous.map(
+          (tab) =>
+            tab.id === activeTabId
+              ? updater(tab)
+              : tab
+        )
+    );
+  };
+
+  /*
+   * =========================================================
+   * NAVIGATE TO FOLDER
+   * =========================================================
+   *
+   * IMPORTANT:
+   * This changes the CURRENT WINDOW.
+   *
+   * It does NOT create a new Explorer window.
    */
 
   const navigateTo = (
@@ -375,67 +402,45 @@ export default function FileExplorer({
     }
 
     if (
-      folderId ===
-      activeTab.folderId
+      folderId === activeTab.folderId
     ) {
       return;
     }
 
-    /*
-     * Remove forward history
-     */
-
     const newHistory =
-      history.slice(
+      activeTab.history.slice(
         0,
-        historyIndex + 1
+        activeTab.historyIndex + 1
       );
 
-    newHistory.push(
-      folderId
-    );
+    newHistory.push(folderId);
 
-    setHistory(
-      newHistory
-    );
+    const folder = folderId
+      ? items.find(
+        (item) =>
+          (item._id ?? item.id) === folderId
+      )
+      : null;
 
-    setHistoryIndex(
-      newHistory.length - 1
-    );
-
-    const folder =
-      folderId
-        ? items.find(
-          (item) =>
-            item._id ===
-            folderId
-        )
-        : null;
-
-    setTabs(
-      (previous) =>
-        previous.map(
-          (tab) =>
-            tab.id ===
-              activeTabId
-              ? {
-                ...tab,
-
-                folderId,
-
-                title:
-                  folder?.name ??
-                  "Home",
-
-                isRecycleBin:
-                  false,
-              }
-              : tab
-        )
+    setTabs((previous) =>
+      previous.map((tab) =>
+        tab.id === activeTabId
+          ? {
+            ...tab,
+            folderId,
+            title:
+              folder?.name ??
+              "Home",
+            isRecycleBin: false,
+            history: newHistory,
+            historyIndex:
+              newHistory.length - 1,
+          }
+          : tab
+      )
     );
 
     setSelectedItem(null);
-
     setSearch("");
   };
 
@@ -447,50 +452,46 @@ export default function FileExplorer({
 
   const goBack = () => {
     if (
-      historyIndex <= 0
+      !activeTab ||
+      activeTab.historyIndex <= 0
     ) {
       return;
     }
 
-    const previousFolder =
-      history[
-      historyIndex - 1
-      ] ?? ROOT_FOLDER_ID;
+    const newIndex =
+      activeTab.historyIndex - 1;
 
-    setHistoryIndex(
-      historyIndex - 1
-    );
+    const previousFolder =
+      activeTab.history[
+      newIndex
+      ] ?? ROOT_FOLDER_ID;
 
     const folder =
       previousFolder
         ? items.find(
           (item) =>
-            item._id ===
+            (item._id ?? item.id) ===
             previousFolder
         )
         : null;
 
-    setTabs(
-      (previous) =>
-        previous.map(
-          (tab) =>
-            tab.id ===
-              activeTabId
-              ? {
-                ...tab,
+    updateActiveTab(
+      (tab) => ({
+        ...tab,
 
-                folderId:
-                  previousFolder,
+        folderId:
+          previousFolder,
 
-                title:
-                  folder?.name ??
-                  "Home",
+        title:
+          folder?.name ??
+          "Home",
 
-                isRecycleBin:
-                  false,
-              }
-              : tab
-        )
+        isRecycleBin:
+          false,
+
+        historyIndex:
+          newIndex,
+      })
     );
 
     setSelectedItem(null);
@@ -506,51 +507,47 @@ export default function FileExplorer({
 
   const goForward = () => {
     if (
-      historyIndex >=
-      history.length - 1
+      !activeTab ||
+      activeTab.historyIndex >=
+      activeTab.history.length - 1
     ) {
       return;
     }
 
-    const nextFolder =
-      history[
-      historyIndex + 1
-      ];
+    const newIndex =
+      activeTab.historyIndex + 1;
 
-    setHistoryIndex(
-      historyIndex + 1
-    );
+    const nextFolder =
+      activeTab.history[
+      newIndex
+      ];
 
     const folder =
       nextFolder
         ? items.find(
           (item) =>
-            item._id ===
+            (item._id ?? item.id) ===
             nextFolder
         )
         : null;
 
-    setTabs(
-      (previous) =>
-        previous.map(
-          (tab) =>
-            tab.id ===
-              activeTabId
-              ? {
-                ...tab,
+    updateActiveTab(
+      (tab) => ({
+        ...tab,
 
-                folderId:
-                  nextFolder,
+        folderId:
+          nextFolder,
 
-                title:
-                  folder?.name ??
-                  "Home",
+        title:
+          folder?.name ??
+          "Home",
 
-                isRecycleBin:
-                  false,
-              }
-              : tab
-        )
+        isRecycleBin:
+          false,
+
+        historyIndex:
+          newIndex,
+      })
     );
 
     setSelectedItem(null);
@@ -568,8 +565,7 @@ export default function FileExplorer({
     if (
       !activeTab ||
       activeTab.isRecycleBin ||
-      activeTab.folderId ===
-      null
+      activeTab.folderId === null
     ) {
       return;
     }
@@ -577,7 +573,7 @@ export default function FileExplorer({
     const currentFolder =
       items.find(
         (item) =>
-          item._id ===
+          (item._id ?? item.id) ===
           activeTab.folderId
       );
 
@@ -591,55 +587,59 @@ export default function FileExplorer({
    * =========================================================
    * SINGLE CLICK
    * =========================================================
+   *
+   * Only selects the clicked item.
    */
 
   const handleItemClick = (
     item: FileSystemItem
   ) => {
-    setSelectedItem(
-      item._id
-    );
+    const itemId = item._id;
+
+    if (!itemId) {
+      return;
+    }
+
+    setSelectedItem(itemId);
   };
 
   /*
    * =========================================================
    * DOUBLE CLICK
    * =========================================================
+   *
+   * FOLDER:
+   * Navigate inside the SAME Explorer window.
+   *
+   * FILE:
+   * Nothing yet.
    */
 
   const handleItemDoubleClick = (
     item: FileSystemItem
   ) => {
-    if (
-      item.type !==
-      "folder"
-    ) {
+    if (item.type !== "folder") {
       return;
     }
 
-    /*
-     * Desktop can create a completely
-     * separate Explorer window.
-     */
+    const folderId = item._id ?? item.id;
 
-    if (
-      onOpenFolder
-    ) {
-      onOpenFolder(
-        item._id
+    if (!folderId) {
+      console.error(
+        "Cannot open folder: folder has no ID",
+        item
       );
-
       return;
     }
 
     /*
-     * Fallback:
-     * navigate inside this window.
+     * IMPORTANT:
+     * Opening a folder changes the CURRENT
+     * Explorer window.
+     *
+     * It does NOT create another window.
      */
-
-    navigateTo(
-      item._id
-    );
+    navigateTo(folderId);
   };
 
   /*
@@ -663,13 +663,11 @@ export default function FileExplorer({
       let currentId =
         activeTab.folderId;
 
-      while (
-        currentId
-      ) {
+      while (currentId) {
         const folder =
           items.find(
             (item) =>
-              item._id ===
+              (item._id ?? item.id) ===
               currentId
           );
 
@@ -698,6 +696,80 @@ export default function FileExplorer({
 
   /*
    * =========================================================
+   * WINDOW POSITION
+   * =========================================================
+   */
+
+  const windowStyle: React.CSSProperties =
+  {
+    position: "fixed",
+
+    left:
+      windowPosition.centered
+        ? "50%"
+        : `${windowPosition.left}vw`,
+
+    top:
+      windowPosition.centered
+        ? "50%"
+        : `${windowPosition.top}vh`,
+
+    transform:
+      windowPosition.centered
+        ? "translate(-50%, -50%)"
+        : "none",
+
+    width:
+      "min(1100px, 88vw)",
+
+    height:
+      "min(680px, 72vh)",
+
+    background:
+      "rgba(18, 18, 18, 0.90)",
+
+    color:
+      "#e5e5e5",
+
+    border:
+      "1px solid rgba(255,255,255,0.12)",
+
+    borderRadius:
+      "10px",
+
+    overflow:
+      "hidden",
+
+    boxShadow:
+      "0 22px 60px rgba(0,0,0,0.48)",
+
+    backdropFilter:
+      "blur(24px) saturate(140%)",
+
+    WebkitBackdropFilter:
+      "blur(24px) saturate(140%)",
+
+    fontFamily:
+      "Inter, Arial, sans-serif",
+
+    zIndex:
+      windowPosition.zIndex,
+
+    display:
+      "flex",
+
+    flexDirection:
+      "column",
+
+    userSelect:
+      "none",
+
+    WebkitUserSelect:
+      "none",
+  };
+
+  /*
+   * =========================================================
    * RENDER
    * =========================================================
    */
@@ -707,81 +779,20 @@ export default function FileExplorer({
       onMouseDown={() => {
         onFocus?.();
       }}
-      style={{
-        position:
-          "fixed",
-
-        left:
-          `${windowPosition.left}vw`,
-
-        top:
-          `${windowPosition.top}vh`,
-
-        width:
-          "min(1100px, 88vw)",
-
-        height:
-          "min(680px, 72vh)",
-
-        /*
-         * DARK TRANSPARENT WINDOW
-         */
-
-        background:
-          "rgba(18, 18, 18, 0.90)",
-
-        color:
-          "#e5e5e5",
-
-        border:
-          "1px solid rgba(255,255,255,0.12)",
-
-        borderRadius:
-          "10px",
-
-        overflow:
-          "hidden",
-
-        boxShadow:
-          "0 22px 60px rgba(0,0,0,0.48)",
-
-        backdropFilter:
-          "blur(24px) saturate(140%)",
-
-        WebkitBackdropFilter:
-          "blur(24px) saturate(140%)",
-
-        fontFamily:
-          "Inter, Arial, sans-serif",
-
-        zIndex:
-          windowPosition.zIndex,
-
-        display:
-          "flex",
-
-        flexDirection:
-          "column",
-
-        userSelect:
-          "none",
-      }}
+      style={
+        windowStyle
+      }
     >
-
       {/* =====================================================
           WINDOW CLOSE BUTTON
       ====================================================== */}
 
       <button
-        onMouseDown={(
-          event
-        ) => {
+        onMouseDown={(event) => {
           event.preventDefault();
           event.stopPropagation();
         }}
-        onClick={(
-          event
-        ) => {
+        onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
 
@@ -796,10 +807,10 @@ export default function FileExplorer({
           right: 0,
 
           width:
-            "58px",
+            "64px",
 
           height:
-            "40px",
+            "44px",
 
           border: 0,
 
@@ -825,15 +836,11 @@ export default function FileExplorer({
 
           zIndex: 100,
         }}
-        onMouseEnter={(
-          event
-        ) => {
+        onMouseEnter={(event) => {
           event.currentTarget.style.background =
             "#e81123";
         }}
-        onMouseLeave={(
-          event
-        ) => {
+        onMouseLeave={(event) => {
           event.currentTarget.style.background =
             "rgba(15,15,15,0.90)";
         }}
@@ -848,10 +855,10 @@ export default function FileExplorer({
           alt="Close"
           style={{
             width:
-              "16px",
+              "20px",
 
             height:
-              "16px",
+              "20px",
 
             filter:
               "brightness(0) invert(1)",
@@ -889,58 +896,163 @@ export default function FileExplorer({
           overflow:
             "hidden",
         }}
-        onClick={(
-          event
-        ) => {
+        onClick={(event) => {
           event.stopPropagation();
         }}
       >
-        {tabs.map(
-          (tab) => {
-            const isActive =
-              tab.id ===
-              activeTabId;
+        {tabs.map((tab) => {
+          const isActive =
+            tab.id ===
+            activeTabId;
 
-            const icon =
-              getTabIcon(
-                tab
-              );
+          const icon =
+            getTabIcon(tab);
 
-            return (
-              <div
-                key={
+          return (
+            <div
+              key={tab.id}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                onFocus?.();
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+
+                setActiveTabId(
                   tab.id
+                );
+
+                setSelectedItem(
+                  null
+                );
+
+                setSearch("");
+              }}
+              style={{
+                height:
+                  "38px",
+
+                minWidth:
+                  "180px",
+
+                maxWidth:
+                  "230px",
+
+                display:
+                  "flex",
+
+                alignItems:
+                  "center",
+
+                gap:
+                  "9px",
+
+                padding:
+                  "0 10px",
+
+                background:
+                  isActive
+                    ? "rgba(32,32,32,0.96)"
+                    : "rgba(20,20,20,0.62)",
+
+                border:
+                  "1px solid rgba(255,255,255,0.10)",
+
+                borderBottom:
+                  isActive
+                    ? "1px solid rgba(32,32,32,0.96)"
+                    : "1px solid rgba(255,255,255,0.10)",
+
+                borderRadius:
+                  "7px 7px 0 0",
+
+                cursor:
+                  "pointer",
+
+                userSelect:
+                  "none",
+              }}
+            >
+              <img
+                src={
+                  typeof icon ===
+                    "string"
+                    ? icon
+                    : icon.src
                 }
-                onMouseDown={(
-                  event
-                ) => {
+                alt=""
+                draggable={
+                  false
+                }
+                style={{
+                  width:
+                    "21px",
+
+                  height:
+                    "21px",
+
+                  objectFit:
+                    "contain",
+
+                  flexShrink:
+                    0,
+                }}
+              />
+
+              <span
+                style={{
+                  flex: 1,
+
+                  overflow:
+                    "hidden",
+
+                  whiteSpace:
+                    "nowrap",
+
+                  textOverflow:
+                    "ellipsis",
+
+                  fontSize:
+                    "14px",
+
+                  color:
+                    "#e5e5e5",
+                }}
+              >
+                {tab.title}
+              </span>
+
+              <button
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
 
-                  onFocus?.();
-                }}
-                onClick={(
-                  event
-                ) => {
-                  event.stopPropagation();
-
-                  setActiveTabId(
+                  closeTab(
                     tab.id
                   );
-
-                  setSelectedItem(
-                    null
-                  );
                 }}
+                aria-label="Close tab"
                 style={{
+                  width:
+                    "24px",
+
                   height:
-                    "38px",
+                    "24px",
 
-                  minWidth:
-                    "180px",
+                  border:
+                    0,
 
-                  maxWidth:
-                    "230px",
+                  background:
+                    "transparent",
+
+                  borderRadius:
+                    "5px",
 
                   display:
                     "flex",
@@ -948,187 +1060,63 @@ export default function FileExplorer({
                   alignItems:
                     "center",
 
-                  gap:
-                    "9px",
-
-                  padding:
-                    "0 10px",
-
-                  background:
-                    isActive
-                      ? "rgba(32,32,32,0.96)"
-                      : "rgba(20,20,20,0.62)",
-
-                  border:
-                    "1px solid rgba(255,255,255,0.10)",
-
-                  borderBottom:
-                    isActive
-                      ? "1px solid rgba(32,32,32,0.96)"
-                      : "1px solid rgba(255,255,255,0.10)",
-
-                  borderRadius:
-                    "7px 7px 0 0",
+                  justifyContent:
+                    "center",
 
                   cursor:
                     "pointer",
 
-                  userSelect:
-                    "none",
+                  padding: 0,
+
+                  flexShrink:
+                    0,
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background =
+                    "#d9363e";
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background =
+                    "transparent";
                 }}
               >
                 <img
                   src={
-                    typeof icon ===
+                    typeof closeIcon ===
                       "string"
-                      ? icon
-                      : icon.src
+                      ? closeIcon
+                      : closeIcon.src
                   }
                   alt=""
+                  draggable={
+                    false
+                  }
                   style={{
                     width:
-                      "21px",
+                      "13px",
 
                     height:
-                      "21px",
+                      "13px",
 
-                    objectFit:
-                      "contain",
-
-                    flexShrink:
-                      0,
+                    filter:
+                      "brightness(0) invert(1)",
                   }}
                 />
-
-                <span
-                  style={{
-                    flex:
-                      1,
-
-                    overflow:
-                      "hidden",
-
-                    whiteSpace:
-                      "nowrap",
-
-                    textOverflow:
-                      "ellipsis",
-
-                    fontSize:
-                      "14px",
-
-                    color:
-                      "#e5e5e5",
-                  }}
-                >
-                  {
-                    tab.title
-                  }
-                </span>
-
-                <button
-                  onMouseDown={(
-                    event
-                  ) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onClick={(
-                    event
-                  ) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    closeTab(
-                      tab.id
-                    );
-                  }}
-                  aria-label="Close tab"
-                  style={{
-                    width:
-                      "24px",
-
-                    height:
-                      "24px",
-
-                    border:
-                      0,
-
-                    background:
-                      "transparent",
-
-                    borderRadius:
-                      "5px",
-
-                    display:
-                      "flex",
-
-                    alignItems:
-                      "center",
-
-                    justifyContent:
-                      "center",
-
-                    cursor:
-                      "pointer",
-
-                    padding: 0,
-
-                    flexShrink:
-                      0,
-                  }}
-                  onMouseEnter={(
-                    event
-                  ) => {
-                    event.currentTarget.style.background =
-                      "#d9363e";
-                  }}
-                  onMouseLeave={(
-                    event
-                  ) => {
-                    event.currentTarget.style.background =
-                      "transparent";
-                  }}
-                >
-                  <img
-                    src={
-                      typeof closeIcon ===
-                        "string"
-                        ? closeIcon
-                        : closeIcon.src
-                    }
-                    alt=""
-                    style={{
-                      width:
-                        "13px",
-
-                      height:
-                        "13px",
-
-                      filter:
-                        "brightness(0) invert(1)",
-                    }}
-                  />
-                </button>
-              </div>
-            );
-          }
-        )}
+              </button>
+            </div>
+          );
+        })}
 
         {/* ===================================================
             NEW TAB
         ==================================================== */}
 
         <button
-          onMouseDown={(
-            event
-          ) => {
+          onMouseDown={(event) => {
             event.preventDefault();
             event.stopPropagation();
           }}
-          onClick={(
-            event
-          ) => {
+          onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
 
@@ -1171,15 +1159,11 @@ export default function FileExplorer({
             flexShrink:
               0,
           }}
-          onMouseEnter={(
-            event
-          ) => {
+          onMouseEnter={(event) => {
             event.currentTarget.style.background =
               "rgba(255,255,255,0.10)";
           }}
-          onMouseLeave={(
-            event
-          ) => {
+          onMouseLeave={(event) => {
             event.currentTarget.style.background =
               "transparent";
           }}
@@ -1192,6 +1176,7 @@ export default function FileExplorer({
                 : newTabIcon.src
             }
             alt="New tab"
+            draggable={false}
             style={{
               width:
                 "18px",
@@ -1236,20 +1221,15 @@ export default function FileExplorer({
           flexShrink:
             0,
         }}
-        onClick={(
-          event
-        ) => {
+        onClick={(event) => {
           event.stopPropagation();
         }}
       >
-
         <ToolbarButton
-          icon={
-            backIcon
-          }
+          icon={backIcon}
           label="Back"
           disabled={
-            historyIndex <= 0
+            activeTab.historyIndex <= 0
           }
           onClick={
             goBack
@@ -1258,13 +1238,11 @@ export default function FileExplorer({
         />
 
         <ToolbarButton
-          icon={
-            forwardIcon
-          }
+          icon={forwardIcon}
           label="Forward"
           disabled={
-            historyIndex >=
-            history.length - 1
+            activeTab.historyIndex >=
+            activeTab.history.length - 1
           }
           onClick={
             goForward
@@ -1273,14 +1251,11 @@ export default function FileExplorer({
         />
 
         <ToolbarButton
-          icon={
-            upIcon
-          }
+          icon={upIcon}
           label="Up"
           disabled={
             activeTab.isRecycleBin ||
-            activeTab.folderId ===
-            null
+            activeTab.folderId === null
           }
           onClick={
             goUp
@@ -1289,9 +1264,7 @@ export default function FileExplorer({
         />
 
         <ToolbarButton
-          icon={
-            reloadIcon
-          }
+          icon={reloadIcon}
           label="Reload"
           onClick={
             loadItems
@@ -1305,8 +1278,7 @@ export default function FileExplorer({
 
         <div
           style={{
-            flex:
-              1,
+            flex: 1,
 
             height:
               "38px",
@@ -1352,6 +1324,7 @@ export default function FileExplorer({
                 ).src
             }
             alt=""
+            draggable={false}
             style={{
               width:
                 "19px",
@@ -1402,12 +1375,10 @@ export default function FileExplorer({
 
             {!activeTab.isRecycleBin &&
               breadcrumbs.map(
-                (
-                  folder
-                ) => (
+                (folder) => (
                   <span
                     key={
-                      folder._id
+                      `breadcrumb-${folder._id}`
                     }
                     style={{
                       display:
@@ -1433,9 +1404,7 @@ export default function FileExplorer({
                     </span>
 
                     <span>
-                      {
-                        folder.name
-                      }
+                      {folder.name}
                     </span>
                   </span>
                 )
@@ -1488,6 +1457,7 @@ export default function FileExplorer({
                 : searchIcon.src
             }
             alt=""
+            draggable={false}
             style={{
               width:
                 "17px",
@@ -1512,17 +1482,12 @@ export default function FileExplorer({
             value={
               search
             }
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setSearch(
-                event.target
-                  .value
+                event.target.value
               )
             }
-            onMouseDown={(
-              event
-            ) => {
+            onMouseDown={(event) => {
               event.stopPropagation();
             }}
             style={{
@@ -1568,28 +1533,28 @@ export default function FileExplorer({
 
           minHeight:
             0,
+
+          userSelect:
+            "none",
+
+          WebkitUserSelect:
+            "none",
         }}
-        onMouseDown={(
-          event
-        ) => {
+        onMouseDown={(event) => {
           /*
-           * Only clear selection when clicking
-           * the actual empty content area.
+           * Clicking genuinely empty space
+           * clears the selection.
            */
           if (
             event.target ===
             event.currentTarget
           ) {
-            event.preventDefault();
-
             setSelectedItem(
               null
             );
           }
         }}
-        onClick={(
-          event
-        ) => {
+        onClick={(event) => {
           if (
             event.target ===
             event.currentTarget
@@ -1613,169 +1578,114 @@ export default function FileExplorer({
 
             alignContent:
               "start",
+
+            userSelect:
+              "none",
+
+            WebkitUserSelect:
+              "none",
           }}
         >
-          {currentItems.map(
-            (item) => {
-              const isSelected =
-                selectedItem ===
-                item._id;
+          {currentItems.map((item) => {
+            const itemId = item._id ?? item.id;
 
-              const icon =
-                item.type ===
-                  "folder"
-                  ? folderIcon
-                  : fileIcon;
+            if (!itemId) {
+              console.warn(
+                "Filesystem item has no ID:",
+                item
+              );
+              return null;
+            }
 
-              return (
-                <div
-                  key={
-                    item._id
+            const isSelected =
+              selectedItem === itemId;
+
+            const icon =
+              item.type === "folder"
+                ? folderIcon
+                : fileIcon;
+
+            return (
+              <div
+                key={itemId}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  onFocus?.();
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  setSelectedItem(itemId);
+                }}
+                onDoubleClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  handleItemDoubleClick(item);
+                }}
+                style={{
+                  height: "130px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+
+                  borderRadius: "7px",
+
+                  background: isSelected
+                    ? "rgba(255,255,255,0.14)"
+                    : "transparent",
+
+                  border: isSelected
+                    ? "1px solid rgba(255,255,255,0.10)"
+                    : "1px solid transparent",
+
+                  cursor: "pointer",
+
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+
+                  transition:
+                    "background 100ms ease, border 100ms ease",
+                }}
+              >
+                <img
+                  src={
+                    typeof icon === "string"
+                      ? icon
+                      : icon.src
                   }
-                  onMouseDown={(
-                    event
-                  ) => {
-                    /*
-                     * VERY IMPORTANT:
-                     *
-                     * This prevents the browser from
-                     * selecting all the Explorer contents.
-                     */
-
-                    event.preventDefault();
-
-                    event.stopPropagation();
-
-                    onFocus?.();
-                  }}
-                  onClick={(
-                    event
-                  ) => {
-                    event.preventDefault();
-
-                    event.stopPropagation();
-
-                    handleItemClick(
-                      item
-                    );
-                  }}
-                  onDoubleClick={(
-                    event
-                  ) => {
-                    event.preventDefault();
-
-                    event.stopPropagation();
-
-                    handleItemDoubleClick(
-                      item
-                    );
-                  }}
+                  alt=""
+                  draggable={false}
                   style={{
-                    height:
-                      "130px",
+                    width: "72px",
+                    height: "72px",
+                    objectFit: "contain",
+                    marginBottom: "8px",
+                    pointerEvents: "none",
+                  }}
+                />
 
-                    display:
-                      "flex",
-
-                    flexDirection:
-                      "column",
-
-                    alignItems:
-                      "center",
-
-                    justifyContent:
-                      "center",
-
-                    borderRadius:
-                      "7px",
-
-                    background:
-                      isSelected
-                        ? "rgba(255,255,255,0.14)"
-                        : "transparent",
-
-                    border:
-                      isSelected
-                        ? "1px solid rgba(255,255,255,0.10)"
-                        : "1px solid transparent",
-
-                    cursor:
-                      "pointer",
-
-                    userSelect:
-                      "none",
-
-                    WebkitUserSelect:
-                      "none",
-
-                    transition:
-                      "background 100ms ease, border 100ms ease",
+                <span
+                  style={{
+                    maxWidth: "115px",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                    fontSize: "15px",
+                    textAlign: "center",
+                    color: "#e5e5e5",
+                    pointerEvents: "none",
                   }}
                 >
-                  <img
-                    src={
-                      typeof icon ===
-                        "string"
-                        ? icon
-                        : icon.src
-                    }
-                    alt=""
-                    draggable={
-                      false
-                    }
-                    style={{
-                      width:
-                        "72px",
-
-                      height:
-                        "72px",
-
-                      objectFit:
-                        "contain",
-
-                      marginBottom:
-                        "8px",
-
-                      pointerEvents:
-                        "none",
-                    }}
-                  />
-
-                  <span
-                    style={{
-                      maxWidth:
-                        "115px",
-
-                      overflow:
-                        "hidden",
-
-                      whiteSpace:
-                        "nowrap",
-
-                      textOverflow:
-                        "ellipsis",
-
-                      fontSize:
-                        "15px",
-
-                      textAlign:
-                        "center",
-
-                      color:
-                        "#e5e5e5",
-
-                      pointerEvents:
-                        "none",
-                    }}
-                  >
-                    {
-                      item.name
-                    }
-                  </span>
-                </div>
-              );
-            }
-          )}
+                  {item.name}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {/* =================================================
@@ -1783,21 +1693,15 @@ export default function FileExplorer({
         ================================================== */}
 
         {activeTab.isRecycleBin &&
-          currentItems.length ===
-          0 && (
-            <EmptyState
-              dark
-            >
+          currentItems.length === 0 && (
+            <EmptyState dark>
               Recycle Bin is empty
             </EmptyState>
           )}
 
         {!activeTab.isRecycleBin &&
-          currentItems.length ===
-          0 && (
-            <EmptyState
-              dark
-            >
+          currentItems.length === 0 && (
+            <EmptyState dark>
               This folder is empty
             </EmptyState>
           )}
@@ -1829,29 +1733,19 @@ function ToolbarButton({
 }: ToolbarButtonProps) {
   return (
     <button
-      onMouseDown={(
-        event
-      ) => {
+      onMouseDown={(event) => {
         event.preventDefault();
         event.stopPropagation();
       }}
-      onClick={(
-        event
-      ) => {
+      onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
 
         onClick();
       }}
-      disabled={
-        disabled
-      }
-      aria-label={
-        label
-      }
-      title={
-        label
-      }
+      disabled={disabled}
+      aria-label={label}
+      title={label}
       style={{
         width:
           "38px",
@@ -1892,21 +1786,15 @@ function ToolbarButton({
         flexShrink:
           0,
       }}
-      onMouseEnter={(
-        event
-      ) => {
-        if (
-          !disabled
-        ) {
+      onMouseEnter={(event) => {
+        if (!disabled) {
           event.currentTarget.style.background =
             dark
               ? "rgba(255,255,255,0.10)"
               : "rgba(0,0,0,0.08)";
         }
       }}
-      onMouseLeave={(
-        event
-      ) => {
+      onMouseLeave={(event) => {
         event.currentTarget.style.background =
           "transparent";
       }}
@@ -1919,6 +1807,7 @@ function ToolbarButton({
             : icon.src
         }
         alt=""
+        draggable={false}
         style={{
           width:
             "18px",
