@@ -11,8 +11,8 @@ interface ExplorerWindow {
   id: string;
 
   location:
-    | "home"
-    | "recycle";
+  | "home"
+  | "recycle";
 
   left: number;
   top: number;
@@ -75,11 +75,11 @@ export default function Desktop() {
             (window) =>
               Math.abs(
                 window.left -
-                  position.left
+                position.left
               ) < 3 &&
               Math.abs(
                 window.top -
-                  position.top
+                position.top
               ) < 3
           )
       );
@@ -90,7 +90,7 @@ export default function Desktop() {
       return available[
         Math.floor(
           Math.random() *
-            available.length
+          available.length
         )
       ];
     }
@@ -98,7 +98,7 @@ export default function Desktop() {
     return positions[
       Math.floor(
         Math.random() *
-          positions.length
+        positions.length
       )
     ];
   };
@@ -139,34 +139,34 @@ export default function Desktop() {
     const position =
       isFirstWindow
         ? {
-            left: 0,
-            top: 0,
-          }
+          left: 0,
+          top: 0,
+        }
         : getWindowPosition();
 
     const zIndex =
       nextZIndex;
 
     const newWindow: ExplorerWindow =
-      {
-        id:
-          `explorer-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2, 10)}`,
+    {
+      id:
+        `explorer-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`,
 
-        location,
+      location,
 
-        left:
-          position.left,
+      left:
+        position.left,
 
-        top:
-          position.top,
+      top:
+        position.top,
 
-        zIndex,
+      zIndex,
 
-        centered:
-          isFirstWindow,
-      };
+      centered:
+        isFirstWindow,
+    };
 
     setExplorerWindows(
       (previous) => [
@@ -222,11 +222,30 @@ export default function Desktop() {
           (window) =>
             window.id === id
               ? {
-                  ...window,
-                  zIndex,
-                }
+                ...window,
+                zIndex,
+              }
               : window
         )
+    );
+  };
+
+  const moveExplorer = (
+    id: string,
+    left: number,
+    top: number
+  ) => {
+    setExplorerWindows((previous) =>
+      previous.map((window) =>
+        window.id === id
+          ? {
+            ...window,
+            left,
+            top,
+            centered: false,
+          }
+          : window
+      )
     );
   };
 
@@ -303,7 +322,14 @@ export default function Desktop() {
           "#222222",
       }}
     >
-      <MenuBar />
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1000,
+        }}
+      >
+        <MenuBar />
+      </div>
 
       <Wallpaper />
 
@@ -314,9 +340,7 @@ export default function Desktop() {
       {explorerWindows.map(
         (window) => (
           <FileExplorer
-            key={
-              window.id
-            }
+            key={window.id}
 
             initialLocation={
               window.location
@@ -325,6 +349,14 @@ export default function Desktop() {
             onClose={() =>
               closeExplorer(
                 window.id
+              )
+            }
+
+            onMove={(left, top) =>
+              moveExplorer(
+                window.id,
+                left,
+                top
               )
             }
 
@@ -358,7 +390,7 @@ export default function Desktop() {
       <Dock
         openApps={
           explorerWindows.length >
-          0
+            0
             ? ["files"]
             : []
         }

@@ -264,6 +264,7 @@ export default function MenuBar({
 
                 boxSizing: "border-box",
                 color: "#ffffff",
+                zIndex: 2000,
               }}
             >
               {/* Volume row */}
@@ -479,6 +480,7 @@ export default function MenuBar({
                 backgroundColor: "#222222",
                 border: "1px solid rgba(255,255,255,0.12)",
                 borderRadius: "10px",
+                zIndex: 2000,
                 boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
                 boxSizing: "border-box",
               }}

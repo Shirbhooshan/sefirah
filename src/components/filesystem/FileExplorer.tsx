@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -42,6 +43,8 @@ interface FileExplorerProps {
 
   onClose?: () => void;
 
+  onMove?: (left: number, top: number) => void;
+
   windowPosition?: {
     left: number;
     top: number;
@@ -50,6 +53,7 @@ interface FileExplorerProps {
   };
 
   onFocus?: () => void;
+
 }
 
 const ROOT_FOLDER_ID = null;
@@ -64,6 +68,7 @@ export default function FileExplorer({
   initialLocation = "home",
   initialFolderId = null,
   onClose,
+  onMove,
   windowPosition = {
     left: 10,
     top: 10,
@@ -124,6 +129,142 @@ export default function FileExplorer({
   const [search, setSearch] =
     useState("");
 
+  const [isDragging, setIsDragging] = useState(false);
+
+  const dragOffset = useRef({
+    x: 0,
+    y: 0,
+  });
+
+  /* Dragging */
+  const handleWindowDragStart = (
+    event: React.MouseEvent
+  ) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    onFocus?.();
+
+    const windowElement =
+      event.currentTarget.closest(
+        "[data-file-explorer-window]"
+      ) as HTMLElement | null;
+
+    if (!windowElement) {
+      return;
+    }
+
+    const rect =
+      windowElement.getBoundingClientRect();
+
+    dragOffset.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) {
+      return;
+    }
+
+    const handleMouseMove = (
+      event: MouseEvent
+    ) => {
+      const newLeft =
+        event.clientX -
+        dragOffset.current.x;
+
+      const newTop =
+        event.clientY -
+        dragOffset.current.y;
+
+      /*
+       * Keep the window below the menu bar.
+       *
+       * Adjust this if your MenuBar has
+       * a different height.
+       */
+
+      const menuBarHeight = 38;
+
+      const windowWidth = 1100;
+      const windowHeight = 680;
+
+      const maxLeft =
+        window.innerWidth -
+        Math.min(
+          windowWidth,
+          window.innerWidth * 0.88
+        );
+
+      const maxTop =
+        window.innerHeight -
+        Math.min(
+          windowHeight,
+          window.innerHeight * 0.72
+        );
+
+      const clampedLeft =
+        Math.max(
+          0,
+          Math.min(
+            newLeft,
+            maxLeft
+          )
+        );
+
+      const clampedTop =
+        Math.max(
+          menuBarHeight,
+          Math.min(
+            newTop,
+            maxTop
+          )
+        );
+
+      onMove?.(
+        clampedLeft,
+        clampedTop
+      );
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener(
+      "mousemove",
+      handleMouseMove
+    );
+
+    window.addEventListener(
+      "mouseup",
+      handleMouseUp
+    );
+
+    return () => {
+      window.removeEventListener(
+        "mousemove",
+        handleMouseMove
+      );
+
+      window.removeEventListener(
+        "mouseup",
+        handleMouseUp
+      );
+    };
+  }, [
+    isDragging,
+    onMove,
+  ]);
+
   /*
    * =========================================================
    * ACTIVE TAB
@@ -141,10 +282,18 @@ export default function FileExplorer({
    * =========================================================
    */
 
-  const loadItems = async () => {
+  const loadItems = async (
+    parentId: string | null = activeTab?.folderId ?? null
+  ) => {
     try {
+      const params = new URLSearchParams();
+
+      if (parentId !== null) {
+        params.set("parentId", parentId);
+      }
+
       const response = await fetch(
-        "/api/filesystem",
+        `/api/filesystem?${params.toString()}`,
         {
           credentials: "include",
         }
@@ -152,36 +301,28 @@ export default function FileExplorer({
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        const normalizedItems: FileSystemItem[] =
-          (data.items ?? [])
-            .map((item: any) => {
-              const id =
-                item._id?.toString() ??
-                item.id?.toString();
-
-              if (!id) {
-                console.warn(
-                  "Filesystem item has no ID:",
-                  item
-                );
-                return null;
-              }
-
-              return {
-                ...item,
-                _id: id,
-              };
-            })
-            .filter(
-              (
-                item
-              ): item is FileSystemItem =>
-                item !== null
-            );
-
-        setItems(normalizedItems);
+      if (!response.ok || !data.success) {
+        console.error(
+          "Filesystem API error:",
+          data
+        );
+        return;
       }
+
+      const normalizedItems: FileSystemItem[] =
+        (data.items ?? []).map((item: any) => ({
+          ...item,
+
+          _id:
+            item.id?.toString() ??
+            item._id?.toString(),
+
+          parentId:
+            item.parentId?.toString() ??
+            null,
+        }));
+
+      setItems(normalizedItems);
     } catch (error) {
       console.error(
         "Failed to load filesystem:",
@@ -707,12 +848,12 @@ export default function FileExplorer({
     left:
       windowPosition.centered
         ? "50%"
-        : `${windowPosition.left}vw`,
+        : `${windowPosition.left}px`,
 
     top:
       windowPosition.centered
         ? "50%"
-        : `${windowPosition.top}vh`,
+        : `${windowPosition.top}px`,
 
     transform:
       windowPosition.centered
@@ -776,6 +917,7 @@ export default function FileExplorer({
 
   return (
     <div
+      data-file-explorer-window
       onMouseDown={() => {
         onFocus?.();
       }}
@@ -871,6 +1013,7 @@ export default function FileExplorer({
       ====================================================== */}
 
       <div
+        onMouseDown={handleWindowDragStart}
         style={{
           height:
             "48px",
@@ -895,6 +1038,10 @@ export default function FileExplorer({
 
           overflow:
             "hidden",
+          cursor:
+            isDragging
+              ? "grabbing"
+              : "grab",
         }}
         onClick={(event) => {
           event.stopPropagation();
