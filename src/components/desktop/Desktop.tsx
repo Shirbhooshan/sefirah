@@ -22,6 +22,14 @@ interface ExplorerWindow {
   centered: boolean;
 }
 
+interface NotesWindow {
+  id: string;
+  left: number;
+  top: number;
+  zIndex: number;
+  centered: boolean;
+}
+
 const MAX_WINDOWS = 5;
 
 export default function Desktop() {
@@ -34,6 +42,11 @@ export default function Desktop() {
     nextZIndex,
     setNextZIndex,
   ] = useState(50);
+
+  const [
+    notesWindows,
+    setNotesWindows,
+  ] = useState<NotesWindow[]>([]);
 
   /*
    * =========================================================
@@ -102,6 +115,110 @@ export default function Desktop() {
       )
     ];
   };
+
+  /* Open Notes */
+  const openNotes = () => {
+    const id =
+      `notes-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 10)}`;
+
+    const isFirst =
+      notesWindows.length === 0;
+
+    setNotesWindows(
+      (previous) => [
+        ...previous,
+        {
+          id,
+
+          left: isFirst
+            ? 0
+            : 15,
+
+          top: isFirst
+            ? 0
+            : 15,
+
+          zIndex: nextZIndex,
+
+          centered: isFirst,
+        },
+      ]
+    );
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+  };
+
+  {
+    notesWindows.map((window) => (
+      <NotesApp
+        key={window.id}
+
+        windowPosition={{
+          left: window.left,
+          top: window.top,
+          zIndex: window.zIndex,
+          centered: window.centered,
+        }}
+
+        onFocus={() => {
+          const zIndex =
+            nextZIndex;
+
+          setNextZIndex(
+            (value) => value + 1
+          );
+
+          setNotesWindows(
+            (previous) =>
+              previous.map(
+                (item) =>
+                  item.id ===
+                    window.id
+                    ? {
+                      ...item,
+                      zIndex,
+                    }
+                    : item
+              )
+          );
+        }}
+
+        onMove={(left, top) => {
+          setNotesWindows(
+            (previous) =>
+              previous.map(
+                (item) =>
+                  item.id ===
+                    window.id
+                    ? {
+                      ...item,
+                      left,
+                      top,
+                      centered:
+                        false,
+                    }
+                    : item
+              )
+          );
+        }}
+
+        onClose={() => {
+          setNotesWindows(
+            (previous) =>
+              previous.filter(
+                (item) =>
+                  item.id !==
+                  window.id
+              )
+          );
+        }}
+      />
+    ))
+  }
 
   /*
    * =========================================================
