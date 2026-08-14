@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    useCallback,
     useEffect,
     useRef,
     useState,
@@ -12,12 +13,24 @@ import undoIcon from "@/assets/icons/notes-undo.svg";
 import redoIcon from "@/assets/icons/notes-redo.svg";
 import closeIcon from "@/assets/icons/explorer-close.svg";
 
+import boldIcon from "@/assets/icons/notes-bold.svg";
+import italicIcon from "@/assets/icons/notes-italic.svg";
+import lineSpacingIcon from "@/assets/icons/notes-strikethrough.svg";
+
 interface NotesAppProps {
+    itemId?: string;
+
     initialTitle?: string;
     initialContent?: string;
 
     onClose?: () => void;
     onFocus?: () => void;
+
+    onSave?: (item: {
+        id: string;
+        name: string;
+        content: string;
+    }) => void;
 
     onMove?: (
         left: number,
@@ -32,26 +45,99 @@ interface NotesAppProps {
     };
 }
 
+interface NoteTab {
+    id: string;
+    itemId?: string;
+    title: string;
+    content: string;
+}
+
+const MAX_NOTE_TABS = 10;
+
 export default function NotesApp({
+    itemId,
     initialTitle = "Untitled",
     initialContent = "",
     onClose,
+    onFocus,
+    onSave,
+    onMove,
     windowPosition = {
         left: 0,
         top: 0,
         zIndex: 40,
         centered: true,
     },
-    onFocus,
 }: NotesAppProps) {
-    const [title, setTitle] =
-        useState(initialTitle);
+    /*
+     * =========================================================
+     * INITIAL NOTE
+     * =========================================================
+     */
 
-    const [content, setContent] =
-        useState(initialContent);
+    const initialNoteId = useRef(
+        `note-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`
+    );
+
+    /*
+     * =========================================================
+     * NOTE TABS
+     * =========================================================
+     */
+
+    const [noteTabs, setNoteTabs] =
+        useState<NoteTab[]>([
+            {
+                id: initialNoteId.current,
+                itemId,
+                title: initialTitle,
+                content: initialContent,
+            },
+        ]);
+
+    const [activeNoteId, setActiveNoteId] =
+        useState(initialNoteId.current);
+
+    const activeNote =
+        noteTabs.find(
+            (note) =>
+                note.id === activeNoteId
+        ) ?? noteTabs[0];
+
+    /*
+     * =========================================================
+     * SAVE STATE
+     * =========================================================
+     */
+
+    const [isSaving, setIsSaving] =
+        useState(false);
+
+    const [saveMessage, setSaveMessage] =
+        useState("");
+
+    /*
+     * =========================================================
+     * RENAME STATE
+     * =========================================================
+     */
 
     const [isRenaming, setIsRenaming] =
         useState(false);
+
+    const [renameValue, setRenameValue] =
+        useState("");
+
+    const titleInputRef =
+        useRef<HTMLInputElement>(null);
+
+    /*
+     * =========================================================
+     * DRAGGING STATE
+     * =========================================================
+     */
 
     const [isDragging, setIsDragging] =
         useState(false);
@@ -64,120 +150,254 @@ export default function NotesApp({
 
     /*
      * =========================================================
-     * WINDOW DRAGGING
+     * ACTIVE NOTE UPDATE
      * =========================================================
      */
 
-    const handleWindowMouseDown = (
-        event: React.MouseEvent<HTMLDivElement>
+    const updateActiveNote = (
+        updates: Partial<NoteTab>
     ) => {
-        /*
-         * Don't start dragging when interacting
-         * with buttons, inputs, or the editor.
-         */
-        const target =
-            event.target as HTMLElement;
+        setNoteTabs((previous) =>
+            previous.map((note) =>
+                note.id === activeNoteId
+                    ? {
+                        ...note,
+                        ...updates,
+                    }
+                    : note
+            )
+        );
+    };
 
+    /*
+     * =========================================================
+     * SAVE
+     * =========================================================
+     */
+
+    const handleSave = async () => {
+        if (isSaving || !activeNote) {
+            return;
+        }
+
+        setIsSaving(true);
+        setSaveMessage("");
+
+        const savedTitle =
+            activeNote.title.trim() || "Untitled";
+
+        const savedContent =
+            activeNote.content;
+
+        try {
+            const response = await fetch("/api/notes", {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                },
+
+                credentials: "include",
+
+                body: JSON.stringify({
+                    itemId: activeNote.itemId,
+
+                    name: savedTitle,
+
+                    content: savedContent,
+
+                    parentId: null,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(
+                    data.message ||
+                    "Failed to save note."
+                );
+            }
+
+            const savedId =
+                data.item?.id ??
+                activeNote.itemId;
+
+            /*
+             * =====================================================
+             * UPDATE THE ACTIVE TAB'S DATABASE ID
+             * =====================================================
+             */
+
+            setNoteTabs((previous) =>
+                previous.map((note) =>
+                    note.id === activeNoteId
+                        ? {
+                            ...note,
+                            itemId: savedId,
+                            title: savedTitle,
+                            content: savedContent,
+                        }
+                        : note
+                )
+            );
+
+            /*
+             * =====================================================
+             * TELL DESKTOP ABOUT THE UPDATE
+             * =====================================================
+             */
+
+            onSave?.({
+                id: savedId,
+                name: savedTitle,
+                content: savedContent,
+            });
+
+            setSaveMessage("Saved");
+
+            window.setTimeout(() => {
+                setSaveMessage("");
+            }, 1500);
+
+        } catch (error) {
+            console.error(
+                "Failed to save note:",
+                error
+            );
+
+            setSaveMessage("Failed to save");
+
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    /*
+     * =========================================================
+     * CREATE NEW TAB
+     * =========================================================
+     */
+
+    const createNoteTab = () => {
         if (
-            target.closest("button") ||
-            target.closest("input") ||
-            target.closest("textarea")
+            noteTabs.length >=
+            MAX_NOTE_TABS
         ) {
             return;
         }
 
+        const id =
+            `note-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`;
+
+        const newNote: NoteTab = {
+            id,
+
+            itemId:
+                undefined,
+
+            title:
+                "Untitled",
+
+            content:
+                "",
+        };
+
+        setNoteTabs((previous) => [
+            ...previous,
+            newNote,
+        ]);
+
+        setActiveNoteId(id);
+
+        setIsRenaming(false);
+        setSaveMessage("");
+
         onFocus?.();
+    };
+
+    /*
+     * =========================================================
+     * SWITCH TAB
+     * =========================================================
+     */
+
+    const switchNoteTab = (
+        id: string
+    ) => {
+        setActiveNoteId(id);
+
+        setIsRenaming(false);
+        setSaveMessage("");
+
+        onFocus?.();
+    };
+
+    /*
+     * =========================================================
+     * CLOSE TAB
+     * =========================================================
+     */
+
+    const closeNoteTab = (
+        id: string
+    ) => {
+        /*
+         * If this is the only tab,
+         * close the entire Notes window.
+         */
+
+        if (noteTabs.length === 1) {
+            onClose?.();
+            return;
+        }
+
+        const index =
+            noteTabs.findIndex(
+                (note) =>
+                    note.id === id
+            );
+
+        const remainingTabs =
+            noteTabs.filter(
+                (note) =>
+                    note.id !== id
+            );
+
+        setNoteTabs(
+            remainingTabs
+        );
 
         /*
-         * If the window is currently centered,
-         * convert it to a normal positioned window
-         * before dragging.
+         * If closing the active tab,
+         * select a neighboring tab.
          */
-        const windowElement =
-            event.currentTarget;
 
-        const rect =
-            windowElement.getBoundingClientRect();
+        if (
+            id === activeNoteId
+        ) {
+            const nextIndex =
+                Math.min(
+                    index,
+                    remainingTabs.length - 1
+                );
 
-        dragOffset.current = {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
-        };
+            const nextTab =
+                remainingTabs[
+                nextIndex
+                ];
 
-        setIsDragging(true);
-
-        event.preventDefault();
-    };
-
-    const handleWindowMouseMove = (
-        event: MouseEvent
-    ) => {
-        if (!isDragging) {
-            return;
+            setActiveNoteId(
+                nextTab.id
+            );
         }
 
-        const left =
-            event.clientX -
-            dragOffset.current.x;
+        setIsRenaming(false);
+        setSaveMessage("");
 
-        const top =
-            event.clientY -
-            dragOffset.current.y;
-
-        const boundedLeft =
-            Math.max(
-                0,
-                Math.min(
-                    left,
-                    window.innerWidth - 500
-                )
-            );
-
-        const boundedTop =
-            Math.max(
-                40,
-                Math.min(
-                    top,
-                    window.innerHeight - 400
-                )
-            );
-
-        onMove?.(
-            boundedLeft,
-            boundedTop
-        );
-    };
-
-    useEffect(() => {
-        if (!isDragging) {
-            return;
-        }
-
-        window.addEventListener(
-            "mousemove",
-            handleWindowMouseMove
-        );
-
-        window.addEventListener(
-            "mouseup",
-            handleWindowMouseUp
-        );
-
-        return () => {
-            window.removeEventListener(
-                "mousemove",
-                handleWindowMouseMove
-            );
-
-            window.removeEventListener(
-                "mouseup",
-                handleWindowMouseUp
-            );
-        };
-    }, [isDragging]);
-
-    const handleWindowMouseUp = () => {
-        setIsDragging(false);
+        onFocus?.();
     };
 
     /*
@@ -187,40 +407,62 @@ export default function NotesApp({
      */
 
     const startRenaming = () => {
+        if (!activeNote) {
+            return;
+        }
+
+        setRenameValue(
+            activeNote.title
+        );
+
         setIsRenaming(true);
 
-        setTimeout(() => {
+        window.setTimeout(() => {
             titleInputRef.current?.focus();
+
             titleInputRef.current?.select();
-        }, 0);
+        }, 20);
     };
 
     const finishRenaming = () => {
-        const trimmedTitle =
-            title.trim();
+        const trimmed =
+            renameValue.trim();
 
-        if (!trimmedTitle) {
-            setTitle("Untitled");
-        } else {
-            setTitle(trimmedTitle);
-        }
+        updateActiveNote({
+            title:
+                trimmed ||
+                "Untitled",
+        });
 
         setIsRenaming(false);
+    };
+
+    const cancelRenaming = () => {
+        setIsRenaming(false);
+
+        setRenameValue(
+            activeNote?.title ??
+            "Untitled"
+        );
     };
 
     const handleTitleKeyDown = (
         event: React.KeyboardEvent<HTMLInputElement>
     ) => {
-        if (event.key === "Enter") {
+        if (
+            event.key === "Enter"
+        ) {
             event.preventDefault();
 
             finishRenaming();
         }
 
-        if (event.key === "Escape") {
+        if (
+            event.key === "Escape"
+        ) {
             event.preventDefault();
 
-            setIsRenaming(false);
+            cancelRenaming();
         }
     };
 
@@ -233,7 +475,10 @@ export default function NotesApp({
     const handleContentChange = (
         event: React.ChangeEvent<HTMLTextAreaElement>
     ) => {
-        setContent(event.target.value);
+        updateActiveNote({
+            content:
+                event.target.value,
+        });
     };
 
     /*
@@ -243,15 +488,146 @@ export default function NotesApp({
      */
 
     const characterCount =
-        content.length;
+        activeNote?.content.length ??
+        0;
 
     /*
      * =========================================================
-     * WINDOW
+     * HEADER DRAGGING
+     *
+     * ONLY THE YELLOW HEADER IS DRAGGABLE.
      * =========================================================
      */
 
-    const windowStyle: React.CSSProperties =
+    const handleHeaderMouseDown = (
+        event: React.MouseEvent<HTMLDivElement>
+    ) => {
+        if (event.button !== 0) {
+            return;
+        }
+
+        const target =
+            event.target as HTMLElement;
+
+        /*
+         * Never drag from:
+         *
+         * - buttons
+         * - inputs
+         * - tabs
+         */
+
+        if (
+            target.closest("button") ||
+            target.closest("input") ||
+            target.closest("[data-note-tab]")
+        ) {
+            return;
+        }
+
+        onFocus?.();
+
+        const windowElement =
+            event.currentTarget.parentElement;
+
+        if (!windowElement) {
+            return;
+        }
+
+        const rect =
+            windowElement.getBoundingClientRect();
+
+        dragOffset.current = {
+            x:
+                event.clientX -
+                rect.left,
+
+            y:
+                event.clientY -
+                rect.top,
+        };
+
+        setIsDragging(true);
+
+        event.preventDefault();
+    };
+
+    /*
+     * =========================================================
+     * DRAG MOVEMENT
+     * =========================================================
+     */
+
+    useEffect(() => {
+        if (!isDragging) {
+            return;
+        }
+
+        const handleMouseMove = (
+            event: MouseEvent
+        ) => {
+            const left =
+                event.clientX -
+                dragOffset.current.x;
+
+            const top =
+                event.clientY -
+                dragOffset.current.y;
+
+            const leftPercent =
+                (left /
+                    window.innerWidth) *
+                100;
+
+            const topPercent =
+                (top /
+                    window.innerHeight) *
+                100;
+
+            onMove?.(
+                leftPercent,
+                topPercent
+            );
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+        };
+
+        window.addEventListener(
+            "mousemove",
+            handleMouseMove
+        );
+
+        window.addEventListener(
+            "mouseup",
+            handleMouseUp
+        );
+
+        return () => {
+            window.removeEventListener(
+                "mousemove",
+                handleMouseMove
+            );
+
+            window.removeEventListener(
+                "mouseup",
+                handleMouseUp
+            );
+        };
+    }, [
+        isDragging,
+        onMove,
+    ]);
+
+    /*
+     * =========================================================
+     * WINDOW STYLE
+     * =========================================================
+     */
+
+    const windowStyle:
+        React.CSSProperties =
     {
         position: "fixed",
 
@@ -276,17 +652,23 @@ export default function NotesApp({
         height:
             "min(620px, 70vh)",
 
-        minWidth: "500px",
+        minWidth:
+            "500px",
 
-        minHeight: "400px",
+        minHeight:
+            "400px",
 
-        background: "#ffffff",
+        background:
+            "#ffffff",
 
-        color: "#111111",
+        color:
+            "#111111",
 
-        borderRadius: "5px",
+        borderRadius:
+            "5px",
 
-        overflow: "hidden",
+        overflow:
+            "hidden",
 
         boxShadow:
             "0 22px 60px rgba(0,0,0,0.45)",
@@ -294,299 +676,560 @@ export default function NotesApp({
         zIndex:
             windowPosition.zIndex,
 
-        display: "flex",
+        display:
+            "flex",
 
-        flexDirection: "column",
+        flexDirection:
+            "column",
 
-        userSelect: "none",
+        userSelect:
+            "none",
+
+        cursor:
+            isDragging
+                ? "grabbing"
+                : "default",
     };
+
+    /*
+     * =========================================================
+     * RENDER
+     * =========================================================
+     */
 
     return (
         <div
-            style={windowStyle}
-            onMouseDown={handleWindowMouseDown}
+            style={
+                windowStyle
+            }
         >
             {/* =====================================================
-          HEADER
-      ====================================================== */}
+                HEADER
+            ====================================================== */}
 
             <div
                 style={{
-                    height: "40px",
+                    height:
+                        "40px",
 
-                    flexShrink: 0,
+                    flexShrink:
+                        0,
 
-                    display: "flex",
+                    display:
+                        "flex",
 
-                    alignItems: "center",
+                    alignItems:
+                        "center",
 
-                    background: "#f6cf55",
+                    background: "rgba(238, 201, 68, 0.75)",
 
-                    paddingLeft: "7px",
+                    paddingLeft:
+                        "7px",
 
-                    paddingRight: "7px",
+                    paddingRight:
+                        "46px",
 
-                    position: "relative",
+                    position:
+                        "relative",
+
+                    overflow:
+                        "hidden",
+
+                    cursor:
+                        isDragging
+                            ? "grabbing"
+                            : "grab",
                 }}
-                onMouseDown={handleWindowMouseDown}
+                onMouseDown={
+                    handleHeaderMouseDown
+                }
             >
                 {/* NOTES ICON */}
 
                 <img
                     src={
-                        typeof notesIcon === "string"
+                        typeof notesIcon ===
+                            "string"
                             ? notesIcon
                             : notesIcon.src
                     }
                     alt=""
                     draggable={false}
                     style={{
-                        width: "24px",
-                        height: "24px",
+                        width:
+                            "24px",
 
-                        objectFit: "contain",
+                        height:
+                            "24px",
 
-                        marginRight: "8px",
+                        objectFit:
+                            "contain",
+
+                        marginRight:
+                            "8px",
+
+                        pointerEvents:
+                            "none",
                     }}
                 />
 
                 {/* =================================================
-            TITLE TAB
-        ================================================== */}
+                    NOTE TABS
+                ================================================== */}
 
                 <div
                     style={{
-                        height: "33px",
+                        display:
+                            "flex",
 
-                        minWidth: "115px",
+                        alignItems:
+                            "flex-end",
 
-                        maxWidth: "220px",
+                        height:
+                            "100%",
 
-                        display: "flex",
+                        gap:
+                            "2px",
 
-                        alignItems: "center",
+                        minWidth:
+                            0,
 
-                        padding:
-                            "0 8px 0 10px",
-
-                        background: "#ffffff",
-
-                        borderRadius:
-                            "5px 5px 0 0",
-
-                        marginTop: "7px",
-
-                        gap: "7px",
-                    }}
-                    onDoubleClick={(event) => {
-                        event.stopPropagation();
-
-                        startRenaming();
+                        overflow:
+                            "hidden",
                     }}
                 >
-                    {isRenaming ? (
-                        <input
-                            ref={titleInputRef}
-                            value={title}
-                            onChange={(event) =>
-                                setTitle(
-                                    event.target.value
-                                )
-                            }
-                            onKeyDown={
-                                handleTitleKeyDown
-                            }
-                            onBlur={
-                                finishRenaming
-                            }
-                            style={{
-                                width: "100%",
+                    {noteTabs.map(
+                        (note) => {
+                            const isActive =
+                                note.id ===
+                                activeNoteId;
 
-                                minWidth: 0,
+                            return (
+                                <div
+                                    key={
+                                        note.id
+                                    }
 
-                                border: 0,
+                                    data-note-tab="true"
 
-                                outline: "none",
+                                    onClick={(
+                                        event
+                                    ) => {
+                                        event.stopPropagation();
 
-                                background:
-                                    "transparent",
+                                        switchNoteTab(
+                                            note.id
+                                        );
+                                    }}
 
-                                fontFamily:
-                                    "Inter, Arial, sans-serif",
+                                    onDoubleClick={(
+                                        event
+                                    ) => {
+                                        event.stopPropagation();
 
-                                fontSize: "13px",
+                                        if (
+                                            isActive
+                                        ) {
+                                            startRenaming();
+                                        }
+                                    }}
 
-                                fontWeight: 600,
+                                    style={{
+                                        height:
+                                            "33px",
 
-                                color: "#a97916",
-                            }}
-                        />
-                    ) : (
-                        <span
-                            style={{
-                                flex: 1,
+                                        width:
+                                            isActive &&
+                                                isRenaming
+                                                ? "220px"
+                                                : "115px",
 
-                                overflow: "hidden",
+                                        maxWidth:
+                                            "220px",
 
-                                whiteSpace:
-                                    "nowrap",
+                                        flexShrink:
+                                            0,
 
-                                textOverflow:
-                                    "ellipsis",
+                                        display:
+                                            "flex",
 
-                                fontSize: "13px",
+                                        alignItems:
+                                            "center",
 
-                                fontWeight: 600,
+                                        padding:
+                                            "0 8px 0 10px",
 
-                                color: "#a97916",
+                                        background:
+                                            isActive
+                                                ? "#ffffff"
+                                                : "rgba(255,255,255,0.45)",
 
-                                cursor: "default",
-                            }}
-                        >
-                            {title}
-                        </span>
+                                        borderRadius:
+                                            "5px 5px 0 0",
+
+                                        marginTop:
+                                            "7px",
+
+                                        gap:
+                                            "7px",
+
+                                        transition:
+                                            "width 220ms cubic-bezier(0.2,0.8,0.2,1), background 150ms ease",
+
+                                        cursor:
+                                            isActive
+                                                ? "default"
+                                                : "pointer",
+                                    }}
+                                >
+                                    {/* TITLE */}
+
+                                    {isActive &&
+                                        isRenaming ? (
+                                        <input
+                                            ref={
+                                                titleInputRef
+                                            }
+
+                                            value={
+                                                renameValue
+                                            }
+
+                                            onChange={(
+                                                event
+                                            ) =>
+                                                setRenameValue(
+                                                    event
+                                                        .target
+                                                        .value
+                                                )
+                                            }
+
+                                            onKeyDown={
+                                                handleTitleKeyDown
+                                            }
+
+                                            onBlur={
+                                                finishRenaming
+                                            }
+
+                                            onMouseDown={(
+                                                event
+                                            ) =>
+                                                event.stopPropagation()
+                                            }
+
+                                            style={{
+                                                flex:
+                                                    1,
+
+                                                minWidth:
+                                                    0,
+
+                                                border:
+                                                    0,
+
+                                                outline:
+                                                    "none",
+
+                                                background:
+                                                    "transparent",
+
+                                                fontFamily:
+                                                    "Inter, Arial, sans-serif",
+
+                                                fontSize:
+                                                    "13px",
+
+                                                fontWeight:
+                                                    600,
+
+                                                color:
+                                                    "#a97916",
+                                            }}
+                                        />
+                                    ) : (
+                                        <span
+                                            style={{
+                                                flex:
+                                                    1,
+
+                                                overflow:
+                                                    "hidden",
+
+                                                whiteSpace:
+                                                    "nowrap",
+
+                                                textOverflow:
+                                                    "ellipsis",
+
+                                                fontSize:
+                                                    "13px",
+
+                                                fontWeight:
+                                                    600,
+
+                                                color:
+                                                    "#a97916",
+                                            }}
+                                        >
+                                            {
+                                                note.title
+                                            }
+                                        </span>
+                                    )}
+
+                                    {/* TAB CLOSE */}
+
+                                    <button
+                                        onMouseDown={(
+                                            event
+                                        ) => {
+                                            event.preventDefault();
+
+                                            event.stopPropagation();
+                                        }}
+
+                                        onClick={(
+                                            event
+                                        ) => {
+                                            event.preventDefault();
+
+                                            event.stopPropagation();
+
+                                            closeNoteTab(
+                                                note.id
+                                            );
+                                        }}
+
+                                        aria-label="Close note tab"
+
+                                        style={{
+                                            width:
+                                                "18px",
+
+                                            height:
+                                                "18px",
+
+                                            border:
+                                                0,
+
+                                            background:
+                                                "transparent",
+
+                                            display:
+                                                "flex",
+
+                                            alignItems:
+                                                "center",
+
+                                            justifyContent:
+                                                "center",
+
+                                            padding:
+                                                0,
+
+                                            cursor:
+                                                "pointer",
+
+                                            opacity:
+                                                0.45,
+                                        }}
+                                    >
+                                        <img
+                                            src={
+                                                typeof closeIcon ===
+                                                    "string"
+                                                    ? closeIcon
+                                                    : closeIcon.src
+                                            }
+
+                                            alt=""
+
+                                            draggable={
+                                                false
+                                            }
+
+                                            style={{
+                                                width:
+                                                    "11px",
+
+                                                height:
+                                                    "11px",
+
+                                                pointerEvents:
+                                                    "none",
+                                            }}
+                                        />
+                                    </button>
+                                </div>
+                            );
+                        }
                     )}
-
-                    {/* TAB CLOSE */}
-
-                    <button
-                        onMouseDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }}
-                        onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-
-                            onClose?.();
-                        }}
-                        style={{
-                            width: "18px",
-
-                            height: "18px",
-
-                            border: 0,
-
-                            background:
-                                "transparent",
-
-                            display: "flex",
-
-                            alignItems: "center",
-
-                            justifyContent:
-                                "center",
-
-                            padding: 0,
-
-                            cursor: "pointer",
-
-                            opacity: 0.45,
-                        }}
-                    >
-                        <img
-                            src={
-                                typeof closeIcon ===
-                                    "string"
-                                    ? closeIcon
-                                    : closeIcon.src
-                            }
-                            alt=""
-                            draggable={false}
-                            style={{
-                                width: "11px",
-                                height: "11px",
-                            }}
-                        />
-                    </button>
                 </div>
 
                 {/* =================================================
-            NEW NOTE / TAB
-        ================================================== */}
+                    NEW TAB
+                ================================================== */}
 
                 <button
+                    onMouseDown={(
+                        event
+                    ) => {
+                        event.preventDefault();
+
+                        event.stopPropagation();
+                    }}
+
+                    onClick={(
+                        event
+                    ) => {
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+                        createNoteTab();
+                    }}
+
+                    disabled={
+                        noteTabs.length >=
+                        MAX_NOTE_TABS
+                    }
+
+                    aria-label="New note"
+
                     style={{
-                        width: "30px",
+                        width:
+                            "30px",
 
-                        height: "30px",
+                        height:
+                            "30px",
 
-                        marginLeft: "2px",
+                        marginLeft:
+                            "2px",
 
-                        marginTop: "6px",
+                        marginTop:
+                            "6px",
 
-                        border: 0,
+                        flexShrink:
+                            0,
+
+                        border:
+                            0,
 
                         background:
                             "transparent",
 
-                        fontSize: "17px",
+                        fontSize:
+                            "19px",
 
-                        color: "#8c731f",
+                        color:
+                            "#8c731f",
 
-                        cursor: "pointer",
+                        cursor:
+                            noteTabs.length >=
+                                MAX_NOTE_TABS
+                                ? "default"
+                                : "pointer",
 
-                        display: "flex",
+                        opacity:
+                            noteTabs.length >=
+                                MAX_NOTE_TABS
+                                ? 0.35
+                                : 1,
 
-                        alignItems: "center",
+                        display:
+                            "flex",
+
+                        alignItems:
+                            "center",
 
                         justifyContent:
                             "center",
 
-                        padding: 0,
+                        padding:
+                            0,
                     }}
                 >
                     +
                 </button>
 
                 {/* =================================================
-            WINDOW CLOSE
-        ================================================== */}
+                    WINDOW CLOSE
+                ================================================== */}
 
                 <button
-                    onMouseDown={(event) => {
+                    onMouseDown={(
+                        event
+                    ) => {
                         event.preventDefault();
+
                         event.stopPropagation();
                     }}
-                    onClick={(event) => {
+
+                    onClick={(
+                        event
+                    ) => {
                         event.preventDefault();
+
                         event.stopPropagation();
 
                         onClose?.();
                     }}
+
                     aria-label="Close Notes"
+
                     style={{
-                        position: "absolute",
+                        position:
+                            "absolute",
 
-                        right: 0,
+                        right:
+                            0,
 
-                        top: 0,
+                        top:
+                            0,
 
-                        width: "40px",
+                        width:
+                            "46px",
 
-                        height: "40px",
+                        height:
+                            "40px",
 
-                        border: 0,
+                        border:
+                            0,
 
                         background:
                             "transparent",
 
-                        display: "flex",
+                        display:
+                            "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                            "center",
 
                         justifyContent:
                             "center",
 
-                        cursor: "pointer",
+                        cursor:
+                            "pointer",
 
-                        padding: 0,
+                        padding:
+                            0,
+
+                        transition:
+                            "background 120ms ease",
                     }}
-                    onMouseEnter={(event) => {
+
+                    onMouseEnter={(
+                        event
+                    ) => {
                         event.currentTarget.style.background =
-                            "rgba(0,0,0,0.08)";
+                            "#e81123";
                     }}
-                    onMouseLeave={(event) => {
+
+                    onMouseLeave={(
+                        event
+                    ) => {
                         event.currentTarget.style.background =
                             "transparent";
                     }}
@@ -598,81 +1241,164 @@ export default function NotesApp({
                                 ? closeIcon
                                 : closeIcon.src
                         }
+
                         alt="Close"
-                        draggable={false}
+
+                        draggable={
+                            false
+                        }
+
                         style={{
-                            width: "16px",
-                            height: "16px",
-                            opacity: 0.65,
+                            width:
+                                "18px",
+
+                            height:
+                                "18px",
+
+                            opacity:
+                                0.85,
+
+                            pointerEvents:
+                                "none",
                         }}
                     />
                 </button>
             </div>
 
             {/* =====================================================
-          TOOLBAR
-      ====================================================== */}
+                TOOLBAR
+            ====================================================== */}
 
             <div
                 style={{
-                    height: "26px",
+                    height:
+                        "34px",
 
-                    flexShrink: 0,
+                    flexShrink:
+                        0,
 
-                    display: "flex",
+                    display:
+                        "flex",
 
-                    alignItems: "center",
+                    alignItems:
+                        "center",
 
-                    background: "#ffffff",
+                    background:
+                        "#ffffff",
 
                     borderBottom:
                         "1px solid #eeeeee",
 
-                    paddingLeft: "7px",
+                    paddingLeft:
+                        "7px",
 
-                    gap: "4px",
+                    gap:
+                        "5px",
+
+                    position:
+                        "relative",
                 }}
             >
                 {/* SAVE */}
 
                 <button
                     title="Save"
+
+                    onMouseDown={(
+                        event
+                    ) => {
+                        event.preventDefault();
+
+                        event.stopPropagation();
+                    }}
+
+                    onClick={(
+                        event
+                    ) => {
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+                        handleSave();
+                    }}
+
+                    disabled={
+                        isSaving
+                    }
+
                     style={{
-                        border: 0,
-                        background: "transparent",
-                        fontSize: "10px",
-                        color: "#222",
-                        cursor: "pointer",
-                        padding: "2px 5px",
+                        border:
+                            0,
+
+                        background:
+                            "transparent",
+
+                        fontSize:
+                            "14px",
+
+                        fontWeight:
+                            500,
+
+                        color:
+                            "#222",
+
+                        cursor:
+                            isSaving
+                                ? "default"
+                                : "pointer",
+
+                        padding:
+                            "3px 6px",
+
+                        opacity:
+                            isSaving
+                                ? 0.5
+                                : 1,
                     }}
                 >
-                    Save
+                    {isSaving
+                        ? "Saving..."
+                        : "Save"}
                 </button>
 
                 {/* UNDO */}
 
                 <button
                     title="Undo"
+
+                    onMouseDown={(
+                        event
+                    ) => {
+                        event.stopPropagation();
+                    }}
+
                     style={{
-                        width: "22px",
+                        width:
+                            "30px",
 
-                        height: "22px",
+                        height:
+                            "30px",
 
-                        border: 0,
+                        border:
+                            0,
 
                         background:
                             "transparent",
 
-                        display: "flex",
+                        display:
+                            "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                            "center",
 
                         justifyContent:
                             "center",
 
-                        cursor: "pointer",
+                        cursor:
+                            "pointer",
 
-                        padding: 0,
+                        padding:
+                            0,
                     }}
                 >
                     <img
@@ -682,12 +1408,22 @@ export default function NotesApp({
                                 ? undoIcon
                                 : undoIcon.src
                         }
+
                         alt="Undo"
-                        draggable={false}
+
+                        draggable={
+                            false
+                        }
+
                         style={{
-                            width: "13px",
-                            height: "13px",
-                            opacity: 0.7,
+                            width:
+                                "20px",
+
+                            height:
+                                "20px",
+
+                            opacity:
+                                0.75,
                         }}
                     />
                 </button>
@@ -696,26 +1432,40 @@ export default function NotesApp({
 
                 <button
                     title="Redo"
+
+                    onMouseDown={(
+                        event
+                    ) => {
+                        event.stopPropagation();
+                    }}
+
                     style={{
-                        width: "22px",
+                        width:
+                            "30px",
 
-                        height: "22px",
+                        height:
+                            "30px",
 
-                        border: 0,
+                        border:
+                            0,
 
                         background:
                             "transparent",
 
-                        display: "flex",
+                        display:
+                            "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                            "center",
 
                         justifyContent:
                             "center",
 
-                        cursor: "pointer",
+                        cursor:
+                            "pointer",
 
-                        padding: 0,
+                        padding:
+                            0,
                     }}
                 >
                     <img
@@ -725,116 +1475,305 @@ export default function NotesApp({
                                 ? redoIcon
                                 : redoIcon.src
                         }
+
                         alt="Redo"
-                        draggable={false}
+
+                        draggable={
+                            false
+                        }
+
                         style={{
-                            width: "13px",
-                            height: "13px",
-                            opacity: 0.7,
+                            width:
+                                "20px",
+
+                            height:
+                                "20px",
+
+                            opacity:
+                                0.75,
                         }}
                     />
                 </button>
 
-                {/* FORMATTING */}
+                {/* =================================================
+                    CENTERED FORMATTING
+                ================================================== */}
 
                 <div
                     style={{
-                        marginLeft: "105px",
+                        position:
+                            "absolute",
 
-                        display: "flex",
+                        left:
+                            "50%",
 
-                        alignItems: "center",
+                        top:
+                            "50%",
 
-                        gap: "10px",
+                        transform:
+                            "translate(-50%, -50%)",
+
+                        height:
+                            "34px",
+
+                        display:
+                            "flex",
+
+                        alignItems:
+                            "center",
+
+                        justifyContent:
+                            "center",
+
+                        gap:
+                            "18px",
+
+                        pointerEvents:
+                            "auto",
                     }}
                 >
+                    {/* BOLD */}
+
                     <button
+                        title="Bold"
+
+                        onMouseDown={(
+                            event
+                        ) => {
+                            event.stopPropagation();
+                        }}
+
                         style={{
-                            border: 0,
+                            width:
+                                "30px",
+
+                            height:
+                                "30px",
+
+                            border:
+                                0,
 
                             background:
                                 "transparent",
 
-                            fontWeight: 700,
+                            display:
+                                "flex",
 
-                            fontSize: "12px",
+                            alignItems:
+                                "center",
 
-                            cursor: "pointer",
+                            justifyContent:
+                                "center",
 
-                            padding: 0,
+                            cursor:
+                                "pointer",
+
+                            padding:
+                                0,
                         }}
                     >
-                        B
+                        <img
+                            src={
+                                typeof boldIcon ===
+                                    "string"
+                                    ? boldIcon
+                                    : boldIcon.src
+                            }
+
+                            alt="Bold"
+
+                            draggable={
+                                false
+                            }
+
+                            style={{
+                                width:
+                                    "19px",
+
+                                height:
+                                    "19px",
+                            }}
+                        />
                     </button>
 
+                    {/* ITALIC */}
+
                     <button
+                        title="Italic"
+
+                        onMouseDown={(
+                            event
+                        ) => {
+                            event.stopPropagation();
+                        }}
+
                         style={{
-                            border: 0,
+                            width:
+                                "30px",
+
+                            height:
+                                "30px",
+
+                            border:
+                                0,
 
                             background:
                                 "transparent",
 
-                            fontStyle: "italic",
+                            display:
+                                "flex",
 
-                            fontSize: "12px",
+                            alignItems:
+                                "center",
 
-                            cursor: "pointer",
+                            justifyContent:
+                                "center",
 
-                            padding: 0,
+                            cursor:
+                                "pointer",
+
+                            padding:
+                                0,
                         }}
                     >
-                        I
+                        <img
+                            src={
+                                typeof italicIcon ===
+                                    "string"
+                                    ? italicIcon
+                                    : italicIcon.src
+                            }
+
+                            alt="Italic"
+
+                            draggable={
+                                false
+                            }
+
+                            style={{
+                                width:
+                                    "22px",
+
+                                height:
+                                    "22px",
+                            }}
+                        />
                     </button>
 
+                    {/* LINE SPACING */}
+
                     <button
+                        title="Formatting"
+
+                        onMouseDown={(
+                            event
+                        ) => {
+                            event.stopPropagation();
+                        }}
+
                         style={{
-                            border: 0,
+                            width:
+                                "30px",
+
+                            height:
+                                "30px",
+
+                            border:
+                                0,
 
                             background:
                                 "transparent",
 
-                            fontSize: "12px",
+                            display:
+                                "flex",
 
-                            cursor: "pointer",
+                            alignItems:
+                                "center",
 
-                            padding: 0,
+                            justifyContent:
+                                "center",
+
+                            cursor:
+                                "pointer",
+
+                            padding:
+                                0,
                         }}
                     >
-                        ↕
+                        <img
+                            src={
+                                typeof lineSpacingIcon ===
+                                    "string"
+                                    ? lineSpacingIcon
+                                    : lineSpacingIcon.src
+                            }
+
+                            alt="Formatting"
+
+                            draggable={
+                                false
+                            }
+
+                            style={{
+                                width:
+                                    "22px",
+
+                                height:
+                                    "22px",
+                            }}
+                        />
                     </button>
                 </div>
             </div>
 
             {/* =====================================================
-          EDITOR
-      ====================================================== */}
+                EDITOR
+            ====================================================== */}
 
             <div
                 style={{
-                    flex: 1,
+                    flex:
+                        1,
 
-                    minHeight: 0,
+                    minHeight:
+                        0,
 
-                    position: "relative",
+                    position:
+                        "relative",
 
-                    background: "#ffffff",
+                    background:
+                        "#ffffff",
                 }}
             >
                 <textarea
-                    value={content}
-                    onChange={handleContentChange}
-                    placeholder=""
-                    spellCheck={true}
+                    value={
+                        activeNote?.content ??
+                        ""
+                    }
+
+                    onChange={
+                        handleContentChange
+                    }
+
+                    spellCheck={
+                        true
+                    }
+
                     style={{
-                        width: "100%",
+                        width:
+                            "100%",
 
-                        height: "100%",
+                        height:
+                            "100%",
 
-                        resize: "none",
+                        resize:
+                            "none",
 
-                        border: 0,
+                        border:
+                            0,
 
-                        outline: "none",
+                        outline:
+                            "none",
 
                         padding:
                             "10px 8px",
@@ -842,16 +1781,20 @@ export default function NotesApp({
                         background:
                             "#ffffff",
 
-                        color: "#111111",
+                        color:
+                            "#111111",
 
                         fontFamily:
                             "Inter, Arial, sans-serif",
 
-                        fontSize: "14px",
+                        fontSize:
+                            "16px",
 
-                        lineHeight: "1.15",
+                        lineHeight:
+                            "1.5",
 
-                        userSelect: "text",
+                        userSelect:
+                            "text",
 
                         WebkitUserSelect:
                             "text",
@@ -860,32 +1803,55 @@ export default function NotesApp({
             </div>
 
             {/* =====================================================
-          CHARACTER COUNT
-      ====================================================== */}
+                FOOTER
+            ====================================================== */}
 
             <div
                 style={{
-                    height: "20px",
+                    height:
+                        "30px",
 
-                    flexShrink: 0,
+                    flexShrink:
+                        0,
 
-                    display: "flex",
+                    display:
+                        "flex",
 
-                    alignItems: "center",
+                    alignItems:
+                        "center",
 
-                    paddingLeft: "9px",
+                    justifyContent:
+                        "space-between",
+
+                    paddingLeft:
+                        "9px",
+
+                    paddingRight:
+                        "9px",
 
                     borderTop:
                         "1px solid #eeeeee",
 
-                    background: "#ffffff",
+                    background:
+                        "#ffffff",
 
-                    color: "#888888",
+                    color:
+                        "#888888",
 
-                    fontSize: "9px",
+                    fontSize:
+                        "13px",
                 }}
             >
-                {characterCount} characters
+                <span>
+                    {characterCount}{" "}
+                    characters
+                </span>
+
+                {saveMessage && (
+                    <span>
+                        {saveMessage}
+                    </span>
+                )}
             </div>
         </div>
     );

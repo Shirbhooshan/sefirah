@@ -5,7 +5,9 @@ import { useState } from "react";
 import MenuBar from "./MenuBar";
 import Dock from "./Dock";
 import Wallpaper from "./Wallpaper";
+
 import FileExplorer from "@/components/filesystem/FileExplorer";
+import NotesApp from "@/components/notes/NotesApp";
 
 interface ExplorerWindow {
   id: string;
@@ -24,24 +26,41 @@ interface ExplorerWindow {
 
 interface NotesWindow {
   id: string;
+
+  itemId?: string;
+
+  title: string;
+
+  content: string;
+
   left: number;
   top: number;
+
   zIndex: number;
+
   centered: boolean;
 }
 
 const MAX_WINDOWS = 5;
+const MAX_NOTES_WINDOWS = 3;
 
 export default function Desktop() {
+  /*
+   * =========================================================
+   * EXPLORER WINDOWS
+   * =========================================================
+   */
+
   const [
     explorerWindows,
     setExplorerWindows,
   ] = useState<ExplorerWindow[]>([]);
 
-  const [
-    nextZIndex,
-    setNextZIndex,
-  ] = useState(50);
+  /*
+   * =========================================================
+   * NOTES WINDOWS
+   * =========================================================
+   */
 
   const [
     notesWindows,
@@ -50,11 +69,19 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * RANDOM WINDOW POSITIONS
+   * Z-INDEX
    * =========================================================
-   *
-   * These are only used for windows AFTER
-   * the first one.
+   */
+
+  const [
+    nextZIndex,
+    setNextZIndex,
+  ] = useState(50);
+
+  /*
+   * =========================================================
+   * WINDOW POSITIONS
+   * =========================================================
    */
 
   const getWindowPosition = () => {
@@ -97,9 +124,7 @@ export default function Desktop() {
           )
       );
 
-    if (
-      available.length > 0
-    ) {
+    if (available.length > 0) {
       return available[
         Math.floor(
           Math.random() *
@@ -116,34 +141,269 @@ export default function Desktop() {
     ];
   };
 
-  /* Open Notes */
-  const openNotes = () => {
-    const id =
-      `notes-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 10)}`;
+  const getNotesWindowPosition = () => {
+    const positions = [
+      {
+        left: 8,
+        top: 10,
+      },
+      {
+        left: 14,
+        top: 15,
+      },
+      {
+        left: 20,
+        top: 8,
+      },
+    ];
+
+    const available =
+      positions.filter(
+        (position) =>
+          !notesWindows.some(
+            (window) =>
+              Math.abs(
+                window.left -
+                position.left
+              ) < 3 &&
+              Math.abs(
+                window.top -
+                position.top
+              ) < 3
+          )
+      );
+
+    if (available.length > 0) {
+      return available[
+        Math.floor(
+          Math.random() *
+          available.length
+        )
+      ];
+    }
+
+    return {
+      left: 15,
+      top: 15,
+    };
+  };
+
+  /*
+   * =========================================================
+   * FOCUS NOTES
+   * =========================================================
+   */
+
+  const focusNotes = (
+    id: string
+  ) => {
+    const zIndex =
+      nextZIndex;
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+
+    setNotesWindows(
+      (previous) =>
+        previous.map(
+          (window) =>
+            window.id === id
+              ? {
+                ...window,
+                zIndex,
+              }
+              : window
+        )
+    );
+  };
+
+  /*
+   * =========================================================
+   * CLOSE NOTES WINDOW
+   * =========================================================
+   */
+
+  const closeNotes = (
+    id: string
+  ) => {
+    setNotesWindows(
+      (previous) =>
+        previous.filter(
+          (window) =>
+            window.id !== id
+        )
+    );
+  };
+
+  /*
+   * =========================================================
+   * MOVE NOTES WINDOW
+   * =========================================================
+   */
+
+  const moveNotes = (
+    id: string,
+    left: number,
+    top: number
+  ) => {
+    setNotesWindows(
+      (previous) =>
+        previous.map(
+          (window) =>
+            window.id === id
+              ? {
+                ...window,
+
+                left,
+                top,
+
+                centered: false,
+              }
+              : window
+        )
+    );
+  };
+
+  /*
+   * =========================================================
+   * SAVE NOTES WINDOW
+   *
+   * NotesApp calls this after the API successfully saves.
+   *
+   * This is important because Desktop owns the window state.
+   * Without this callback, the database gets updated but
+   * Desktop continues holding the old title/content.
+   * =========================================================
+   */
+
+  const saveNotesWindow = (
+    windowId: string,
+    item: {
+      id: string;
+      name: string;
+      content: string;
+    }
+  ) => {
+    setNotesWindows(
+      (previous) =>
+        previous.map(
+          (window) =>
+            window.id === windowId
+              ? {
+                ...window,
+
+                itemId: item.id,
+
+                title: item.name,
+
+                content: item.content,
+              }
+              : window
+        )
+    );
+  };
+
+  /*
+   * =========================================================
+   * OPEN NOTE FROM FILE EXPLORER
+   * =========================================================
+   */
+
+  const openNote = (
+    item: {
+      id?: string;
+      _id?: string;
+      name: string;
+      content?: string;
+    }
+  ) => {
+    const itemId =
+      item._id ??
+      item.id;
+
+    if (!itemId) {
+      console.error(
+        "Cannot open note: missing ID",
+        item
+      );
+
+      return;
+    }
+
+    /*
+     * If this note is already open,
+     * focus its existing window.
+     */
+
+    const existing =
+      notesWindows.find(
+        (window) =>
+          window.itemId ===
+          itemId
+      );
+
+    if (existing) {
+      focusNotes(existing.id);
+      return;
+    }
+
+    /*
+     * Maximum Notes windows.
+     */
+
+    if (
+      notesWindows.length >=
+      MAX_NOTES_WINDOWS
+    ) {
+      return;
+    }
 
     const isFirst =
       notesWindows.length === 0;
 
+    const position =
+      isFirst
+        ? {
+          left: 0,
+          top: 0,
+        }
+        : getNotesWindowPosition();
+
+    const zIndex =
+      nextZIndex;
+
+    const newWindow: NotesWindow =
+    {
+      id:
+        `notes-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`,
+
+      itemId,
+
+      title:
+        item.name,
+
+      content:
+        item.content ?? "",
+
+      left:
+        position.left,
+
+      top:
+        position.top,
+
+      zIndex,
+
+      centered:
+        isFirst,
+    };
+
     setNotesWindows(
       (previous) => [
         ...previous,
-        {
-          id,
-
-          left: isFirst
-            ? 0
-            : 15,
-
-          top: isFirst
-            ? 0
-            : 15,
-
-          zIndex: nextZIndex,
-
-          centered: isFirst,
-        },
+        newWindow,
       ]
     );
 
@@ -152,90 +412,82 @@ export default function Desktop() {
     );
   };
 
-  {
-    notesWindows.map((window) => (
-      <NotesApp
-        key={window.id}
+  /*
+   * =========================================================
+   * OPEN NEW EMPTY NOTE
+   * =========================================================
+   */
 
-        windowPosition={{
-          left: window.left,
-          top: window.top,
-          zIndex: window.zIndex,
-          centered: window.centered,
-        }}
+  const openNewNote = () => {
+    /*
+     * Don't allow more than 3 Notes windows.
+     */
 
-        onFocus={() => {
-          const zIndex =
-            nextZIndex;
+    if (
+      notesWindows.length >=
+      MAX_NOTES_WINDOWS
+    ) {
+      return;
+    }
 
-          setNextZIndex(
-            (value) => value + 1
-          );
+    const isFirst =
+      notesWindows.length === 0;
 
-          setNotesWindows(
-            (previous) =>
-              previous.map(
-                (item) =>
-                  item.id ===
-                    window.id
-                    ? {
-                      ...item,
-                      zIndex,
-                    }
-                    : item
-              )
-          );
-        }}
+    const position =
+      isFirst
+        ? {
+          left: 0,
+          top: 0,
+        }
+        : getNotesWindowPosition();
 
-        onMove={(left, top) => {
-          setNotesWindows(
-            (previous) =>
-              previous.map(
-                (item) =>
-                  item.id ===
-                    window.id
-                    ? {
-                      ...item,
-                      left,
-                      top,
-                      centered:
-                        false,
-                    }
-                    : item
-              )
-          );
-        }}
+    const zIndex =
+      nextZIndex;
 
-        onClose={() => {
-          setNotesWindows(
-            (previous) =>
-              previous.filter(
-                (item) =>
-                  item.id !==
-                  window.id
-              )
-          );
-        }}
-      />
-    ))
-  }
+    const newWindow: NotesWindow =
+    {
+      id:
+        `notes-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`,
+
+      itemId:
+        undefined,
+
+      title:
+        "Untitled",
+
+      content:
+        "",
+
+      left:
+        position.left,
+
+      top:
+        position.top,
+
+      zIndex,
+
+      centered:
+        isFirst,
+    };
+
+    setNotesWindows(
+      (previous) => [
+        ...previous,
+        newWindow,
+      ]
+    );
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+  };
 
   /*
    * =========================================================
-   * OPEN EXPLORER WINDOW
+   * OPEN EXPLORER
    * =========================================================
-   *
-   * IMPORTANT:
-   *
-   * 1st window:
-   *     EXACT CENTER
-   *
-   * 2nd - 5th:
-   *     RANDOM POSITION
-   *
-   * Folders do NOT call this function anymore.
-   * Double-clicking a folder navigates inside the
-   * existing Explorer window.
    */
 
   const openExplorer = (
@@ -300,7 +552,7 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * CLOSE WINDOW
+   * CLOSE EXPLORER
    * =========================================================
    */
 
@@ -318,7 +570,7 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * FOCUS WINDOW
+   * FOCUS EXPLORER
    * =========================================================
    */
 
@@ -347,22 +599,32 @@ export default function Desktop() {
     );
   };
 
+  /*
+   * =========================================================
+   * MOVE EXPLORER
+   * =========================================================
+   */
+
   const moveExplorer = (
     id: string,
     left: number,
     top: number
   ) => {
-    setExplorerWindows((previous) =>
-      previous.map((window) =>
-        window.id === id
-          ? {
-            ...window,
-            left,
-            top,
-            centered: false,
-          }
-          : window
-      )
+    setExplorerWindows(
+      (previous) =>
+        previous.map(
+          (window) =>
+            window.id === id
+              ? {
+                ...window,
+
+                left,
+                top,
+
+                centered: false,
+              }
+              : window
+        )
     );
   };
 
@@ -377,34 +639,28 @@ export default function Desktop() {
   ) => {
     /*
      * FILE EXPLORER
-     *
-     * Every click from the Dock creates
-     * a new independent Explorer window.
      */
 
-    if (
-      id === "files"
-    ) {
-      openExplorer(
-        "home"
-      );
+    if (id === "files") {
+      openExplorer("home");
+      return;
+    }
 
+    /*
+     * NOTES
+     */
+
+    if (id === "notes") {
+      openNewNote();
       return;
     }
 
     /*
      * RECYCLE BIN
-     *
-     * Also opens as its own independent window.
      */
 
-    if (
-      id === "recycle"
-    ) {
-      openExplorer(
-        "recycle"
-      );
-
+    if (id === "recycle") {
+      openExplorer("recycle");
       return;
     }
 
@@ -413,6 +669,28 @@ export default function Desktop() {
       id
     );
   };
+
+  /*
+   * =========================================================
+   * OPEN APPS FOR DOCK
+   *
+   * Notes was previously missing here.
+   * =========================================================
+   */
+
+  const openApps: string[] = [];
+
+  if (
+    explorerWindows.length > 0
+  ) {
+    openApps.push("files");
+  }
+
+  if (
+    notesWindows.length > 0
+  ) {
+    openApps.push("notes");
+  }
 
   /*
    * =========================================================
@@ -439,14 +717,24 @@ export default function Desktop() {
           "#222222",
       }}
     >
+      {/* =====================================================
+          MENU BAR
+      ====================================================== */}
+
       <div
         style={{
-          position: "relative",
+          position:
+            "relative",
+
           zIndex: 1000,
         }}
       >
         <MenuBar />
       </div>
+
+      {/* =====================================================
+          WALLPAPER
+      ====================================================== */}
 
       <Wallpaper />
 
@@ -457,7 +745,9 @@ export default function Desktop() {
       {explorerWindows.map(
         (window) => (
           <FileExplorer
-            key={window.id}
+            key={
+              window.id
+            }
 
             initialLocation={
               window.location
@@ -469,7 +759,10 @@ export default function Desktop() {
               )
             }
 
-            onMove={(left, top) =>
+            onMove={(
+              left,
+              top
+            ) =>
               moveExplorer(
                 window.id,
                 left,
@@ -496,6 +789,105 @@ export default function Desktop() {
                 window.id
               )
             }
+
+            onOpenFile={
+              openNote
+            }
+          />
+        )
+      )}
+
+      {/* =====================================================
+          NOTES WINDOWS
+      ====================================================== */}
+
+      {notesWindows.map(
+        (window) => (
+          <NotesApp
+            key={
+              window.id
+            }
+
+            itemId={
+              window.itemId
+            }
+
+            initialTitle={
+              window.title
+            }
+
+            initialContent={
+              window.content
+            }
+
+            windowPosition={{
+              left:
+                window.left,
+
+              top:
+                window.top,
+
+              zIndex:
+                window.zIndex,
+
+              centered:
+                window.centered,
+            }}
+
+            onFocus={() =>
+              focusNotes(
+                window.id
+              )
+            }
+
+            onClose={() =>
+              closeNotes(
+                window.id
+              )
+            }
+
+            onMove={(
+              left,
+              top
+            ) =>
+              moveNotes(
+                window.id,
+                left,
+                top
+              )
+            }
+
+            /*
+             * IMPORTANT:
+             *
+             * NotesApp saves to the database.
+             * This callback synchronizes the
+             * Desktop window with the saved DB data.
+             */
+
+            onSave={(savedItem) => {
+              setNotesWindows(
+                (previous) =>
+                  previous.map(
+                    (item) =>
+                      item.id ===
+                        window.id
+                        ? {
+                          ...item,
+
+                          itemId:
+                            savedItem.id,
+
+                          title:
+                            savedItem.name,
+
+                          content:
+                            savedItem.content,
+                        }
+                        : item
+                  )
+              );
+            }}
           />
         )
       )}
@@ -506,10 +898,7 @@ export default function Desktop() {
 
       <Dock
         openApps={
-          explorerWindows.length >
-            0
-            ? ["files"]
-            : []
+          openApps
         }
 
         onOpenApp={

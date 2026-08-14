@@ -45,6 +45,10 @@ interface FileExplorerProps {
 
   onMove?: (left: number, top: number) => void;
 
+  onOpenFile?: (
+    item: FileSystemItem
+  ) => void;
+
   windowPosition?: {
     left: number;
     top: number;
@@ -69,6 +73,7 @@ export default function FileExplorer({
   initialFolderId = null,
   onClose,
   onMove,
+  onOpenFile,
   windowPosition = {
     left: 10,
     top: 10,
@@ -759,28 +764,35 @@ export default function FileExplorer({
   const handleItemDoubleClick = (
     item: FileSystemItem
   ) => {
-    if (item.type !== "folder") {
-      return;
-    }
+    /*
+     * FOLDER
+     */
 
-    const folderId = item._id ?? item.id;
+    if (item.type === "folder") {
+      const folderId =
+        item._id ?? item.id;
 
-    if (!folderId) {
-      console.error(
-        "Cannot open folder: folder has no ID",
-        item
-      );
+      if (!folderId) {
+        console.error(
+          "Cannot open folder: folder has no ID",
+          item
+        );
+
+        return;
+      }
+
+      navigateTo(folderId);
+
       return;
     }
 
     /*
-     * IMPORTANT:
-     * Opening a folder changes the CURRENT
-     * Explorer window.
-     *
-     * It does NOT create another window.
+     * FILE
      */
-    navigateTo(folderId);
+
+    if (item.type === "file") {
+      onOpenFile?.(item);
+    }
   };
 
   /*
