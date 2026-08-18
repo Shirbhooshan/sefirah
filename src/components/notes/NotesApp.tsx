@@ -133,6 +133,28 @@ export default function NotesApp({
     const titleInputRef =
         useRef<HTMLInputElement>(null);
 
+    const editorRef =
+        useRef<HTMLDivElement>(null);
+
+    const [activeFormats, setActiveFormats] =
+        useState({
+            bold: false,
+            italic: false,
+            strikeThrough: false,
+        });
+
+    const [selectionHandles, setSelectionHandles] =
+        useState<{
+            start: {
+                left: number;
+                top: number;
+            };
+            end: {
+                left: number;
+                top: number;
+            };
+        } | null>(null);
+
     /*
      * =========================================================
      * DRAGGING STATE
@@ -690,6 +712,180 @@ export default function NotesApp({
                 ? "grabbing"
                 : "default",
     };
+
+    const updateSelectionHandles = () => {
+        const editor = editorRef.current;
+
+        if (!editor) {
+            return;
+        }
+
+        const selection =
+            window.getSelection();
+
+        if (!selection || selection.rangeCount === 0) {
+            setSelectionHandles(null);
+            return;
+        }
+
+        if (selection.isCollapsed) {
+            setSelectionHandles(null);
+            return;
+        }
+
+        const range =
+            selection.getRangeAt(0);
+
+        /*
+         * Make sure the selection actually
+         * belongs to our editor.
+         */
+
+        if (
+            !editor.contains(
+                range.commonAncestorContainer
+            )
+        ) {
+            setSelectionHandles(null);
+            return;
+        }
+
+        const rects =
+            range.getClientRects();
+
+        if (!rects.length) {
+            setSelectionHandles(null);
+            return;
+        }
+
+        const firstRect =
+            rects[0];
+
+        const lastRect =
+            rects[rects.length - 1];
+
+        const editorRect =
+            editor.getBoundingClientRect();
+
+        /*
+         * Start handle
+         */
+
+        const startLeft =
+            firstRect.left -
+            editorRect.left;
+
+        const startTop =
+            firstRect.bottom -
+            editorRect.top;
+
+        /*
+         * End handle
+         */
+
+        const endLeft =
+            lastRect.right -
+            editorRect.left;
+
+        const endTop =
+            lastRect.bottom -
+            editorRect.top;
+
+        setSelectionHandles({
+            start: {
+                left: startLeft,
+                top: startTop,
+            },
+
+            end: {
+                left: endLeft,
+                top: endTop,
+            },
+        });
+    };
+
+    useEffect(() => {
+        const handleSelectionChange = () => {
+            updateSelectionHandles();
+        };
+
+        document.addEventListener(
+            "selectionchange",
+            handleSelectionChange
+        );
+
+        return () => {
+            document.removeEventListener(
+                "selectionchange",
+                handleSelectionChange
+            );
+        };
+    }, []);
+
+
+    const updateActiveFormats = () => {
+        if (!editorRef.current) {
+            return;
+        }
+
+        setActiveFormats({
+            bold:
+                document.queryCommandState(
+                    "bold"
+                ),
+
+            italic:
+                document.queryCommandState(
+                    "italic"
+                ),
+
+            strikeThrough:
+                document.queryCommandState(
+                    "strikeThrough"
+                ),
+        });
+    };
+
+    const applyFormatting = (
+        command:
+            | "bold"
+            | "italic"
+            | "strikeThrough"
+    ) => {
+        if (!editorRef.current) {
+            return;
+        }
+
+        editorRef.current.focus();
+
+        document.execCommand(
+            command,
+            false
+        );
+
+        /*
+         * Update React state with the
+         * newly formatted HTML.
+         */
+
+        updateActiveNote({
+            content:
+                editorRef.current.innerHTML,
+        });
+
+        updateActiveFormats();
+    };
+
+    useEffect(() => {
+        if (!editorRef.current) {
+            return;
+        }
+
+        editorRef.current.innerHTML =
+            activeNote?.content ?? "";
+
+        updateActiveFormats();
+    }, [activeNoteId]);
 
     /*
      * =========================================================
@@ -1536,62 +1732,65 @@ export default function NotesApp({
 
                     <button
                         title="Bold"
-
-                        onMouseDown={(
-                            event
-                        ) => {
+                        onMouseDown={(event) => {
+                            /*
+                             * Prevent the button from stealing
+                             * the text selection before we apply
+                             * formatting.
+                             */
+                            event.preventDefault();
                             event.stopPropagation();
+
+                            applyFormatting("bold");
                         }}
-
                         style={{
-                            width:
-                                "30px",
+                            width: "30px",
 
-                            height:
-                                "30px",
+                            height: "30px",
 
-                            border:
-                                0,
+                            border: 0,
+
+                            borderRadius: "4px",
 
                             background:
-                                "transparent",
+                                activeFormats.bold
+                                    ? "#e8e8e8"
+                                    : "transparent",
 
-                            display:
-                                "flex",
+                            display: "flex",
 
-                            alignItems:
-                                "center",
+                            alignItems: "center",
 
-                            justifyContent:
-                                "center",
+                            justifyContent: "center",
 
-                            cursor:
-                                "pointer",
+                            cursor: "pointer",
 
-                            padding:
-                                0,
+                            padding: 0,
+
+                            transition:
+                                "background 100ms ease",
                         }}
                     >
                         <img
                             src={
-                                typeof boldIcon ===
-                                    "string"
+                                typeof boldIcon === "string"
                                     ? boldIcon
                                     : boldIcon.src
                             }
 
                             alt="Bold"
 
-                            draggable={
-                                false
-                            }
+                            draggable={false}
 
                             style={{
-                                width:
-                                    "19px",
+                                width: "19px",
 
-                                height:
-                                    "19px",
+                                height: "19px",
+
+                                opacity:
+                                    activeFormats.bold
+                                        ? 1
+                                        : 0.75,
                             }}
                         />
                     </button>
@@ -1600,104 +1799,102 @@ export default function NotesApp({
 
                     <button
                         title="Italic"
-
-                        onMouseDown={(
-                            event
-                        ) => {
+                        onMouseDown={(event) => {
+                            event.preventDefault();
                             event.stopPropagation();
+
+                            applyFormatting("italic");
                         }}
-
                         style={{
-                            width:
-                                "30px",
+                            width: "30px",
 
-                            height:
-                                "30px",
+                            height: "30px",
 
-                            border:
-                                0,
+                            border: 0,
+
+                            borderRadius: "4px",
 
                             background:
-                                "transparent",
+                                activeFormats.italic
+                                    ? "#e8e8e8"
+                                    : "transparent",
 
-                            display:
-                                "flex",
+                            display: "flex",
 
-                            alignItems:
-                                "center",
+                            alignItems: "center",
 
-                            justifyContent:
-                                "center",
+                            justifyContent: "center",
 
-                            cursor:
-                                "pointer",
+                            cursor: "pointer",
 
-                            padding:
-                                0,
+                            padding: 0,
+
+                            transition:
+                                "background 100ms ease",
                         }}
                     >
                         <img
                             src={
-                                typeof italicIcon ===
-                                    "string"
+                                typeof italicIcon === "string"
                                     ? italicIcon
                                     : italicIcon.src
                             }
 
                             alt="Italic"
 
-                            draggable={
-                                false
-                            }
+                            draggable={false}
 
                             style={{
-                                width:
-                                    "22px",
+                                width: "22px",
 
-                                height:
-                                    "22px",
+                                height: "22px",
+
+                                opacity:
+                                    activeFormats.italic
+                                        ? 1
+                                        : 0.75,
                             }}
                         />
                     </button>
 
-                    {/* LINE SPACING */}
+                    {/* Strikethrough */}
 
                     <button
-                        title="Formatting"
-
-                        onMouseDown={(
-                            event
-                        ) => {
+                        title="Strikethrough"
+                        onMouseDown={(event) => {
+                            event.preventDefault();
                             event.stopPropagation();
+
+                            applyFormatting(
+                                "strikeThrough"
+                            );
                         }}
-
                         style={{
-                            width:
-                                "30px",
+                            width: "30px",
 
-                            height:
-                                "30px",
+                            height: "30px",
 
-                            border:
-                                0,
+                            border: 0,
+
+                            borderRadius: "4px",
 
                             background:
-                                "transparent",
+                                activeFormats.strikeThrough
+                                    ? "#e8e8e8"
+                                    : "transparent",
 
-                            display:
-                                "flex",
+                            display: "flex",
 
-                            alignItems:
-                                "center",
+                            alignItems: "center",
 
-                            justifyContent:
-                                "center",
+                            justifyContent: "center",
 
-                            cursor:
-                                "pointer",
+                            cursor: "pointer",
 
-                            padding:
-                                0,
+                            padding: 0,
+
+                            transition:
+                                "background 100ms ease",
                         }}
                     >
                         <img
@@ -1708,18 +1905,19 @@ export default function NotesApp({
                                     : lineSpacingIcon.src
                             }
 
-                            alt="Formatting"
+                            alt="Strikethrough"
 
-                            draggable={
-                                false
-                            }
+                            draggable={false}
 
                             style={{
-                                width:
-                                    "22px",
+                                width: "22px",
 
-                                height:
-                                    "22px",
+                                height: "22px",
+
+                                opacity:
+                                    activeFormats.strikeThrough
+                                        ? 1
+                                        : 0.75,
                             }}
                         />
                     </button>
@@ -1745,61 +1943,276 @@ export default function NotesApp({
                         "#ffffff",
                 }}
             >
-                <textarea
-                    value={
-                        activeNote?.content ??
-                        ""
+                {/* Custom translucent selection style injected for this editor wrapper */}
+                <style>{`
+                    .marker-editor-field::selection {
+                        background-color: rgba(244, 154, 81, 0.35) !important;
+                        color: inherit !important;
                     }
+                    .marker-editor-field *::selection {
+                        background-color: rgba(244, 154, 81, 0.35) !important;
+                        color: inherit !important;
+                    }
+                `}</style>
 
-                    onChange={
-                        handleContentChange
-                    }
+                <div
+                    ref={editorRef}
 
-                    spellCheck={
-                        true
-                    }
+                    contentEditable
+
+                    className="marker-editor-field"
+
+                    suppressContentEditableWarning
+
+                    spellCheck={true}
+
+                    onInput={() => {
+                        if (!editorRef.current) {
+                            return;
+                        }
+
+                        updateActiveNote({
+                            content:
+                                editorRef.current.innerHTML,
+                        });
+
+                        updateActiveFormats();
+                        updateSelectionHandles();
+                    }}
+
+                    onKeyDown={(event) => {
+                        /*
+                         * =====================================================
+                         * KEYBOARD SHORTCUTS
+                         * =====================================================
+                         */
+
+                        if (
+                            event.ctrlKey &&
+                            !event.shiftKey &&
+                            event.key.toLowerCase() === "b"
+                        ) {
+                            event.preventDefault();
+
+                            applyFormatting("bold");
+
+                            return;
+                        }
+
+                        if (
+                            event.ctrlKey &&
+                            !event.shiftKey &&
+                            event.key.toLowerCase() === "i"
+                        ) {
+                            event.preventDefault();
+
+                            applyFormatting("italic");
+
+                            return;
+                        }
+
+                        if (
+                            event.ctrlKey &&
+                            event.shiftKey &&
+                            event.key.toLowerCase() === "x"
+                        ) {
+                            event.preventDefault();
+
+                            applyFormatting(
+                                "strikeThrough"
+                            );
+
+                            return;
+                        }
+                    }}
+
+                    onMouseUp={() => {
+                        updateActiveFormats();
+                        updateSelectionHandles();
+                    }}
+
+                    onKeyUp={() => {
+                        updateActiveFormats();
+                        updateSelectionHandles();
+                    }}
 
                     style={{
-                        width:
-                            "100%",
+                        width: "100%",
 
-                        height:
-                            "100%",
+                        height: "100%",
 
-                        resize:
-                            "none",
+                        overflowY: "auto",
 
-                        border:
-                            0,
+                        outline: "none",
 
-                        outline:
-                            "none",
+                        padding: "10px 8px",
 
-                        padding:
-                            "10px 8px",
+                        background: "#ffffff",
 
-                        background:
-                            "#ffffff",
-
-                        color:
-                            "#111111",
+                        color: "#111111",
 
                         fontFamily:
                             "Inter, Arial, sans-serif",
 
-                        fontSize:
-                            "16px",
+                        fontSize: "16px",
 
-                        lineHeight:
-                            "1.5",
+                        lineHeight: "1.5",
 
-                        userSelect:
-                            "text",
+                        userSelect: "text",
 
-                        WebkitUserSelect:
-                            "text",
+                        WebkitUserSelect: "text",
+
+                        cursor: "text",
+
+                        whiteSpace: "pre-wrap",
+
+                        wordBreak: "break-word",
+
+                        position: "relative",
                     }}
-                />
+                >
+                    {/* =====================================================
+                        EDITOR CONTENT
+                    ====================================================== */}
+
+                    {/* Actual editable content is managed by contentEditable. */}
+                </div>
+
+                {/* =====================================================
+                    SELECTION HANDLES — VISUAL ONLY
+                ====================================================== */}
+
+                {selectionHandles && (
+                    <>
+                        {/* LEFT / START HANDLE */}
+
+                        <div
+                            style={{
+                                position: "absolute",
+
+                                left:
+                                    selectionHandles.start.left,
+
+                                top:
+                                    selectionHandles.start.top,
+
+                                width: "16px",
+                                height: "20px",
+
+                                transform:
+                                    "translate(-50%, calc(-100% - 16px))",
+
+                                pointerEvents: "none",
+
+                                zIndex: 50,
+                            }}
+                        >
+                            {/* circular handle — TOP */}
+
+                            <div
+                                style={{
+                                    position: "absolute",
+
+                                    left: "3px",
+                                    top: "0px",
+
+                                    width: "10px",
+                                    height: "10px",
+
+                                    borderRadius: "50%",
+
+                                    background: "#f49a51",
+
+                                    boxShadow:
+                                        "0 1px 3px rgba(0,0,0,0.22)",
+                                }}
+                            />
+
+                            {/* vertical stem — extends DOWN from circle */}
+
+                            <div
+                                style={{
+                                    position: "absolute",
+
+                                    left: "7px",
+                                    top: "8px",
+
+                                    width: "2px",
+                                    height: "10px",
+
+                                    background: "#f49a51",
+
+                                    borderRadius:
+                                        "2px",
+                                }}
+                            />
+                        </div>
+
+                        {/* RIGHT / END HANDLE */}
+
+                        <div
+                            style={{
+                                position: "absolute",
+
+                                left:
+                                    selectionHandles.end.left,
+
+                                top:
+                                    selectionHandles.end.top,
+
+                                width: "16px",
+
+                                height: "20px",
+
+                                transform:
+                                    "translate(-50%, 0)",
+
+                                pointerEvents: "none",
+
+                                zIndex: 50,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    position: "absolute",
+
+                                    left: "7px",
+
+                                    top: "0px",
+
+                                    width: "2px",
+
+                                    height: "9px",
+
+                                    background: "#f49a51",
+
+                                    borderRadius: "2px",
+                                }}
+                            />
+
+                            <div
+                                style={{
+                                    position: "absolute",
+
+                                    left: "3px",
+
+                                    top: "7px",
+
+                                    width: "10px",
+
+                                    height: "10px",
+
+                                    borderRadius: "50%",
+
+                                    background: "#f49a51",
+
+                                    boxShadow:
+                                        "0 1px 3px rgba(0,0,0,0.22)",
+                                }}
+                            />
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* =====================================================
