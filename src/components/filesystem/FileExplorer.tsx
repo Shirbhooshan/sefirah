@@ -21,10 +21,20 @@ import recycleIcon from "@/assets/icons/recycle.png";
 
 interface FileSystemItem {
   _id?: string;
-  id?: string;
+  id: string;
   name: string;
   type: "folder" | "file";
   parentId?: string | null;
+
+  // Soft-delete state
+  deletedAt?: string | null;
+
+  // Original location before deletion
+  originalParentId?: string | null;
+
+  content?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ExplorerTab {
@@ -293,7 +303,9 @@ export default function FileExplorer({
     try {
       const params = new URLSearchParams();
 
-      if (parentId !== null) {
+      if (activeTab?.isRecycleBin) {
+        params.set("recycle", "true");
+      } else if (parentId !== null) {
         params.set("parentId", parentId);
       }
 
@@ -311,21 +323,28 @@ export default function FileExplorer({
           "Filesystem API error:",
           data
         );
+
         return;
       }
 
       const normalizedItems: FileSystemItem[] =
-        (data.items ?? []).map((item: any) => ({
-          ...item,
-
-          _id:
-            item.id?.toString() ??
-            item._id?.toString(),
-
-          parentId:
-            item.parentId?.toString() ??
-            null,
-        }));
+        (data.items ?? []).map((item: any) => {
+          const itemId = item.id?.toString() ?? item._id?.toString();
+          return {
+            ...item,
+            id: itemId,
+            _id: itemId,
+            parentId:
+              item.parentId?.toString() ??
+              null,
+            deletedAt:
+              item.deletedAt ??
+              null,
+            originalParentId:
+              item.originalParentId ??
+              null,
+          };
+        });
 
       setItems(normalizedItems);
     } catch (error) {
@@ -338,6 +357,20 @@ export default function FileExplorer({
 
   useEffect(() => {
     loadItems();
+  }, [activeTab?.folderId, activeTab?.isRecycleBin, activeTabId]);
+
+  // Store the latest loadItems in a ref so the
+  // focus listener always calls the current version
+  const loadItemsRef = useRef(loadItems);
+  loadItemsRef.current = loadItems;
+
+  useEffect(() => {
+    const handleFocus = () => {
+      loadItemsRef.current();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   /*
@@ -362,52 +395,73 @@ export default function FileExplorer({
    * =========================================================
    */
 
-  const currentItems =
-    useMemo(() => {
-      if (!activeTab) {
-        return [];
-      }
+  const currentItems = useMemo(() => {
+    if (!activeTab) {
+      return [];
+    }
 
-      /*
-       * Recycle Bin
-       */
+    /*
+     * =====================================================
+     * RECYCLE BIN
+     * =====================================================
+     */
 
-      if (activeTab.isRecycleBin) {
-        return [];
-      }
-
-      let result =
-        items.filter(
-          (item) =>
-            (item.parentId ?? null) ===
-            (activeTab.folderId ?? null)
-        );
-
-      /*
-       * SEARCH
-       */
+    if (activeTab.isRecycleBin) {
+      let result = items.filter(
+        (item) =>
+          !!item.deletedAt
+      );
 
       if (search.trim()) {
         const query =
-          search
-            .trim()
-            .toLowerCase();
+          search.trim().toLowerCase();
 
-        result =
-          result.filter(
-            (item) =>
-              item.name
-                .toLowerCase()
-                .includes(query)
-          );
+        result = result.filter(
+          (item) =>
+            item.name
+              .toLowerCase()
+              .includes(query)
+        );
       }
 
       return result;
-    }, [
-      items,
-      activeTab,
-      search,
-    ]);
+    }
+
+    /*
+     * =====================================================
+     * NORMAL FOLDER
+     * =====================================================
+     */
+
+    let result = items.filter(
+      (item) =>
+        !item.deletedAt &&
+        (item.parentId ?? null) ===
+        (activeTab.folderId ?? null)
+    );
+
+    /*
+     * SEARCH
+     */
+
+    if (search.trim()) {
+      const query =
+        search.trim().toLowerCase();
+
+      result = result.filter(
+        (item) =>
+          item.name
+            .toLowerCase()
+            .includes(query)
+      );
+    }
+
+    return result;
+  }, [
+    items,
+    activeTab,
+    search,
+  ]);
 
   /*
    * =========================================================
@@ -792,6 +846,151 @@ export default function FileExplorer({
 
     if (item.type === "file") {
       onOpenFile?.(item);
+    }
+  };
+
+  /*
+ * =========================================================
+ * DELETE ITEM
+ * =========================================================
+ */
+
+  const deleteSelectedItem = async () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/filesystem/${selectedItem}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error(
+          "Delete failed:",
+          data
+        );
+
+        return;
+      }
+
+      setItems((previous) =>
+        previous.map((item) =>
+          (item.id ?? item._id) === selectedItem
+            ? {
+              ...item,
+              deletedAt: data.item?.deletedAt ?? new Date().toISOString(),
+              originalParentId: item.parentId ?? null,
+              parentId: null,
+            }
+            : item
+        )
+      );
+
+      setSelectedItem(null);
+    } catch (error) {
+      console.error(
+        "Delete request failed:",
+        error
+      );
+    }
+  };
+
+
+  /*
+   * =========================================================
+   * RESTORE ITEM
+   * =========================================================
+   */
+
+  const restoreSelectedItem = async () => {
+    if (
+      !selectedItem ||
+      !activeTab?.isRecycleBin
+    ) {
+      return;
+    }
+
+    const item =
+      items.find(
+        (item) =>
+          (item.id ?? item._id) ===
+          selectedItem
+      );
+
+    if (!item) {
+      return;
+    }
+
+    const itemId =
+      item.id ?? item._id;
+
+    if (!itemId) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/filesystem/${itemId}`,
+        {
+          method: "PATCH",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          credentials: "include",
+
+          body: JSON.stringify({
+            restore: true,
+          }),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        console.error(
+          "Restore failed:",
+          data
+        );
+
+        return;
+      }
+
+      setItems((previous) =>
+        previous.map((currentItem) =>
+          (currentItem.id ?? currentItem._id) === itemId
+            ? {
+              ...currentItem,
+              deletedAt: null,
+              parentId:
+                data.item?.parentId ??
+                currentItem.originalParentId ??
+                null,
+              originalParentId: null,
+            }
+            : currentItem
+        )
+      );
+
+      setSelectedItem(null);
+    } catch (error) {
+      console.error(
+        "Failed to restore item:",
+        error
+      );
     }
   };
 
@@ -1392,6 +1591,35 @@ export default function FileExplorer({
           }
           onClick={
             goBack
+          }
+          dark
+        />
+
+        <div
+          style={{
+            width: "1px",
+            height: "26px",
+            background:
+              "rgba(255,255,255,0.10)",
+            margin:
+              "0 6px",
+          }}
+        />
+
+        <ToolbarButton
+          icon={recycleIcon}
+          label={
+            activeTab.isRecycleBin
+              ? "Restore"
+              : "Delete"
+          }
+          disabled={
+            !selectedItem
+          }
+          onClick={
+            activeTab.isRecycleBin
+              ? restoreSelectedItem
+              : deleteSelectedItem
           }
           dark
         />
