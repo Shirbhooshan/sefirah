@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import fileExplorerIcon from "../../assets/icons/file_explorer.png";
 import notesIcon from "../../assets/icons/notes.png";
 import recycleIcon from "../../assets/icons/recycle.png";
 import settingsIcon from "../../assets/icons/settings.png";
-import youtubeIcon from "../../assets/icons/youtube.png";
+import cookingGameIcon from "../../assets/icons/cooking-game.png";
 
 interface DockApp {
   id: string;
@@ -18,34 +17,34 @@ interface DockProps {
   onOpenApp?: (id: string) => void;
 }
 
-const dockApps = [
+const dockApps: DockApp[] = [
   {
     id: "files",
     name: "File Explorer",
-    icon: fileExplorerIcon,
+    icon: fileExplorerIcon.src,
   },
   {
     id: "notes",
     name: "Notes",
-    icon: notesIcon,
+    icon: notesIcon.src,
   },
   {
-    id: "youtube",
-    name: "YouTube",
-    icon: youtubeIcon,
+    id: "cooking-game",
+    name: "Cooking Game",
+    icon: cookingGameIcon.src,
   },
   {
     id: "settings",
     name: "Settings",
-    icon: settingsIcon,
+    icon: settingsIcon.src,
   },
 ];
 
-const systemApps = [
+const systemApps: DockApp[] = [
   {
     id: "recycle",
     name: "Recycle Bin",
-    icon: recycleIcon,
+    icon: recycleIcon.src,
   },
 ];
 
@@ -53,9 +52,70 @@ export default function Dock({
   openApps = [],
   onOpenApp,
 }: DockProps) {
-
   const handleClick = (id: string) => {
     onOpenApp?.(id);
+  };
+
+  const renderDockApp = (app: DockApp) => {
+    const isOpen = openApps.includes(app.id);
+
+    return (
+      <button
+        key={app.id}
+        onClick={() => handleClick(app.id)}
+        title={app.name}
+        style={{
+          position: "relative",
+          width: "62px",
+          height: "62px",
+          padding: 0,
+          border: 0,
+          background: "transparent",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "transform 150ms ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform =
+            "translateY(-6px) scale(1.08)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform =
+            "translateY(0) scale(1)";
+        }}
+      >
+        <img
+          src={app.icon}
+          alt={app.name}
+          style={{
+            width: "58px",
+            height: "58px",
+            objectFit: "contain",
+            display: "block",
+          }}
+        />
+
+        {isOpen && (
+          <span
+            style={{
+              position: "absolute",
+              bottom: "-5px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "26px",
+              height: "2px",
+              borderRadius: "999px",
+              backgroundColor:
+                "var(--dock-active-color, #3fa9ff)",
+              boxShadow:
+                "0 0 5px var(--dock-active-color, #3fa9ff)",
+            }}
+          />
+        )}
+      </button>
+    );
   };
 
   return (
@@ -65,106 +125,39 @@ export default function Dock({
         left: "50%",
         bottom: "8px",
         transform: "translateX(-50%)",
-
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-
         zIndex: 40,
       }}
     >
-      {/* Dock */}
       <div
         style={{
           display: "flex",
           alignItems: "flex-end",
           gap: "10px",
-
           padding: "10px 14px 8px",
 
           background:
             "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10))",
 
           backdropFilter: "blur(30px) saturate(180%)",
-          WebkitBackdropFilter: "blur(30px) saturate(180%)",
+          WebkitBackdropFilter:
+            "blur(30px) saturate(180%)",
 
           border: "1px solid rgba(255,255,255,0.28)",
           borderRadius: "20px",
 
           boxShadow: `
-  0 10px 35px rgba(0,0,0,0.35),
-  inset 0 1px 0 rgba(255,255,255,0.20),
-  inset 0 -1px 0 rgba(255,255,255,0.06)
-`,
+            0 10px 35px rgba(0,0,0,0.35),
+            inset 0 1px 0 rgba(255,255,255,0.20),
+            inset 0 -1px 0 rgba(255,255,255,0.06)
+          `,
 
           minHeight: "76px",
         }}
       >
-        {dockApps.map((app) => {
-          const isOpen = openApps.includes(app.id);
-
-          return (
-            <button
-              key={app.id}
-              onClick={() => handleClick(app.id)}
-              title={app.name}
-              style={{
-                position: "relative",
-                width: "62px",
-                height: "62px",
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "transform 150ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform =
-                  "translateY(-6px) scale(1.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform =
-                  "translateY(0) scale(1)";
-              }}
-            >
-              <img
-                src={
-                  typeof app.icon === "string"
-                    ? app.icon
-                    : app.icon.src
-                }
-                alt={app.name}
-                style={{
-                  width: "58px",
-                  height: "58px",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-              />
-
-              {isOpen && (
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: "-5px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "26px",
-                    height: "2px",
-                    borderRadius: "999px",
-                    backgroundColor:
-                      "var(--dock-active-color, #3fa9ff)",
-                    boxShadow:
-                      "0 0 5px var(--dock-active-color, #3fa9ff)",
-                  }}
-                />
-              )}
-            </button>
-          );
-        })}
+        {dockApps.map(renderDockApp)}
 
         {/* Divider before Recycle Bin */}
         <div
@@ -177,72 +170,7 @@ export default function Dock({
           }}
         />
 
-        {/* System Apps */}
-        {systemApps.map((app) => {
-          const isOpen = openApps.includes(app.id);
-
-          return (
-            <button
-              key={app.id}
-              onClick={() => handleClick(app.id)}
-              title={app.name}
-              style={{
-                position: "relative",
-                width: "62px",
-                height: "62px",
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "transform 150ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform =
-                  "translateY(-6px) scale(1.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform =
-                  "translateY(0) scale(1)";
-              }}
-            >
-              <img
-                src={
-                  typeof app.icon === "string"
-                    ? app.icon
-                    : app.icon.src
-                }
-                alt={app.name}
-                style={{
-                  width: "58px",
-                  height: "58px",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-              />
-
-              {isOpen && (
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: "-5px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "26px",
-                    height: "2px",
-                    borderRadius: "999px",
-                    backgroundColor:
-                      "var(--dock-active-color, #3fa9ff)",
-                    boxShadow:
-                      "0 0 5px var(--dock-active-color, #3fa9ff)",
-                  }}
-                />
-              )}
-            </button>
-          );
-        })}
+        {systemApps.map(renderDockApp)}
       </div>
     </div>
   );

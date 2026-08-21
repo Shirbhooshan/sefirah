@@ -8,6 +8,7 @@ import Wallpaper from "./Wallpaper";
 
 import FileExplorer from "@/components/filesystem/FileExplorer";
 import NotesApp from "@/components/notes/NotesApp";
+import CookingGame from "@/components/game/cooking-game/CookingGame";
 
 interface ExplorerWindow {
   id: string;
@@ -44,6 +45,17 @@ interface NotesWindow {
 const MAX_WINDOWS = 5;
 const MAX_NOTES_WINDOWS = 3;
 
+interface CookingGameWindow {
+  id: string;
+
+  left: number;
+  top: number;
+
+  zIndex: number;
+
+  centered: boolean;
+}
+
 export default function Desktop() {
   /*
    * =========================================================
@@ -66,6 +78,22 @@ export default function Desktop() {
     notesWindows,
     setNotesWindows,
   ] = useState<NotesWindow[]>([]);
+
+  /*
+ * =========================================================
+ * COOKING GAME WINDOW
+ *
+ * Only one Cooking Game window is allowed.
+ * =========================================================
+ */
+
+  const [
+    cookingGameWindow,
+    setCookingGameWindow,
+  ] =
+    useState<CookingGameWindow | null>(
+      null
+    );
 
   /*
    * =========================================================
@@ -265,6 +293,112 @@ export default function Desktop() {
     );
   };
 
+  /*
+ * =========================================================
+ * OPEN COOKING GAME
+ *
+ * Only one instance can exist.
+ *
+ * If it is already open, simply bring it to the front.
+ * =========================================================
+ */
+
+  /*
+ * =========================================================
+ * COOKING GAME
+ * =========================================================
+ */
+
+  const openCookingGame = () => {
+    /*
+     * Already open:
+     * simply focus the existing window.
+     */
+
+    if (cookingGameWindow) {
+      const zIndex = nextZIndex;
+
+      setNextZIndex(
+        (value) => value + 1
+      );
+
+      setCookingGameWindow(
+        (previous) =>
+          previous
+            ? {
+              ...previous,
+              zIndex,
+            }
+            : previous
+      );
+
+      return;
+    }
+
+    const zIndex = nextZIndex;
+
+    const newWindow: CookingGameWindow = {
+      id: `cooking-game-${Date.now()}`,
+
+      left: 0,
+      top: 0,
+
+      zIndex,
+
+      centered: true,
+    };
+
+    setCookingGameWindow(
+      newWindow
+    );
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+  };
+
+  const closeCookingGame = () => {
+    setCookingGameWindow(null);
+  };
+
+  const focusCookingGame = () => {
+    if (!cookingGameWindow) {
+      return;
+    }
+
+    const zIndex = nextZIndex;
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+
+    setCookingGameWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            zIndex,
+          }
+          : previous
+    );
+  };
+
+  const moveCookingGame = (
+    left: number,
+    top: number
+  ) => {
+    setCookingGameWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            left,
+            top,
+            centered: false,
+          }
+          : previous
+    );
+  };
   /*
    * =========================================================
    * SAVE NOTES WINDOW
@@ -656,6 +790,15 @@ export default function Desktop() {
     }
 
     /*
+ * COOKING GAME
+ */
+
+    if (id === "cooking-game") {
+      openCookingGame();
+      return;
+    }
+
+    /*
      * RECYCLE BIN
      */
 
@@ -690,6 +833,10 @@ export default function Desktop() {
     notesWindows.length > 0
   ) {
     openApps.push("notes");
+  }
+
+  if (cookingGameWindow) {
+    openApps.push("cooking-game");
   }
 
   /*
@@ -893,6 +1040,46 @@ export default function Desktop() {
       )}
 
       {/* =====================================================
+          COOKING GAME WINDOW
+      ====================================================== */}
+
+      {cookingGameWindow && (
+        <CookingGame
+          onClose={
+            closeCookingGame
+          }
+
+          onFocus={
+            focusCookingGame
+          }
+
+          onMove={(
+            left,
+            top
+          ) =>
+            moveCookingGame(
+              left,
+              top
+            )
+          }
+
+          windowPosition={{
+            left:
+              cookingGameWindow.left,
+
+            top:
+              cookingGameWindow.top,
+
+            zIndex:
+              cookingGameWindow.zIndex,
+
+            centered:
+              cookingGameWindow.centered,
+          }}
+        />
+      )}
+
+      {/* =====================================================
           DOCK
       ====================================================== */}
 
@@ -908,3 +1095,4 @@ export default function Desktop() {
     </main>
   );
 }
+  
