@@ -6,11 +6,20 @@ import {
   useState,
 } from "react";
 
+import { Comfortaa } from "next/font/google";
+
 import Windows10TitleBar from "./Windows10TitleBar";
 
 import TitleScreen from "./screens/TitleScreen";
 import MenuScreen from "./screens/MenuScreen";
 import AboutScreen from "./screens/AboutScreen";
+import RecipeMenuScreen from "./screens/RecipeMenuScreen";
+
+const comfortaa = Comfortaa({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
 
 interface CookingGameProps {
   onClose?: () => void;
@@ -33,7 +42,8 @@ interface CookingGameProps {
 type CookingGameScreen =
   | "title"
   | "menu"
-  | "about";
+  | "about"
+  | "recipeMenu";
 
 export default function CookingGame({
   onClose,
@@ -218,66 +228,66 @@ export default function CookingGame({
    */
 
   const windowStyle: React.CSSProperties =
-    {
-      position: "fixed",
+  {
+    position: "fixed",
 
-      left:
-        windowPosition.centered
-          ? "50%"
-          : `${windowPosition.left}px`,
+    left:
+      windowPosition.centered
+        ? "50%"
+        : `${windowPosition.left}px`,
 
-      top:
-        windowPosition.centered
-          ? "50%"
-          : `${windowPosition.top}px`,
+    top:
+      windowPosition.centered
+        ? "50%"
+        : `${windowPosition.top}px`,
 
-      transform:
-        windowPosition.centered
-          ? "translate(-50%, -50%)"
-          : "none",
+    transform:
+      windowPosition.centered
+        ? "translate(-50%, -50%)"
+        : "none",
 
-      width:
-        "min(900px, 90vw)",
+    width:
+      "min(900px, 90vw)",
 
-      height:
-        "min(600px, 80vh)",
+    height:
+      "min(600px, 80vh)",
 
-      background:
-        "#ffffff",
+    background:
+      "#ffffff",
 
-      border:
-        "1px solid #a6a6a6",
+    border:
+      "1px solid #a6a6a6",
 
-      borderRadius:
-        "2px",
+    borderRadius:
+      "2px",
 
-      overflow:
-        "hidden",
+    overflow:
+      "hidden",
 
-      boxShadow:
-        "0 8px 24px rgba(0, 0, 0, 0.30)",
+    boxShadow:
+      "0 8px 24px rgba(0, 0, 0, 0.30)",
 
-      zIndex:
-        windowPosition.zIndex,
+    zIndex:
+      windowPosition.zIndex,
 
-      display:
-        "flex",
+    display:
+      "flex",
 
-      flexDirection:
-        "column",
+    flexDirection:
+      "column",
 
-      fontFamily:
-        "Comfortaa, sans-serif",
+    fontFamily:
+      "Comfortaa, sans-serif",
 
-      color:
-        "#222",
+    color:
+      "#222",
 
-      userSelect:
-        "none",
+    userSelect:
+      "none",
 
-      WebkitUserSelect:
-        "none",
-    };
+    WebkitUserSelect:
+      "none",
+  };
 
   /*
    * =========================================================
@@ -295,6 +305,10 @@ export default function CookingGame({
 
   const goToTitle = () => {
     setCurrentScreen("title");
+  };
+
+  const goToRecipeMenu = () => {
+    setCurrentScreen("recipeMenu");
   };
 
   /*
@@ -359,10 +373,7 @@ export default function CookingGame({
             onAbout={
               goToAbout
             }
-            onViewMenu={() => {
-              // TODO:
-              // Build View Menu screen
-            }}
+            onViewMenu={goToRecipeMenu}
             onInstructions={() => {
               // TODO:
               // Build Instructions screen
@@ -375,6 +386,12 @@ export default function CookingGame({
             onBack={
               goToMenu
             }
+          />
+        )}
+
+        {currentScreen === "recipeMenu" && (
+          <RecipeMenuScreen
+            onBack={goToMenu}
           />
         )}
       </div>

@@ -55,7 +55,7 @@ export default function AboutScreen({
         }}
       >
         <GameButton
-          src={backButton}
+          src={backButton.src}
           alt="Back"
           onClick={onBack}
           width={90}
@@ -84,7 +84,7 @@ export default function AboutScreen({
       >
         <div
           style={{
-            maxWidth: "650px",
+            maxWidth: "350px",
 
             textAlign: "center",
 
@@ -98,11 +98,10 @@ export default function AboutScreen({
             color: "#555",
           }}
         >
-          {/* Replace this with your actual About Us text. */}
-
-          Mise en Place is a cooking game
-          designed to make learning about
-          cooking fun, simple, and interactive.
+          All illustrations are something I’ve made myself for this project.
+          <br></br>
+          <br></br>
+          If you ever want to connect, feel free to reach out!
         </div>
       </div>
     </div>
