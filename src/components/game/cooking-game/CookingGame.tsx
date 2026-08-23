@@ -14,6 +14,8 @@ import TitleScreen from "./screens/TitleScreen";
 import MenuScreen from "./screens/MenuScreen";
 import AboutScreen from "./screens/AboutScreen";
 import RecipeMenuScreen from "./screens/RecipeMenuScreen";
+import LoadingScreen from "./screens/LoadingScreen";
+import KitchenScreen from "./screens/KitchenScreen";
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -43,7 +45,9 @@ type CookingGameScreen =
   | "title"
   | "menu"
   | "about"
-  | "recipeMenu";
+  | "recipeMenu"
+  | "loading"
+  | "kitchen";
 
 export default function CookingGame({
   onClose,
@@ -65,6 +69,9 @@ export default function CookingGame({
     isDragging,
     setIsDragging,
   ] = useState(false);
+
+  const [loadingTarget, setLoadingTarget] =
+    useState<CookingGameScreen>("kitchen");
 
   const dragOffset = useRef({
     x: 0,
@@ -275,10 +282,7 @@ export default function CookingGame({
 
     flexDirection:
       "column",
-
-    fontFamily:
-      "Comfortaa, sans-serif",
-
+      
     color:
       "#222",
 
@@ -295,22 +299,36 @@ export default function CookingGame({
    * =========================================================
    */
 
+  const changeScreen = (
+    nextScreen: CookingGameScreen
+  ) => {
+    if (nextScreen === currentScreen) {
+      return;
+    }
+
+    setCurrentScreen(nextScreen);
+  };
+
   const goToMenu = () => {
-    setCurrentScreen("menu");
+    changeScreen("menu");
   };
 
   const goToAbout = () => {
-    setCurrentScreen("about");
+    changeScreen("about");
   };
 
   const goToTitle = () => {
-    setCurrentScreen("title");
+    changeScreen("title");
   };
 
   const goToRecipeMenu = () => {
-    setCurrentScreen("recipeMenu");
+    changeScreen("recipeMenu");
   };
 
+  const goToKitchen = () => {
+    setLoadingTarget("kitchen");
+    setCurrentScreen("loading");
+  };
   /*
    * =========================================================
    * RENDER
@@ -320,6 +338,7 @@ export default function CookingGame({
   return (
     <div
       data-cooking-game-window
+      className={comfortaa.className}
       onMouseDown={() => {
         onFocus?.();
       }}
@@ -344,16 +363,13 @@ export default function CookingGame({
       <div
         style={{
           flex: 1,
-
           minHeight: 0,
-
           position: "relative",
-
           overflow: "hidden",
+
         }}
         onMouseDown={(event) => {
           event.stopPropagation();
-
           onFocus?.();
         }}
       >
@@ -392,8 +408,25 @@ export default function CookingGame({
         {currentScreen === "recipeMenu" && (
           <RecipeMenuScreen
             onBack={goToMenu}
+            onFriedRice={goToKitchen}
           />
         )}
+
+        {currentScreen === "loading" && (
+          <LoadingScreen
+            onComplete={() => {
+              changeScreen(loadingTarget);
+            }}
+          />
+        )}
+
+        {currentScreen === "kitchen" && (
+          <KitchenScreen
+            onHome={goToRecipeMenu}
+          />
+        )}
+
+
       </div>
     </div>
   );

@@ -5,10 +5,12 @@ import backButton from "@/assets/media/mise-en-place/buttons/back-button-1.png";
 
 interface RecipeMenuScreenProps {
     onBack: () => void;
+    onFriedRice: () => void;
 }
 
 export default function RecipeMenuScreen({
     onBack,
+    onFriedRice,
 }: RecipeMenuScreenProps) {
     return (
         <div
@@ -78,13 +80,13 @@ export default function RecipeMenuScreen({
                     justifyContent: "center",
 
                     transition:
-                        "transform 120ms ease",
+                        "transform 140ms ease",
 
                     zIndex: 10,
                 }}
                 onMouseEnter={(event) => {
                     event.currentTarget.style.transform =
-                        "scale(1.08)";
+                        "scale(1.043)";
                 }}
                 onMouseLeave={(event) => {
                     event.currentTarget.style.transform =
@@ -142,7 +144,7 @@ export default function RecipeMenuScreen({
 
                         fontWeight: 700,
 
-                        marginBottom: "8px",
+                        marginBottom: "2px",
 
                         color: "#222",
                     }}
@@ -185,7 +187,7 @@ export default function RecipeMenuScreen({
                      * CHANGE THESE TO MOVE THE
                      * DIFFICULTY + IMAGE GROUP
                      */
-                    left: "25%",
+                    left: "22.5%",
                     top: "25%",
 
                     display: "flex",
@@ -203,7 +205,7 @@ export default function RecipeMenuScreen({
                     style={{
                         fontSize: "13px",
                         fontWeight: 700,
-                        color: "#d4a72c",
+                        color: "#c46d1b",
                         whiteSpace: "nowrap",
                     }}
                 >
@@ -212,20 +214,21 @@ export default function RecipeMenuScreen({
 
                 {/* Recipe image */}
 
-                <div
+                <button
+                    onClick={onFriedRice}
+                    aria-label="Cook Fried Rice"
                     style={{
                         width: "105px",
                         height: "105px",
+
+                        padding: 0,
+
+                        border: 0,
 
                         borderRadius: "6px",
 
                         overflow: "hidden",
 
-                        /*
-                         * Temporary placeholder.
-                         * Replace this with the actual
-                         * recipe image when you have it.
-                         */
                         background: "#ddd",
 
                         display: "flex",
@@ -234,13 +237,24 @@ export default function RecipeMenuScreen({
 
                         justifyContent: "center",
 
-                        fontSize: "11px",
+                        cursor: "pointer",
 
-                        color: "#777",
+                        transition:
+                            "transform 140ms ease",
+
+                        fontFamily: "Comfortaa, sans-serif",
+                    }}
+                    onMouseEnter={(event) => {
+                        event.currentTarget.style.transform =
+                            "scale(1.043)";
+                    }}
+                    onMouseLeave={(event) => {
+                        event.currentTarget.style.transform =
+                            "scale(1)";
                     }}
                 >
                     Image
-                </div>
+                </button>
             </div>
 
             {/* =====================================================
@@ -273,7 +287,7 @@ export default function RecipeMenuScreen({
 
                         fontWeight: 700,
 
-                        marginBottom: "8px",
+                        marginBottom: "2px",
 
                         color: "#222",
                     }}
@@ -310,7 +324,7 @@ export default function RecipeMenuScreen({
                     position: "absolute",
 
                     left: "25%",
-                    top: "58%",
+                    top: "62%",
 
                     display: "flex",
 
@@ -356,6 +370,20 @@ export default function RecipeMenuScreen({
                         fontSize: "11px",
 
                         color: "#777",
+
+                        cursor: "pointer",
+
+                        transition: "transform 140ms ease",
+                    }}
+
+                    onMouseEnter={(event) => {
+                        event.currentTarget.style.transform =
+                            "scale(1.029)";
+                    }}
+
+                    onMouseLeave={(event) => {
+                        event.currentTarget.style.transform =
+                            "scale(1)";
                     }}
                 >
                     Image
@@ -374,7 +402,7 @@ export default function RecipeMenuScreen({
                      * CHANGE THESE TO POSITION
                      * "COMING SOON" ON THE RIGHT PAGE.
                      */
-                    right: "14%",
+                    right: "10%",
                     top: "45%",
 
                     width: "30%",
@@ -385,7 +413,7 @@ export default function RecipeMenuScreen({
 
                     fontWeight: 500,
 
-                    color: "#555",
+                    color: "#741515",
 
                     fontFamily: "Comfortaa, sans-serif",
                 }}

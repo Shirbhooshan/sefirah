@@ -2,7 +2,7 @@
 
 import GameButton from "./GameButton";
 
-import backgroundImage from "@/assets/media/mise-en-place/background/about.png"
+import backgroundImage from "@/assets/media/mise-en-place/background/title-screen-background.jpg";
 import backButton from "@/assets/media/mise-en-place/buttons/back-button-1.png";
 
 interface AboutScreenProps {
@@ -24,7 +24,7 @@ export default function AboutScreen({
         overflow: "hidden",
 
         backgroundImage:
-          `url("${backgroundImage}")`,
+          `url("${backgroundImage.src}")`,
 
         backgroundSize:
           "cover",

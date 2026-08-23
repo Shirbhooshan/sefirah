@@ -7,7 +7,7 @@ import viewMenuButton from "@/assets/media/mise-en-place/buttons/view-menu-butto
 import instructionsButton from "@/assets/media/mise-en-place/buttons/instructions-button-1.png";
 import aboutButton from "@/assets/media/mise-en-place/buttons/about-button-1.png";
 
-import menuBackground from "@/assets/media/mise-en-place/background/menu.png";
+import menuBackground from "@/assets/media/mise-en-place/background/title-screen-background.jpg";
 
 interface MenuScreenProps {
   onBack: () => void;
@@ -41,7 +41,7 @@ export default function MenuScreen({
         overflow: "hidden",
 
         backgroundImage:
-          `url("${menuBackground}")`,
+          `url("${menuBackground.src}")`,
 
         backgroundSize:
           "cover",

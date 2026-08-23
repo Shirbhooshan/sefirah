@@ -3,7 +3,7 @@
 import GameButton from "./GameButton";
 
 import startButton from "@/assets/media/mise-en-place/buttons/start-button-1.png";
-import titleBackground from "@/assets/media/mise-en-place/background/title.png";
+import titleBackground from "@/assets/media/mise-en-place/background/title-screen-background.jpg";
 
 interface TitleScreenProps {
   onStart: () => void;
@@ -25,7 +25,7 @@ export default function TitleScreen({
         overflow: "hidden",
 
         backgroundImage:
-          `url("${titleBackground}")`,
+          `url("${titleBackground.src}")`,
 
         backgroundSize:
           "cover",
