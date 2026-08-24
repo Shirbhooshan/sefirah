@@ -1,74 +1,359 @@
 "use client";
 
-import {
-    useState,
-} from "react";
+import { useState } from "react";
 
-import kitchenBackground from "@/assets/media/mise-en-place/background/kitchen-default.jpg";
+import kitchenBackground from "@/assets/media/mise-en-place/background/kitchen-default-2.jpg";
 import homeButton from "@/assets/media/mise-en-place/buttons/home-button.png";
 
-// Change these two imports to whatever your actual filenames are.
-import leftButton from "@/assets/media/mise-en-place/buttons/left-arrow-button.png";
-import rightButton from "@/assets/media/mise-en-place/buttons/right-arrow-button.png";
+/*
+ * =========================================================
+ * KITCHEN STATE IMAGES
+ * =========================================================
+ */
+
+import fridgeClosed from "@/assets/media/mise-en-place/background/kitchen-default-2.jpg";
+
+import fridgeOpen from "@/assets/media/mise-en-place/background/kitchen-default-fridge-open.jpg";
+import fridgeOpenBoiler from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-fridge-open.jpg";
+import fridgeOpenPan from "@/assets/media/mise-en-place/background/kitchen-default-pan-and-fridge-open.jpg";
+import fridgeOpenBoilerPan from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-pan-and-fridge-open.jpg";
+
+import boilerOn from "@/assets/media/mise-en-place/background/kitchen-default-boiler.jpg";
+import panOn from "@/assets/media/mise-en-place/background/kitchen-default-pan.jpg";
+import boilerPanOn from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-pan.jpg";
 
 interface KitchenScreenProps {
     onHome: () => void;
+
+    /*
+     * These will eventually navigate to:
+     *
+     * FridgeScreen
+     * PanScreen
+     * BoilerScreen
+     * CuttingBoardScreen
+     * SinkScreen
+     *
+     * For now they are optional so your existing
+     * CookingGame.tsx does not need to change yet.
+     */
+    onFridge?: () => void;
+    onPan?: () => void;
+    onBoiler?: () => void;
+    onCuttingBoard?: () => void;
+    onSink?: () => void;
 }
+
 
 export default function KitchenScreen({
     onHome,
+    onFridge,
+    onPan,
+    onBoiler,
+    onCuttingBoard,
+    onSink,
 }: KitchenScreenProps) {
 
     /*
      * =========================================================
-     * KITCHEN PANORAMA POSITION
+     * KITCHEN STATES
      * =========================================================
-     *
-     * 0   = far left
-     * 50  = center
-     * 100 = far right
-     *
-     * Change this initial value if you want the kitchen to
-     * start looking more toward one side.
      */
 
-    const [panoramaPosition, setPanoramaPosition] =
-        useState(50);
+    const [fridgeIsOpen, setFridgeIsOpen] =
+        useState(false);
+
+    const [boilerIsOn, setBoilerIsOn] =
+        useState(false);
+
+    const [panIsOn, setPanIsOn] =
+        useState(false);
+
 
     /*
      * =========================================================
-     * MOVE KITCHEN LEFT
+     * AUDIO HELPERS
      * =========================================================
+     *
+     * Create a fresh Audio object every time.
+     *
+     * This means the sound can be played repeatedly without
+     * getting stuck at the end of a previous playback.
      */
 
-    const moveLeft = () => {
-        setPanoramaPosition((current) =>
-            Math.max(
-                0,
-                current - 25
-            )
+    const playSound = (
+        sound: typeof fridgeOpenSound
+    ) => {
+        const audio = new Audio(
+            typeof sound === "string"
+                ? sound
+                : sound.src
         );
+
+        audio.currentTime = 0;
+
+        audio.play().catch(() => {
+            /*
+             * Browsers can reject audio if playback has
+             * somehow happened outside a user interaction.
+             *
+             * We intentionally ignore that here because
+             * the buttons themselves are user interactions.
+             */
+        });
     };
+
 
     /*
      * =========================================================
-     * MOVE KITCHEN RIGHT
+     * FRIDGE
+     * =========================================================
+     *
+     * CLOSED:
+     *
+     * click fridge
+     *       ↓
+     * fridge opens
+     *
+     * OPEN:
+     *
+     * click interior
+     *       ↓
+     * FridgeScreen
+     *
+     * click door
+     *       ↓
+     * fridge closes
+     */
+
+    const openFridge = () => {
+        if (fridgeIsOpen) return;
+        playSound("/audio/fridge-open.wav"); 
+        setFridgeIsOpen(true);
+    };
+
+
+    const closeFridge = () => {
+        if (!fridgeIsOpen) return;
+        playSound("/audio/fridge-close.wav");
+        setFridgeIsOpen(false);
+    };
+
+
+    const enterFridge = () => {
+
+        /*
+         * For now:
+         * if FridgeScreen hasn't been connected yet,
+         * this simply logs.
+         */
+
+        if (onFridge) {
+            onFridge();
+        } else {
+            console.log("FRIDGE SCREEN");
+        }
+    };
+
+
+    /*
+     * =========================================================
+     * STOVE KNOBS
      * =========================================================
      */
 
-    const moveRight = () => {
-        setPanoramaPosition((current) =>
-            Math.min(
-                100,
-                current + 25
-            )
-        );
+    const toggleBoiler = () => {
+        playSound("/audio/stove-knob.wav");
+        setBoilerIsOn((current) => !current);
     };
+
+    const togglePan = () => {
+        playSound("/audio/stove-knob.wav");
+        setPanIsOn((current) => !current);
+    };
+
+
+    /*
+     * =========================================================
+     * PAN / BOILER SCREENS
+     * =========================================================
+     */
+
+    const openPanScreen = () => {
+
+        if (onPan) {
+            onPan();
+        } else {
+            console.log("PAN SCREEN");
+        }
+    };
+
+
+    const openBoilerScreen = () => {
+
+        if (onBoiler) {
+            onBoiler();
+        } else {
+            console.log("BOILER SCREEN");
+        }
+    };
+
+
+    /*
+     * =========================================================
+     * CUTTING BOARD
+     * =========================================================
+     */
+
+    const handleCuttingBoard = () => {
+
+        if (onCuttingBoard) {
+            onCuttingBoard();
+        } else {
+            console.log(
+                "CUTTING BOARD CLICKED"
+            );
+        }
+    };
+
+
+    /*
+     * =========================================================
+     * SINK
+     * =========================================================
+     */
+
+    const handleSink = () => {
+
+        if (onSink) {
+            onSink();
+        } else {
+            console.log(
+                "SINK CLICKED"
+            );
+        }
+    };
+
+
+    /*
+     * =========================================================
+     * DETERMINE CURRENT KITCHEN IMAGE
+     * =========================================================
+     *
+     * Most specific combinations are checked first.
+     */
+
+    const getKitchenImage = () => {
+
+        /*
+         * FRIDGE + BOILER + PAN
+         */
+
+        if (
+            fridgeIsOpen &&
+            boilerIsOn &&
+            panIsOn
+        ) {
+            return fridgeOpenBoilerPan;
+        }
+
+
+        /*
+         * FRIDGE + BOILER
+         */
+
+        if (
+            fridgeIsOpen &&
+            boilerIsOn
+        ) {
+            return fridgeOpenBoiler;
+        }
+
+
+        /*
+         * FRIDGE + PAN
+         */
+
+        if (
+            fridgeIsOpen &&
+            panIsOn
+        ) {
+            return fridgeOpenPan;
+        }
+
+
+        /*
+         * BOILER + PAN
+         */
+
+        if (
+            boilerIsOn &&
+            panIsOn
+        ) {
+            return boilerPanOn;
+        }
+
+
+        /*
+         * ONLY FRIDGE
+         */
+
+        if (fridgeIsOpen) {
+            return fridgeOpen;
+        }
+
+
+        /*
+         * ONLY BOILER
+         */
+
+        if (boilerIsOn) {
+            return boilerOn;
+        }
+
+
+        /*
+         * ONLY PAN
+         */
+
+        if (panIsOn) {
+            return panOn;
+        }
+
+
+        /*
+         * NOTHING ACTIVE
+         */
+
+        return fridgeClosed;
+    };
+
+
+    const currentKitchenImage =
+        getKitchenImage();
+
+
+    /*
+     * =========================================================
+     * DEBUG STATE
+     * =========================================================
+     *
+     * Keep this while testing.
+     *
+     * Delete later when the interactions are confirmed.
+     */
+
+    const currentState =
+        `Fridge: ${fridgeIsOpen ? "OPEN" : "CLOSED"}
+Boiler: ${boilerIsOn ? "ON" : "OFF"}
+Pan: ${panIsOn ? "ON" : "OFF"}`;
+
 
     return (
         <div
             style={{
                 position: "absolute",
+
                 inset: 0,
 
                 overflow: "hidden",
@@ -81,46 +366,44 @@ export default function KitchenScreen({
         >
 
             {/* =====================================================
-                KITCHEN PANORAMA
-            ===================================================== */}
+                KITCHEN ARTWORK
+            ====================================================== */}
 
             <img
                 src={
-                    typeof kitchenBackground ===
-                        "string"
-                        ? kitchenBackground
-                        : kitchenBackground.src
+                    typeof currentKitchenImage === "string"
+                        ? currentKitchenImage
+                        : currentKitchenImage.src
                 }
-                alt=""
+
+                alt="Kitchen"
+
                 draggable={false}
+
                 style={{
                     position: "absolute",
 
-                    top: 0,
-                    left: 0,
+                    inset: 0,
 
                     width: "100%",
                     height: "100%",
 
                     objectFit: "cover",
 
-                    objectPosition:
-                        `${panoramaPosition}% center`,
-
                     pointerEvents: "none",
-
-                    transition:
-                        "object-position 600ms ease",
                 }}
             />
 
+
             {/* =====================================================
                 HOME BUTTON
-            ===================================================== */}
+            ====================================================== */}
 
             <button
                 onClick={onHome}
+
                 aria-label="Home"
+
                 style={{
                     position: "absolute",
 
@@ -139,15 +422,17 @@ export default function KitchenScreen({
 
                     cursor: "pointer",
 
-                    zIndex: 20,
+                    zIndex: 100,
 
                     transition:
                         "transform 140ms ease",
                 }}
+
                 onMouseEnter={(event) => {
                     event.currentTarget.style.transform =
                         "scale(1.043)";
                 }}
+
                 onMouseLeave={(event) => {
                     event.currentTarget.style.transform =
                         "scale(1)";
@@ -155,13 +440,15 @@ export default function KitchenScreen({
             >
                 <img
                     src={
-                        typeof homeButton ===
-                            "string"
+                        typeof homeButton === "string"
                             ? homeButton
                             : homeButton.src
                     }
+
                     alt="Home"
+
                     draggable={false}
+
                     style={{
                         width: "100%",
                         height: "100%",
@@ -176,185 +463,429 @@ export default function KitchenScreen({
 
 
             {/* =====================================================
-                LEFT PANORAMA BUTTON
-            ===================================================== */}
-
-            <button
-                onClick={moveLeft}
-                aria-label="Look left"
-                style={{
-                    position: "absolute",
-
-                    left: "18px",
-                    top: "50%",
-
-                    transform:
-                        "translateY(-50%)",
-
-                    width: "64px",
-                    height: "64px",
-
-                    padding: 0,
-
-                    border: 0,
-
-                    background:
-                        "transparent",
-
-                    cursor: panoramaPosition <= 0
-                        ? "default"
-                        : "pointer",
-
-                    zIndex: 20,
-
-                    opacity:
-                        panoramaPosition <= 0
-                            ? 0.35
-                            : 1,
-
-                    transition:
-                        "transform 140ms ease, opacity 140ms ease",
-                }}
-                onMouseEnter={(event) => {
-                    if (panoramaPosition > 0) {
-                        event.currentTarget.style.transform =
-                            "translateY(-50%) scale(1.043)";
-                    }
-                }}
-                onMouseLeave={(event) => {
-                    event.currentTarget.style.transform =
-                        "translateY(-50%) scale(1)";
-                }}
-            >
-                <img
-                    src={
-                        typeof leftButton ===
-                            "string"
-                            ? leftButton
-                            : leftButton.src
-                    }
-                    alt="Look left"
-                    draggable={false}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-
-                        objectFit: "contain",
-
-                        pointerEvents:
-                            "none",
-                    }}
-                />
-            </button>
-
-
-            {/* =====================================================
-                RIGHT PANORAMA BUTTON
-            ===================================================== */}
-
-            <button
-                onClick={moveRight}
-                aria-label="Look right"
-                style={{
-                    position: "absolute",
-
-                    right: "18px",
-                    top: "50%",
-
-                    transform:
-                        "translateY(-50%)",
-
-                    width: "64px",
-                    height: "64px",
-
-                    padding: 0,
-
-                    border: 0,
-
-                    background:
-                        "transparent",
-
-                    cursor: panoramaPosition >= 100
-                        ? "default"
-                        : "pointer",
-
-                    zIndex: 20,
-
-                    opacity:
-                        panoramaPosition >= 100
-                            ? 0.35
-                            : 1,
-
-                    transition:
-                        "transform 140ms ease, opacity 140ms ease",
-                }}
-                onMouseEnter={(event) => {
-                    if (panoramaPosition < 100) {
-                        event.currentTarget.style.transform =
-                            "translateY(-50%) scale(1.043)";
-                    }
-                }}
-                onMouseLeave={(event) => {
-                    event.currentTarget.style.transform =
-                        "translateY(-50%) scale(1)";
-                }}
-            >
-                <img
-                    src={
-                        typeof rightButton ===
-                            "string"
-                            ? rightButton
-                            : rightButton.src
-                    }
-                    alt="Look right"
-                    draggable={false}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-
-                        objectFit: "contain",
-
-                        pointerEvents:
-                            "none",
-                    }}
-                />
-            </button>
-            {/* =====================================================
-    INVENTORY BAR
-===================================================== */}
+                DEBUG PANEL
+            ====================================================== */}
 
             <div
                 style={{
                     position: "absolute",
 
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
+                    top: "20px",
+                    right: "20px",
 
-                    /*
-                     * CHANGE THIS VALUE
-                     *
-                     * Controls the height of the inventory bar.
-                     */
-                    height: "90px",
+                    padding:
+                        "10px 14px",
 
-                    background: "#9C4242",
+                    background:
+                        "rgba(0, 0, 0, 0.75)",
 
-                    /*
-                     * Only the top border is visible.
-                     * The other three sides are technically
-                     * against the screen edges.
-                     */
-                    borderTop:
-                        "4px solid #ffffff",
+                    color: "#ffffff",
 
-                    zIndex: 30,
+                    borderRadius: "6px",
 
-                    boxSizing: "border-box",
+                    fontSize: "11px",
+
+                    lineHeight: 1.6,
+
+                    whiteSpace: "pre-line",
+
+                    zIndex: 200,
+
+                    pointerEvents: "none",
                 }}
             >
-                {/* Inventory items will go here later */}
+                {currentState}
             </div>
+
+
+            {/* =====================================================
+                CLOSED FRIDGE HITBOX
+            ====================================================== */}
+
+            {!fridgeIsOpen && (
+                <button
+                    aria-label="Open fridge"
+
+                    onClick={openFridge}
+
+                    style={{
+                        position: "absolute",
+
+                        left: "3%",
+                        top: "15%",
+
+                        width: "18%",
+                        height: "75%",
+
+                        padding: 0,
+
+                        border: "none",
+
+                        background:
+                            "transparent",
+
+                        cursor: "pointer",
+
+                        zIndex: 50,
+                    }}
+                />
+            )}
+
+
+            {/* =====================================================
+                OPEN FRIDGE — INTERIOR HITBOX
+            ====================================================== */}
+
+            {fridgeIsOpen && (
+                <button
+                    aria-label="Enter fridge"
+
+                    onClick={enterFridge}
+
+                    style={{
+                        position: "absolute",
+
+                        /*
+                         * IMPORTANT:
+                         *
+                         * This is the area representing the
+                         * visible INTERIOR of the open fridge.
+                         *
+                         * Adjust these four values to align
+                         * it with your artwork.
+                         */
+                        left: "5%",
+                        top: "22%",
+
+                        width: "13%",
+                        height: "55%",
+
+                        padding: 0,
+
+                        border: "none",
+
+                        background:
+                            "transparent",
+
+                        cursor: "pointer",
+
+                        zIndex: 55,
+                    }}
+                />
+            )}
+
+
+            {/* =====================================================
+                OPEN FRIDGE — DOOR HITBOX
+            ====================================================== */}
+
+            {fridgeIsOpen && (
+                <button
+                    aria-label="Close fridge"
+
+                    onClick={closeFridge}
+
+                    style={{
+                        position: "absolute",
+
+                        /*
+                         * IMPORTANT:
+                         *
+                         * This is the slightly opened
+                         * FRIDGE DOOR area.
+                         */
+                        left: "14%",
+                        top: "15%",
+
+                        width: "7%",
+                        height: "75%",
+
+                        padding: 0,
+
+                        border: "none",
+
+                        background:
+                            "transparent",
+
+                        cursor: "pointer",
+
+                        zIndex: 60,
+                    }}
+                />
+            )}
+
+
+            {/* =====================================================
+                BOILER STOVE KNOB
+            ====================================================== */}
+
+            <button
+                aria-label="Boiler stove knob"
+
+                onClick={toggleBoiler}
+
+                style={{
+                    position: "absolute",
+
+                    left: "40.8%",
+                    top: "55.5%",
+
+                    width: "25px",
+                    height: "25px",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    borderRadius: "50%",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                PAN STOVE KNOB
+            ====================================================== */}
+
+            <button
+                aria-label="Pan stove knob"
+
+                onClick={togglePan}
+
+                style={{
+                    position: "absolute",
+
+                    left: "51%",
+                    top: "55.5%",
+
+                    width: "25px",
+                    height: "25px",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    borderRadius: "50%",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                PAN
+            ====================================================== */}
+
+            <button
+                aria-label="Pan"
+
+                onClick={openPanScreen}
+
+                style={{
+                    position: "absolute",
+
+                    left: "48%",
+                    top: "43.8%",
+
+                    width: "7%",
+                    height: "10%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                BOILER
+            ====================================================== */}
+
+            <button
+                aria-label="Boiler"
+
+                onClick={openBoilerScreen}
+
+                style={{
+                    position: "absolute",
+
+                    left: "39.5%",
+                    top: "43.8%",
+
+                    width: "8%",
+                    height: "10%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                CUTTING BOARD
+            ====================================================== */}
+
+            <button
+                aria-label="Cutting board"
+
+                onClick={handleCuttingBoard}
+
+                style={{
+                    position: "absolute",
+
+                    left: "56%",
+                    top: "38%",
+
+                    width: "8%",
+                    height: "15%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                SINK
+            ====================================================== */}
+
+            <button
+                aria-label="Sink"
+
+                onClick={handleSink}
+
+                style={{
+                    position: "absolute",
+
+                    left: "68%",
+                    top: "38%",
+
+                    width: "12%",
+                    height: "18%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                PLATE 1
+            ====================================================== */}
+
+            <button
+                aria-label="Plate 1"
+
+                onClick={() => {
+                    console.log(
+                        "PLATE 1 CLICKED"
+                    );
+                }}
+
+                style={{
+                    position: "absolute",
+
+                    left: "42%",
+                    top: "77%",
+
+                    width: "12%",
+                    height: "12%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    borderRadius: "50%",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                PLATE 2
+            ====================================================== */}
+
+            <button
+                aria-label="Plate 2"
+
+                onClick={() => {
+                    console.log(
+                        "PLATE 2 CLICKED"
+                    );
+                }}
+
+                style={{
+                    position: "absolute",
+
+                    left: "57%",
+                    top: "79%",
+
+                    width: "12%",
+                    height: "12%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    borderRadius: "50%",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
         </div>
     );
 }
