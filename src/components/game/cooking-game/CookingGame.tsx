@@ -16,6 +16,7 @@ import AboutScreen from "./screens/AboutScreen";
 import RecipeMenuScreen from "./screens/RecipeMenuScreen";
 import LoadingScreen from "./screens/LoadingScreen";
 import KitchenScreen from "./screens/KitchenScreen";
+import FridgeScreen from "./screens/FridgeScreen";
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -47,7 +48,18 @@ type CookingGameScreen =
   | "about"
   | "recipeMenu"
   | "loading"
-  | "kitchen";
+  | "kitchen"
+  | "fridge";
+
+type IngredientId =
+  | "green_onion"
+  | "egg"
+  | "carrot"
+  | "onion"
+  | "garlic"
+  | "rice"
+  | "soy_sauce"
+  | "cooking_oil";
 
 export default function CookingGame({
   onClose,
@@ -72,6 +84,11 @@ export default function CookingGame({
 
   const [loadingTarget, setLoadingTarget] =
     useState<CookingGameScreen>("kitchen");
+
+
+  const [inventory, setInventory] =
+    useState<Record<string, number>>({});
+
 
   const dragOffset = useRef({
     x: 0,
@@ -282,7 +299,7 @@ export default function CookingGame({
 
     flexDirection:
       "column",
-      
+
     color:
       "#222",
 
@@ -328,6 +345,25 @@ export default function CookingGame({
   const goToKitchen = () => {
     setLoadingTarget("kitchen");
     setCurrentScreen("loading");
+  };
+
+  const goToFridge = () => {
+    changeScreen("fridge");
+  };
+
+  const goBackToKitchen = () => {
+    changeScreen("kitchen");
+  };
+
+  const takeIngredient = (
+    ingredient: IngredientId
+  ) => {
+    setInventory((current) => ({
+      ...current,
+
+      [ingredient]:
+        (current[ingredient] ?? 0) + 1,
+    }));
   };
   /*
    * =========================================================
@@ -423,6 +459,15 @@ export default function CookingGame({
         {currentScreen === "kitchen" && (
           <KitchenScreen
             onHome={goToRecipeMenu}
+            onFridge={goToFridge}
+          />
+        )}
+
+        {currentScreen === "fridge" && (
+          <FridgeScreen
+            onBack={goBackToKitchen}
+            inventory={inventory}
+            onTakeIngredient={takeIngredient}
           />
         )}
 

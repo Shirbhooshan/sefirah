@@ -22,21 +22,10 @@ import boilerOn from "@/assets/media/mise-en-place/background/kitchen-default-bo
 import panOn from "@/assets/media/mise-en-place/background/kitchen-default-pan.jpg";
 import boilerPanOn from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-pan.jpg";
 
+
 interface KitchenScreenProps {
     onHome: () => void;
 
-    /*
-     * These will eventually navigate to:
-     *
-     * FridgeScreen
-     * PanScreen
-     * BoilerScreen
-     * CuttingBoardScreen
-     * SinkScreen
-     *
-     * For now they are optional so your existing
-     * CookingGame.tsx does not need to change yet.
-     */
     onFridge?: () => void;
     onPan?: () => void;
     onBoiler?: () => void;
@@ -72,35 +61,16 @@ export default function KitchenScreen({
 
     /*
      * =========================================================
-     * AUDIO HELPERS
+     * PLAY SOUND
      * =========================================================
-     *
-     * Create a fresh Audio object every time.
-     *
-     * This means the sound can be played repeatedly without
-     * getting stuck at the end of a previous playback.
      */
 
-    const playSound = (
-        sound: typeof fridgeOpenSound
-    ) => {
-        const audio = new Audio(
-            typeof sound === "string"
-                ? sound
-                : sound.src
-        );
+    const playSound = (src: string) => {
+        const audio = new Audio(src);
 
         audio.currentTime = 0;
 
-        audio.play().catch(() => {
-            /*
-             * Browsers can reject audio if playback has
-             * somehow happened outside a user interaction.
-             *
-             * We intentionally ignore that here because
-             * the buttons themselves are user interactions.
-             */
-        });
+        audio.play().catch(() => { });
     };
 
 
@@ -110,32 +80,41 @@ export default function KitchenScreen({
      * =========================================================
      *
      * CLOSED:
-     *
      * click fridge
-     *       ↓
-     * fridge opens
+     *      ↓
+     * OPEN
      *
      * OPEN:
-     *
      * click interior
-     *       ↓
+     *      ↓
      * FridgeScreen
      *
+     * OPEN:
      * click door
-     *       ↓
-     * fridge closes
+     *      ↓
+     * CLOSED
      */
 
     const openFridge = () => {
-        if (fridgeIsOpen) return;
-        playSound("/audio/fridge-open.wav"); 
+
+        if (fridgeIsOpen) {
+            return;
+        }
+
+        playSound("/audio/fridge-open.wav");
+
         setFridgeIsOpen(true);
     };
 
 
     const closeFridge = () => {
-        if (!fridgeIsOpen) return;
+
+        if (!fridgeIsOpen) {
+            return;
+        }
+
         playSound("/audio/fridge-close.wav");
+
         setFridgeIsOpen(false);
     };
 
@@ -143,15 +122,14 @@ export default function KitchenScreen({
     const enterFridge = () => {
 
         /*
-         * For now:
-         * if FridgeScreen hasn't been connected yet,
-         * this simply logs.
+         * Only navigate if FridgeScreen has
+         * actually been connected.
          */
 
         if (onFridge) {
             onFridge();
         } else {
-            console.log("FRIDGE SCREEN");
+            console.log("FRIDGE SCREEN NOT CONNECTED YET");
         }
     };
 
@@ -163,13 +141,22 @@ export default function KitchenScreen({
      */
 
     const toggleBoiler = () => {
+
         playSound("/audio/stove-knob.wav");
-        setBoilerIsOn((current) => !current);
+
+        setBoilerIsOn(
+            current => !current
+        );
     };
 
+
     const togglePan = () => {
+
         playSound("/audio/stove-knob.wav");
-        setPanIsOn((current) => !current);
+
+        setPanIsOn(
+            current => !current
+        );
     };
 
 
@@ -184,7 +171,7 @@ export default function KitchenScreen({
         if (onPan) {
             onPan();
         } else {
-            console.log("PAN SCREEN");
+            console.log("PAN SCREEN NOT CONNECTED YET");
         }
     };
 
@@ -194,7 +181,7 @@ export default function KitchenScreen({
         if (onBoiler) {
             onBoiler();
         } else {
-            console.log("BOILER SCREEN");
+            console.log("BOILER SCREEN NOT CONNECTED YET");
         }
     };
 
@@ -211,7 +198,7 @@ export default function KitchenScreen({
             onCuttingBoard();
         } else {
             console.log(
-                "CUTTING BOARD CLICKED"
+                "CUTTING BOARD SCREEN NOT CONNECTED YET"
             );
         }
     };
@@ -229,7 +216,7 @@ export default function KitchenScreen({
             onSink();
         } else {
             console.log(
-                "SINK CLICKED"
+                "SINK SCREEN NOT CONNECTED YET"
             );
         }
     };
@@ -239,8 +226,6 @@ export default function KitchenScreen({
      * =========================================================
      * DETERMINE CURRENT KITCHEN IMAGE
      * =========================================================
-     *
-     * Most specific combinations are checked first.
      */
 
     const getKitchenImage = () => {
@@ -322,7 +307,7 @@ export default function KitchenScreen({
 
 
         /*
-         * NOTHING ACTIVE
+         * DEFAULT
          */
 
         return fridgeClosed;
@@ -335,12 +320,8 @@ export default function KitchenScreen({
 
     /*
      * =========================================================
-     * DEBUG STATE
+     * DEBUG
      * =========================================================
-     *
-     * Keep this while testing.
-     *
-     * Delete later when the interactions are confirmed.
      */
 
     const currentState =
@@ -353,7 +334,6 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
         <div
             style={{
                 position: "absolute",
-
                 inset: 0,
 
                 overflow: "hidden",
@@ -375,11 +355,8 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
                         ? currentKitchenImage
                         : currentKitchenImage.src
                 }
-
                 alt="Kitchen"
-
                 draggable={false}
-
                 style={{
                     position: "absolute",
 
@@ -401,9 +378,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 onClick={onHome}
-
                 aria-label="Home"
-
                 style={{
                     position: "absolute",
 
@@ -415,10 +390,9 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     padding: 0,
 
-                    border: 0,
+                    border: "none",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -427,12 +401,10 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
                     transition:
                         "transform 140ms ease",
                 }}
-
                 onMouseEnter={(event) => {
                     event.currentTarget.style.transform =
                         "scale(1.043)";
                 }}
-
                 onMouseLeave={(event) => {
                     event.currentTarget.style.transform =
                         "scale(1)";
@@ -444,19 +416,15 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
                             ? homeButton
                             : homeButton.src
                     }
-
                     alt="Home"
-
                     draggable={false}
-
                     style={{
                         width: "100%",
                         height: "100%",
 
                         objectFit: "contain",
 
-                        pointerEvents:
-                            "none",
+                        pointerEvents: "none",
                     }}
                 />
             </button>
@@ -473,13 +441,12 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
                     top: "20px",
                     right: "20px",
 
-                    padding:
-                        "10px 14px",
+                    padding: "10px 14px",
 
                     background:
                         "rgba(0, 0, 0, 0.75)",
 
-                    color: "#ffffff",
+                    color: "#fff",
 
                     borderRadius: "6px",
 
@@ -499,15 +466,13 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-                CLOSED FRIDGE HITBOX
+                CLOSED FRIDGE
             ====================================================== */}
 
             {!fridgeIsOpen && (
                 <button
                     aria-label="Open fridge"
-
                     onClick={openFridge}
-
                     style={{
                         position: "absolute",
 
@@ -521,8 +486,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                         border: "none",
 
-                        background:
-                            "transparent",
+                        background: "transparent",
 
                         cursor: "pointer",
 
@@ -533,27 +497,16 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-                OPEN FRIDGE — INTERIOR HITBOX
+                OPEN FRIDGE — INTERIOR
             ====================================================== */}
 
             {fridgeIsOpen && (
                 <button
                     aria-label="Enter fridge"
-
                     onClick={enterFridge}
-
                     style={{
                         position: "absolute",
 
-                        /*
-                         * IMPORTANT:
-                         *
-                         * This is the area representing the
-                         * visible INTERIOR of the open fridge.
-                         *
-                         * Adjust these four values to align
-                         * it with your artwork.
-                         */
                         left: "5%",
                         top: "22%",
 
@@ -564,8 +517,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                         border: "none",
 
-                        background:
-                            "transparent",
+                        background: "transparent",
 
                         cursor: "pointer",
 
@@ -576,24 +528,16 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-                OPEN FRIDGE — DOOR HITBOX
+                OPEN FRIDGE — DOOR
             ====================================================== */}
 
             {fridgeIsOpen && (
                 <button
                     aria-label="Close fridge"
-
                     onClick={closeFridge}
-
                     style={{
                         position: "absolute",
 
-                        /*
-                         * IMPORTANT:
-                         *
-                         * This is the slightly opened
-                         * FRIDGE DOOR area.
-                         */
                         left: "14%",
                         top: "15%",
 
@@ -604,8 +548,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                         border: "none",
 
-                        background:
-                            "transparent",
+                        background: "transparent",
 
                         cursor: "pointer",
 
@@ -621,9 +564,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Boiler stove knob"
-
                 onClick={toggleBoiler}
-
                 style={{
                     position: "absolute",
 
@@ -639,8 +580,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     borderRadius: "50%",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -655,9 +595,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Pan stove knob"
-
                 onClick={togglePan}
-
                 style={{
                     position: "absolute",
 
@@ -673,8 +611,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     borderRadius: "50%",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -689,9 +626,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Pan"
-
                 onClick={openPanScreen}
-
                 style={{
                     position: "absolute",
 
@@ -705,8 +640,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -721,9 +655,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Boiler"
-
                 onClick={openBoilerScreen}
-
                 style={{
                     position: "absolute",
 
@@ -737,8 +669,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -753,9 +684,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Cutting board"
-
                 onClick={handleCuttingBoard}
-
                 style={{
                     position: "absolute",
 
@@ -769,8 +698,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -785,9 +713,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Sink"
-
                 onClick={handleSink}
-
                 style={{
                     position: "absolute",
 
@@ -801,8 +727,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -817,13 +742,9 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Plate 1"
-
                 onClick={() => {
-                    console.log(
-                        "PLATE 1 CLICKED"
-                    );
+                    console.log("PLATE 1 CLICKED");
                 }}
-
                 style={{
                     position: "absolute",
 
@@ -839,8 +760,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     borderRadius: "50%",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
@@ -855,13 +775,9 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
             <button
                 aria-label="Plate 2"
-
                 onClick={() => {
-                    console.log(
-                        "PLATE 2 CLICKED"
-                    );
+                    console.log("PLATE 2 CLICKED");
                 }}
-
                 style={{
                     position: "absolute",
 
@@ -877,8 +793,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
                     borderRadius: "50%",
 
-                    background:
-                        "transparent",
+                    background: "transparent",
 
                     cursor: "pointer",
 
