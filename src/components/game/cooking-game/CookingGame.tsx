@@ -17,12 +17,15 @@ import RecipeMenuScreen from "./screens/RecipeMenuScreen";
 import LoadingScreen from "./screens/LoadingScreen";
 import KitchenScreen from "./screens/KitchenScreen";
 import FridgeScreen from "./screens/FridgeScreen";
+import BoilerScreen from "./screens/BoilerScreen";
+import PanScreen from "./screens/PanScreen";
+import SinkScreen from "./screens/SinkScreen";
+import CuttingBoardScreen from "./screens/CuttingBoardScreen";
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
 });
-
 
 interface CookingGameProps {
   onClose?: () => void;
@@ -49,17 +52,11 @@ type CookingGameScreen =
   | "recipeMenu"
   | "loading"
   | "kitchen"
-  | "fridge";
-
-type IngredientId =
-  | "green_onion"
-  | "egg"
-  | "carrot"
-  | "onion"
-  | "garlic"
-  | "rice"
-  | "soy_sauce"
-  | "cooking_oil";
+  | "fridge"
+  | "sink"
+  | "cuttingBoard"
+  | "boiler"
+  | "pan";
 
 export default function CookingGame({
   onClose,
@@ -72,6 +69,7 @@ export default function CookingGame({
   },
   onFocus,
 }: CookingGameProps) {
+
   const [
     currentScreen,
     setCurrentScreen,
@@ -85,15 +83,323 @@ export default function CookingGame({
   const [loadingTarget, setLoadingTarget] =
     useState<CookingGameScreen>("kitchen");
 
-
   const [inventory, setInventory] =
     useState<Record<string, number>>({});
 
+  const [inventoryLoaded, setInventoryLoaded] =
+    useState(false);
 
-  const dragOffset = useRef({
-    x: 0,
-    y: 0,
-  });
+  const [boilerOn, setBoilerOn] =
+    useState(false);
+
+  const [panOn, setPanOn] =
+    useState(false);
+
+  /*
+   * =========================================================
+   * LOAD INVENTORY
+   * =========================================================
+   */
+
+  useEffect(() => {
+
+    const loadInventory = async () => {
+
+      try {
+
+        const response =
+          await fetch(
+            "/api/cooking/inventory"
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Failed to load inventory"
+          );
+        }
+
+        const data =
+          await response.json();
+
+        if (data.success) {
+
+          setInventory(
+            data.inventory ?? {}
+          );
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Failed to load cooking inventory:",
+          error
+        );
+
+      } finally {
+
+        setInventoryLoaded(true);
+
+      }
+    };
+
+    loadInventory();
+
+  }, []);
+
+
+  /*
+   * =========================================================
+   * TAKE INGREDIENT
+   * =========================================================
+   */
+
+  const takeIngredient = async (
+    ingredient: string
+  ) => {
+
+    const current =
+      inventory[ingredient] ?? 0;
+
+    const recipeRequirements: Record<
+      string,
+      number
+    > = {
+
+      green_onion: 1,
+      egg: 1,
+      carrot: 1,
+      onion: 1,
+      garlic: 1,
+      rice: 1,
+
+      soy_sauce: 1,
+      cooking_oil: 1,
+
+    };
+
+    const maximum =
+      recipeRequirements[
+      ingredient
+      ] ?? 0;
+
+    if (current >= maximum) {
+      return;
+    }
+
+    const newQuantity =
+      current + 1;
+
+    setInventory(
+      (previous) => ({
+        ...previous,
+
+        [ingredient]:
+          newQuantity,
+      })
+    );
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/cooking/inventory",
+          {
+            method: "PATCH",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              ingredient,
+              quantity:
+                newQuantity,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Failed to save inventory"
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Failed to save inventory:",
+        error
+      );
+
+      setInventory(
+        (previous) => ({
+          ...previous,
+
+          [ingredient]:
+            current,
+        })
+      );
+
+    }
+  };
+
+
+  /*
+   * =========================================================
+   * REMOVE INGREDIENT
+   * =========================================================
+   */
+
+  const removeIngredient = async (
+    ingredient: string
+  ) => {
+
+    const current =
+      inventory[ingredient] ?? 0;
+
+    if (current <= 0) {
+      return;
+    }
+
+    const newQuantity =
+      current - 1;
+
+    setInventory(
+      (previous) => ({
+        ...previous,
+
+        [ingredient]:
+          newQuantity,
+      })
+    );
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/cooking/inventory",
+          {
+            method: "PATCH",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              ingredient,
+              quantity:
+                newQuantity,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Failed to remove ingredient"
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Failed to remove ingredient:",
+        error
+      );
+
+      setInventory(
+        (previous) => ({
+          ...previous,
+
+          [ingredient]:
+            current,
+        })
+      );
+
+    }
+  };
+
+
+  /*
+   * =========================================================
+   * ADD PREPARED INGREDIENT
+   * =========================================================
+   *
+   * Used by CuttingBoardScreen.
+   *
+   * Example:
+   *
+   * carrot
+   *    ↓
+   * chopped_carrot
+   */
+
+  const addIngredient = async (
+    ingredient: string
+  ) => {
+
+    const current =
+      inventory[ingredient] ?? 0;
+
+    const newQuantity =
+      current + 1;
+
+
+    setInventory((previous) => ({
+      ...previous,
+
+      [ingredient]:
+        newQuantity,
+    }));
+
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/cooking/inventory",
+          {
+            method: "PATCH",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              ingredient,
+              quantity:
+                newQuantity,
+            }),
+          }
+        );
+
+
+      if (!response.ok) {
+        throw new Error(
+          "Failed to add ingredient"
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Failed to add ingredient:",
+        error
+      );
+
+
+      setInventory((previous) => ({
+        ...previous,
+
+        [ingredient]:
+          current,
+      }));
+    }
+  };
+
 
   /*
    * =========================================================
@@ -101,9 +407,15 @@ export default function CookingGame({
    * =========================================================
    */
 
+  const dragOffset = useRef({
+    x: 0,
+    y: 0,
+  });
+
   const handleWindowDragStart = (
     event: React.MouseEvent
   ) => {
+
     if (event.button !== 0) {
       return;
     }
@@ -126,6 +438,7 @@ export default function CookingGame({
       windowElement.getBoundingClientRect();
 
     dragOffset.current = {
+
       x:
         event.clientX -
         rect.left,
@@ -133,18 +446,16 @@ export default function CookingGame({
       y:
         event.clientY -
         rect.top,
+
     };
 
     setIsDragging(true);
+
   };
 
-  /*
-   * =========================================================
-   * HANDLE WINDOW MOVEMENT
-   * =========================================================
-   */
 
   useEffect(() => {
+
     if (!isDragging) {
       return;
     }
@@ -152,6 +463,7 @@ export default function CookingGame({
     const handleMouseMove = (
       event: MouseEvent
     ) => {
+
       const newLeft =
         event.clientX -
         dragOffset.current.x;
@@ -213,6 +525,7 @@ export default function CookingGame({
         clampedLeft,
         clampedTop
       );
+
     };
 
     const handleMouseUp = () => {
@@ -230,6 +543,7 @@ export default function CookingGame({
     );
 
     return () => {
+
       window.removeEventListener(
         "mousemove",
         handleMouseMove
@@ -239,11 +553,14 @@ export default function CookingGame({
         "mouseup",
         handleMouseUp
       );
+
     };
+
   }, [
     isDragging,
     onMove,
   ]);
+
 
   /*
    * =========================================================
@@ -251,8 +568,9 @@ export default function CookingGame({
    * =========================================================
    */
 
-  const windowStyle: React.CSSProperties =
-  {
+  const windowStyle:
+    React.CSSProperties = {
+
     position: "fixed",
 
     left:
@@ -308,7 +626,9 @@ export default function CookingGame({
 
     WebkitUserSelect:
       "none",
+
   };
+
 
   /*
    * =========================================================
@@ -319,12 +639,20 @@ export default function CookingGame({
   const changeScreen = (
     nextScreen: CookingGameScreen
   ) => {
-    if (nextScreen === currentScreen) {
+
+    if (
+      nextScreen ===
+      currentScreen
+    ) {
       return;
     }
 
-    setCurrentScreen(nextScreen);
+    setCurrentScreen(
+      nextScreen
+    );
+
   };
+
 
   const goToMenu = () => {
     changeScreen("menu");
@@ -343,28 +671,43 @@ export default function CookingGame({
   };
 
   const goToKitchen = () => {
-    setLoadingTarget("kitchen");
-    setCurrentScreen("loading");
+
+    setLoadingTarget(
+      "kitchen"
+    );
+
+    setCurrentScreen(
+      "loading"
+    );
+
   };
+
+  const goToBoiler = () => {
+    changeScreen("boiler");
+  };
+
+  const goToPan = () => {
+    changeScreen("pan");
+  };
+
 
   const goToFridge = () => {
     changeScreen("fridge");
+  };
+
+  const goToSink = () => {
+    changeScreen("sink");
+  };
+
+  const goToCuttingBoard = () => {
+    changeScreen("cuttingBoard");
   };
 
   const goBackToKitchen = () => {
     changeScreen("kitchen");
   };
 
-  const takeIngredient = (
-    ingredient: IngredientId
-  ) => {
-    setInventory((current) => ({
-      ...current,
 
-      [ingredient]:
-        (current[ingredient] ?? 0) + 1,
-    }));
-  };
   /*
    * =========================================================
    * RENDER
@@ -372,6 +715,7 @@ export default function CookingGame({
    */
 
   return (
+
     <div
       data-cooking-game-window
       className={comfortaa.className}
@@ -380,9 +724,6 @@ export default function CookingGame({
       }}
       style={windowStyle}
     >
-      {/* =====================================================
-          WINDOWS 10 TITLE BAR
-      ====================================================== */}
 
       <Windows10TitleBar
         isDragging={isDragging}
@@ -392,9 +733,6 @@ export default function CookingGame({
         onClose={onClose}
       />
 
-      {/* =====================================================
-          GAME SCREEN
-      ====================================================== */}
 
       <div
         style={{
@@ -402,13 +740,13 @@ export default function CookingGame({
           minHeight: 0,
           position: "relative",
           overflow: "hidden",
-
         }}
         onMouseDown={(event) => {
           event.stopPropagation();
           onFocus?.();
         }}
       >
+
         {currentScreen === "title" && (
           <TitleScreen
             onStart={
@@ -416,6 +754,7 @@ export default function CookingGame({
             }
           />
         )}
+
 
         {currentScreen === "menu" && (
           <MenuScreen
@@ -425,13 +764,13 @@ export default function CookingGame({
             onAbout={
               goToAbout
             }
-            onViewMenu={goToRecipeMenu}
-            onInstructions={() => {
-              // TODO:
-              // Build Instructions screen
-            }}
+            onViewMenu={
+              goToRecipeMenu
+            }
+            onInstructions={() => { }}
           />
         )}
+
 
         {currentScreen === "about" && (
           <AboutScreen
@@ -441,38 +780,187 @@ export default function CookingGame({
           />
         )}
 
+
         {currentScreen === "recipeMenu" && (
           <RecipeMenuScreen
-            onBack={goToMenu}
-            onFriedRice={goToKitchen}
+            onBack={
+              goToMenu
+            }
+            onFriedRice={
+              goToKitchen
+            }
           />
         )}
+
 
         {currentScreen === "loading" && (
           <LoadingScreen
             onComplete={() => {
-              changeScreen(loadingTarget);
+              changeScreen(
+                loadingTarget
+              );
             }}
           />
         )}
 
+
+        {/* =====================================================
+            KITCHEN
+
+            NO INVENTORY BAR HERE.
+        ====================================================== */}
+
         {currentScreen === "kitchen" && (
           <KitchenScreen
             onHome={goToRecipeMenu}
+
             onFridge={goToFridge}
+
+            onSink={goToSink}
+
+            onCuttingBoard={goToCuttingBoard}
+
+            /*
+             * =====================================================
+             * BOILER / PAN INTERNAL SCREENS
+             *
+             * KitchenScreen still owns the interactables.
+             * These callbacks only tell CookingGame which
+             * internal screen to open.
+             * =====================================================
+             */
+
+            onBoiler={goToBoiler}
+
+            onPan={goToPan}
+
+            /*
+             * =====================================================
+             * STOVE STATE
+             * =====================================================
+             */
+
+            boilerOn={boilerOn}
+
+            panOn={panOn}
+
+            onToggleBoiler={() => {
+              setBoilerOn(
+                current => !current
+              );
+            }}
+
+            onTogglePan={() => {
+              setPanOn(
+                current => !current
+              );
+            }}
           />
         )}
+
+
+        {/* =====================================================
+            FRIDGE
+
+            Inventory belongs to this internal screen.
+        ====================================================== */}
 
         {currentScreen === "fridge" && (
           <FridgeScreen
-            onBack={goBackToKitchen}
-            inventory={inventory}
-            onTakeIngredient={takeIngredient}
+
+            onBack={
+              goBackToKitchen
+            }
+
+            inventory={
+              inventory
+            }
+
+            onTakeIngredient={
+              takeIngredient
+            }
+
+            onRemoveIngredient={
+              removeIngredient
+            }
+
           />
         )}
 
 
+        {/* =====================================================
+            SINK
+        ====================================================== */}
+
+        {currentScreen === "sink" && (
+          <SinkScreen
+
+            onBack={
+              goBackToKitchen
+            }
+
+            inventory={
+              inventory
+            }
+
+            onRemoveIngredient={
+              removeIngredient
+            }
+
+          />
+        )}
+
+
+        {/* =====================================================
+            CUTTING BOARD
+        ====================================================== */}
+
+        {currentScreen === "cuttingBoard" && (
+          <CuttingBoardScreen
+
+            onBack={
+              goBackToKitchen
+            }
+
+            inventory={
+              inventory
+            }
+
+            onRemoveIngredient={
+              removeIngredient
+            }
+
+            onAddIngredient={
+              addIngredient
+            }
+
+          />
+        )}
+
+        {currentScreen === "boiler" && (
+          <BoilerScreen
+            onBack={goBackToKitchen}
+            boilerOn={boilerOn}
+            inventory={inventory}
+            onRemoveIngredient={
+              removeIngredient
+            }
+          />
+        )}
+
+        {currentScreen === "pan" && (
+          <PanScreen
+            onBack={goBackToKitchen}
+            panOn={panOn}
+            inventory={inventory}
+            onRemoveIngredient={
+              removeIngredient
+            }
+          />
+        )}
+
       </div>
+
     </div>
   );
 }

@@ -18,8 +18,8 @@ import fridgeOpenBoiler from "@/assets/media/mise-en-place/background/kitchen-de
 import fridgeOpenPan from "@/assets/media/mise-en-place/background/kitchen-default-pan-and-fridge-open.jpg";
 import fridgeOpenBoilerPan from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-pan-and-fridge-open.jpg";
 
-import boilerOn from "@/assets/media/mise-en-place/background/kitchen-default-boiler.jpg";
-import panOn from "@/assets/media/mise-en-place/background/kitchen-default-pan.jpg";
+import boilerOnImage from "@/assets/media/mise-en-place/background/kitchen-default-boiler.jpg";
+import panOnImage from "@/assets/media/mise-en-place/background/kitchen-default-pan.jpg";
 import boilerPanOn from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-pan.jpg";
 
 
@@ -29,8 +29,15 @@ interface KitchenScreenProps {
     onFridge?: () => void;
     onPan?: () => void;
     onBoiler?: () => void;
+
     onCuttingBoard?: () => void;
     onSink?: () => void;
+
+    boilerOn: boolean;
+    panOn: boolean;
+
+    onToggleBoiler: () => void;
+    onTogglePan: () => void;
 }
 
 
@@ -39,23 +46,24 @@ export default function KitchenScreen({
     onFridge,
     onPan,
     onBoiler,
+
     onCuttingBoard,
     onSink,
+
+    boilerOn,
+    panOn,
+
+    onToggleBoiler,
+    onTogglePan,
 }: KitchenScreenProps) {
 
     /*
      * =========================================================
-     * KITCHEN STATES
+     * FRIDGE STATE
      * =========================================================
      */
 
     const [fridgeIsOpen, setFridgeIsOpen] =
-        useState(false);
-
-    const [boilerIsOn, setBoilerIsOn] =
-        useState(false);
-
-    const [panIsOn, setPanIsOn] =
         useState(false);
 
 
@@ -70,7 +78,7 @@ export default function KitchenScreen({
 
         audio.currentTime = 0;
 
-        audio.play().catch(() => { });
+        audio.play().catch(() => {});
     };
 
 
@@ -78,21 +86,6 @@ export default function KitchenScreen({
      * =========================================================
      * FRIDGE
      * =========================================================
-     *
-     * CLOSED:
-     * click fridge
-     *      ↓
-     * OPEN
-     *
-     * OPEN:
-     * click interior
-     *      ↓
-     * FridgeScreen
-     *
-     * OPEN:
-     * click door
-     *      ↓
-     * CLOSED
      */
 
     const openFridge = () => {
@@ -113,6 +106,10 @@ export default function KitchenScreen({
             return;
         }
 
+        /*
+         * KEEPING YOUR ORIGINAL CLOSE SOUND
+         */
+
         playSound("/audio/fridge-close.wav");
 
         setFridgeIsOpen(false);
@@ -121,15 +118,12 @@ export default function KitchenScreen({
 
     const enterFridge = () => {
 
-        /*
-         * Only navigate if FridgeScreen has
-         * actually been connected.
-         */
-
         if (onFridge) {
             onFridge();
         } else {
-            console.log("FRIDGE SCREEN NOT CONNECTED YET");
+            console.log(
+                "FRIDGE SCREEN NOT CONNECTED YET"
+            );
         }
     };
 
@@ -138,15 +132,17 @@ export default function KitchenScreen({
      * =========================================================
      * STOVE KNOBS
      * =========================================================
+     *
+     * KitchenScreen remains responsible for these.
+     *
+     * Clicking the knob changes the kitchen artwork.
      */
 
     const toggleBoiler = () => {
 
         playSound("/audio/stove-knob.wav");
 
-        setBoilerIsOn(
-            current => !current
-        );
+        onToggleBoiler();
     };
 
 
@@ -154,15 +150,31 @@ export default function KitchenScreen({
 
         playSound("/audio/stove-knob.wav");
 
-        setPanIsOn(
-            current => !current
-        );
+        onTogglePan();
     };
 
 
     /*
      * =========================================================
-     * PAN / BOILER SCREENS
+     * BOILER SCREEN
+     * =========================================================
+     */
+
+    const openBoilerScreen = () => {
+
+        if (onBoiler) {
+            onBoiler();
+        } else {
+            console.log(
+                "BOILER SCREEN NOT CONNECTED YET"
+            );
+        }
+    };
+
+
+    /*
+     * =========================================================
+     * PAN SCREEN
      * =========================================================
      */
 
@@ -171,17 +183,9 @@ export default function KitchenScreen({
         if (onPan) {
             onPan();
         } else {
-            console.log("PAN SCREEN NOT CONNECTED YET");
-        }
-    };
-
-
-    const openBoilerScreen = () => {
-
-        if (onBoiler) {
-            onBoiler();
-        } else {
-            console.log("BOILER SCREEN NOT CONNECTED YET");
+            console.log(
+                "PAN SCREEN NOT CONNECTED YET"
+            );
         }
     };
 
@@ -224,8 +228,11 @@ export default function KitchenScreen({
 
     /*
      * =========================================================
-     * DETERMINE CURRENT KITCHEN IMAGE
+     * DETERMINE KITCHEN IMAGE
      * =========================================================
+     *
+     * IMPORTANT:
+     * Keep these exact combinations.
      */
 
     const getKitchenImage = () => {
@@ -236,8 +243,8 @@ export default function KitchenScreen({
 
         if (
             fridgeIsOpen &&
-            boilerIsOn &&
-            panIsOn
+            boilerOn &&
+            panOn
         ) {
             return fridgeOpenBoilerPan;
         }
@@ -249,7 +256,7 @@ export default function KitchenScreen({
 
         if (
             fridgeIsOpen &&
-            boilerIsOn
+            boilerOn
         ) {
             return fridgeOpenBoiler;
         }
@@ -261,7 +268,7 @@ export default function KitchenScreen({
 
         if (
             fridgeIsOpen &&
-            panIsOn
+            panOn
         ) {
             return fridgeOpenPan;
         }
@@ -272,8 +279,8 @@ export default function KitchenScreen({
          */
 
         if (
-            boilerIsOn &&
-            panIsOn
+            boilerOn &&
+            panOn
         ) {
             return boilerPanOn;
         }
@@ -292,8 +299,8 @@ export default function KitchenScreen({
          * ONLY BOILER
          */
 
-        if (boilerIsOn) {
-            return boilerOn;
+        if (boilerOn) {
+            return boilerOnImage;
         }
 
 
@@ -301,8 +308,8 @@ export default function KitchenScreen({
          * ONLY PAN
          */
 
-        if (panIsOn) {
-            return panOn;
+        if (panOn) {
+            return panOnImage;
         }
 
 
@@ -326,8 +333,8 @@ export default function KitchenScreen({
 
     const currentState =
         `Fridge: ${fridgeIsOpen ? "OPEN" : "CLOSED"}
-Boiler: ${boilerIsOn ? "ON" : "OFF"}
-Pan: ${panIsOn ? "ON" : "OFF"}`;
+Boiler: ${boilerOn ? "ON" : "OFF"}
+Pan: ${panOn ? "ON" : "OFF"}`;
 
 
     return (
@@ -431,7 +438,7 @@ Pan: ${panIsOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-                DEBUG PANEL
+                DEBUG
             ====================================================== */}
 
             <div
