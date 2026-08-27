@@ -38,53 +38,8 @@ interface Inventory {
     [key: string]: number;
 }
 
-interface PanScreenProps {
-    panOn: boolean;
 
-    onBack: () => void;
-
-    inventory: Inventory;
-
-    onRemoveIngredient: (
-        ingredient: string
-    ) => void;
-}
-
-
-/*
- * =========================================================
- * PAN STATES
- * =========================================================
- *
- * This is effectively the state machine for the recipe.
- *
- * IDLE
- *   ↓
- * OIL
- *   ↓
- * GARLIC
- *   ↓
- * CARROT
- *   ↓
- * RICE
- *   ↓
- * EGG
- *   ↓
- * SOY
- *   ↓
- * GREEN ONION
- *   ↓
- * STIRRING
- *   ↓
- * FRIED RICE
- *   ↓
- * READY
- *   ↓
- * READY / STOVE OFF
- * =========================================================
- */
-
-type PanStage =
+export type PanStage =
     | "idle"
     | "oil"
     | "garlic"
@@ -99,30 +54,7 @@ type PanStage =
     | "ready_stove_off";
 
 
-/*
- * =========================================================
- * DSA — QUEUE
- * =========================================================
- *
- * FIFO = First In, First Out.
- *
- * The recipe is stored as a queue.
- *
- * enqueue()
- *     Adds a cooking action to the back.
- *
- * peek()
- *     Looks at the next required action.
- *
- * dequeue()
- *     Removes the action only after it is completed.
- *
- * This means the player cannot skip directly to soy sauce,
- * rice, etc.
- * =========================================================
- */
-
-type CookingAction =
+export type CookingAction =
     | "cooking_oil"
     | "cut_garlic"
     | "cut_carrot"
@@ -133,50 +65,72 @@ type CookingAction =
     | "stir";
 
 
+interface PanProgress {
+    stage: PanStage;
+    completedActions: CookingAction[];
+    isStirring: boolean;
+}
+
+
+/*
+ * =========================================================
+ * QUEUE
+ * =========================================================
+ */
+
 class CookingQueue<T> {
 
     private items: T[] = [];
 
-
-    /*
-     * Add an item to the back.
-     */
     enqueue(item: T) {
         this.items.push(item);
     }
 
-
-    /*
-     * Look at the next item without removing it.
-     */
     peek(): T | undefined {
         return this.items[0];
     }
 
-
-    /*
-     * Remove the first item.
-     */
     dequeue(): T | undefined {
         return this.items.shift();
     }
 
-
-    /*
-     * Number of remaining actions.
-     */
     get size(): number {
         return this.items.length;
     }
 
-
-    /*
-     * Useful for displaying the queue
-     * during development/demo.
-     */
     toArray(): T[] {
         return [...this.items];
     }
+}
+
+
+/*
+ * =========================================================
+ * PROPS
+ * =========================================================
+ */
+
+interface PanScreenProps {
+
+    panOn: boolean;
+
+    onBack: () => void;
+
+    inventory: Inventory;
+
+    onRemoveIngredient: (
+        ingredient: string
+    ) => void;
+
+    /*
+     * Persistent progress owned by CookingGame.
+     */
+
+    panProgress: PanProgress;
+
+    setPanProgress: React.Dispatch<
+        React.SetStateAction<PanProgress>
+    >;
 }
 
 
@@ -191,21 +145,21 @@ export default function PanScreen({
     onBack,
     inventory,
     onRemoveIngredient,
+    panProgress,
+    setPanProgress,
 }: PanScreenProps) {
 
+
     /*
- * =========================================================
- * COOKING AUDIO
- * =========================================================
- */
+     * =========================================================
+     * AUDIO
+     * =========================================================
+     */
 
     const fryingAudio =
         useRef<HTMLAudioElement | null>(null);
 
     const eggFryingAudio =
-        useRef<HTMLAudioElement | null>(null);
-
-    const stirAudio =
         useRef<HTMLAudioElement | null>(null);
 
     const completeAudio =
@@ -224,65 +178,35 @@ export default function PanScreen({
         eggFryingAudio.current =
             new Audio("/audio/frying-egg.wav");
 
-        stirAudio.current =
-            new Audio("/audio/stir.wav");
-
         completeAudio.current =
             new Audio("/audio/food-ready.wav");
-
-
-        /*
-         * Frying should loop while cooking.
-         */
 
         fryingAudio.current.loop = true;
 
         eggFryingAudio.current.loop = true;
 
 
-        /*
-         * Cleanup when leaving PanScreen.
-         */
-
         return () => {
 
             fryingAudio.current?.pause();
             eggFryingAudio.current?.pause();
-            stirAudio.current?.pause();
             completeAudio.current?.pause();
 
             fryingAudio.current = null;
             eggFryingAudio.current = null;
-            stirAudio.current = null;
             completeAudio.current = null;
         };
 
     }, []);
 
-    /*
- * =========================================================
- * STOVE AUDIO SAFETY
- * =========================================================
- */
-
-    useEffect(() => {
-
-        if (!panOn) {
-
-            stopFryingAudio();
-
-            stopEggFryingAudio();
-        }
-
-    }, [panOn]);
 
     /*
- * =========================================================
- * AUDIO HELPERS
- * =========================================================
- */
+     * =========================================================
+     * AUDIO HELPERS
+     * =========================================================
+     */
 
-    const stopFryingAudio = () => {
+    const stopFryingAudio = useCallback(() => {
 
         if (fryingAudio.current) {
 
@@ -290,10 +214,11 @@ export default function PanScreen({
 
             fryingAudio.current.currentTime = 0;
         }
-    };
+
+    }, []);
 
 
-    const stopEggFryingAudio = () => {
+    const stopEggFryingAudio = useCallback(() => {
 
         if (eggFryingAudio.current) {
 
@@ -301,192 +226,228 @@ export default function PanScreen({
 
             eggFryingAudio.current.currentTime = 0;
         }
-    };
+
+    }, []);
 
 
-    const startFryingAudio = () => {
-
-        /*
-         * Do not play cooking audio while
-         * the stove is off.
-         */
+    const startFryingAudio = useCallback(() => {
 
         if (!panOn) {
             return;
         }
-
-        /*
-         * Egg frying must be stopped first.
-         */
 
         stopEggFryingAudio();
 
         fryingAudio.current
             ?.play()
-            .catch(() => { });
-    };
+            .catch((error) => {
+                console.warn(
+                    "Could not play frying.wav:",
+                    error
+                );
+            });
+
+    }, [
+        panOn,
+        stopEggFryingAudio,
+    ]);
 
 
-    const startEggFryingAudio = () => {
+    const startEggFryingAudio = useCallback(() => {
 
         if (!panOn) {
             return;
         }
 
-        /*
-         * Normal frying sound stops
-         * when the egg enters.
-         */
-
         stopFryingAudio();
 
         eggFryingAudio.current
             ?.play()
-            .catch(() => { });
-    };
+            .catch((error) => {
+                console.warn(
+                    "Could not play frying-egg.wav:",
+                    error
+                );
+            });
 
-    /*
-     * =========================================================
-     * PAN STAGE
-     * =========================================================
-     */
-
-    const [
-        panStage,
-        setPanStage,
-    ] = useState<PanStage>(
-        panOn ? "idle" : "idle"
-    );
+    }, [
+        panOn,
+        stopFryingAudio,
+    ]);
 
 
     /*
      * =========================================================
-     * STIRRING
-     * =========================================================
-     */
-
-    const [
-        isStirring,
-        setIsStirring,
-    ] = useState(false);
-
-
-    /*
-     * =========================================================
-     * DSA — RECIPE QUEUE
+     * QUEUE
      * =========================================================
      *
-     * The queue is created once.
+     * IMPORTANT:
      *
-     * It does NOT reset on every render.
+     * The queue is reconstructed from completedActions.
+     *
+     * Therefore leaving PanScreen does NOT destroy progress.
      */
 
     const recipeQueue =
-        useRef<CookingQueue<CookingAction> | null>(
-            null
-        );
+        useMemo(() => {
 
+            const queue =
+                new CookingQueue<CookingAction>();
 
-    /*
-     * Initialize the queue once.
-     */
+            const recipe: CookingAction[] = [
 
-    if (!recipeQueue.current) {
+                "cooking_oil",
+                "cut_garlic",
+                "cut_carrot",
+                "rice",
+                "egg",
+                "soy_sauce",
+                "cut_green_onion",
+                "stir",
 
-        const queue =
-            new CookingQueue<CookingAction>();
+            ];
 
-        /*
-         * =====================================================
-         * FRIED RICE RECIPE QUEUE
-         * =====================================================
-         *
-         * FIFO ORDER:
-         *
-         * 1. Oil
-         * 2. Cut garlic
-         * 3. Cut carrot
-         * 4. Rice
-         * 5. Egg
-         * 6. Soy sauce
-         * 7. Cut green onion
-         * 8. Stir
-         */
+            for (
+                const action
+                of recipe
+            ) {
 
-        queue.enqueue(
-            "cooking_oil"
-        );
+                if (
+                    !panProgress.completedActions.includes(
+                        action
+                    )
+                ) {
 
-        queue.enqueue(
-            "cut_garlic"
-        );
+                    queue.enqueue(
+                        action
+                    );
+                }
+            }
 
-        queue.enqueue(
-            "cut_carrot"
-        );
+            return queue;
 
-        queue.enqueue(
-            "rice"
-        );
+        }, [
+            panProgress.completedActions,
+        ]);
 
-        queue.enqueue(
-            "egg"
-        );
-
-        queue.enqueue(
-            "soy_sauce"
-        );
-
-        queue.enqueue(
-            "cut_green_onion"
-        );
-
-        queue.enqueue(
-            "stir"
-        );
-
-        recipeQueue.current =
-            queue;
-    }
-
-
-    /*
-     * =========================================================
-     * CURRENT REQUIRED ACTION
-     * =========================================================
-     *
-     * Queue peek().
-     */
 
     const nextAction =
-        recipeQueue.current?.peek();
+        recipeQueue.peek();
 
 
     /*
      * =========================================================
-     * DSA — COMPLETED ACTIONS
+     * CURRENT STAGE
      * =========================================================
-     *
-     * A Set gives us fast membership checking.
-     *
-     * This is also useful for demonstrating another
-     * standard data structure.
      */
 
-    const [
-        completedActions,
-        setCompletedActions,
-    ] = useState<
-        Set<CookingAction>
-    >(
-        () =>
-            new Set<CookingAction>()
-    );
+    const panStage =
+        panProgress.stage;
+
+
+    const isStirring =
+        panProgress.isStirring;
 
 
     /*
      * =========================================================
-     * COMPLETE QUEUE ACTION
+     * KEEP AUDIO IN SYNC WITH CURRENT STATE
+     * =========================================================
+     *
+     * This is especially important when returning to PanScreen.
+     *
+     * Example:
+     *
+     * Leave while frying rice
+     *       ↓
+     * return to PanScreen
+     *       ↓
+     * frying.wav starts again
+     *
+     * The previous PanScreen audio instance was destroyed,
+     * so we safely create/play a new one here.
+     */
+
+    useEffect(() => {
+
+        if (!panOn) {
+
+            stopFryingAudio();
+            stopEggFryingAudio();
+
+            return;
+        }
+
+
+        /*
+         * No cooking sound before oil.
+         */
+
+        if (
+            panStage === "idle"
+        ) {
+
+            stopFryingAudio();
+            stopEggFryingAudio();
+
+            return;
+        }
+
+
+        /*
+         * Egg stage gets its own sound.
+         */
+
+        if (
+            panStage === "egg"
+        ) {
+
+            startEggFryingAudio();
+
+            return;
+        }
+
+
+        /*
+         * Normal cooking stages use frying.wav.
+         */
+
+        if (
+            panStage === "oil" ||
+            panStage === "garlic" ||
+            panStage === "carrot" ||
+            panStage === "rice" ||
+            panStage === "soy" ||
+            panStage === "green_onion"
+        ) {
+
+            startFryingAudio();
+
+            return;
+        }
+
+
+        /*
+         * Stirring / completed food should
+         * have no frying sound.
+         */
+
+        stopFryingAudio();
+        stopEggFryingAudio();
+
+    }, [
+        panOn,
+        panStage,
+        startFryingAudio,
+        startEggFryingAudio,
+        stopFryingAudio,
+        stopEggFryingAudio,
+    ]);
+
+
+    /*
+     * =========================================================
+     * COMPLETE ACTION
      * =========================================================
      */
 
@@ -495,126 +456,102 @@ export default function PanScreen({
             action: CookingAction
         ) => {
 
-            const queue =
-                recipeQueue.current;
-
-            if (!queue) {
-                return;
-            }
-
-
-            /*
-             * =================================================
-             * QUEUE CHECK
-             * =================================================
-             *
-             * The player can ONLY perform the action
-             * currently at the front of the queue.
-             */
-
             if (
-                queue.peek() !== action
+                recipeQueue.peek() !== action
             ) {
                 return;
             }
 
 
-            /*
-             * Remove the completed action
-             * from the queue.
-             */
-
-            const completed =
-                queue.dequeue();
-
-            if (!completed) {
-                return;
-            }
-
-
-            /*
-             * Add the action to our Set.
-             */
-
-            setCompletedActions(
+            setPanProgress(
                 (current) => {
 
-                    const next =
-                        new Set(current);
+                    /*
+                     * Don't duplicate actions.
+                     */
 
-                    next.add(completed);
+                    if (
+                        current.completedActions.includes(
+                            action
+                        )
+                    ) {
 
-                    return next;
+                        return current;
+                    }
+
+
+                    const completedActions = [
+                        ...current.completedActions,
+                        action,
+                    ];
+
+
+                    let nextStage =
+                        current.stage;
+
+
+                    switch (action) {
+
+                        case "cooking_oil":
+                            nextStage = "oil";
+                            break;
+
+                        case "cut_garlic":
+                            nextStage = "garlic";
+                            break;
+
+                        case "cut_carrot":
+                            nextStage = "carrot";
+                            break;
+
+                        case "rice":
+                            nextStage = "rice";
+                            break;
+
+                        case "egg":
+                            nextStage = "egg";
+                            break;
+
+                        case "soy_sauce":
+                            nextStage = "soy";
+                            break;
+
+                        case "cut_green_onion":
+                            nextStage =
+                                "green_onion";
+                            break;
+
+                        case "stir":
+                            nextStage =
+                                "stirring";
+                            break;
+                    }
+
+
+                    return {
+
+                        ...current,
+
+                        stage:
+                            nextStage,
+
+                        completedActions,
+
+                    };
                 }
             );
 
-
-            /*
-             * =================================================
-             * STATE MACHINE TRANSITION
-             * =================================================
-             */
-
-            switch (completed) {
-
-                case "cooking_oil":
-
-                    setPanStage("oil");
-
-                    startFryingAudio();
-
-                    break;
-
-                case "cut_garlic":
-                    setPanStage("garlic");
-                    break;
-
-                case "cut_carrot":
-                    setPanStage("carrot");
-                    break;
-
-                case "rice":
-                    setPanStage("rice");
-                    break;
-
-                case "egg":
-
-                    setPanStage("egg");
-
-                    startEggFryingAudio();
-
-                    break;
-
-                case "soy_sauce":
-
-                    setPanStage("soy");
-
-                    stopEggFryingAudio();
-
-                    startFryingAudio();
-
-                    break;
-
-                case "cut_green_onion":
-                    setPanStage(
-                        "green_onion"
-                    );
-                    break;
-
-                case "stir":
-                    setPanStage(
-                        "stirring"
-                    );
-                    break;
-            }
         },
-        [panOn]
+        [
+            recipeQueue,
+            setPanProgress,
+        ]
     );
 
 
     /*
      * =========================================================
-     * DRAG/DROP DATA
+     * PAN DRAG OVER
      * =========================================================
      */
 
@@ -642,23 +579,23 @@ export default function PanScreen({
         event.preventDefault();
 
 
+        /*
+         * Stove must be ON.
+         */
+
+        if (!panOn) {
+            return;
+        }
+
+
         const ingredient =
             event.dataTransfer.getData(
                 "application/x-cutting-board-ingredient"
             );
 
 
-        /*
-         * =====================================================
-         * QUEUE PEEK
-         * =====================================================
-         *
-         * We inspect the next recipe action BEFORE
-         * changing anything.
-         */
-
         const next =
-            recipeQueue.current?.peek();
+            recipeQueue.peek();
 
 
         if (!next) {
@@ -666,120 +603,122 @@ export default function PanScreen({
         }
 
 
-        /*
-         * =====================================================
-         * MATCH INVENTORY ITEM TO QUEUE ACTION
-         * =====================================================
-         */
-
         let matchedAction:
             CookingAction | null =
             null;
 
 
         /*
+         * =====================================================
          * OIL
+         * =====================================================
          */
 
         if (
             next === "cooking_oil" &&
-            (
-                ingredient ===
-                "cooking_oil"
-            )
+            ingredient === "cooking_oil"
         ) {
+
             matchedAction =
                 "cooking_oil";
         }
 
 
         /*
+         * =====================================================
          * GARLIC
          *
-         * Accept cut_garlic.
+         * ONLY cut_garlic is accepted.
          *
-         * We also accept garlic so the PanScreen remains
-         * tolerant while you are testing the cutting flow.
+         * Plain "garlic" is intentionally rejected.
+         * =====================================================
          */
 
         if (
             next === "cut_garlic" &&
             ingredient === "cut_garlic"
         ) {
+
             matchedAction =
                 "cut_garlic";
         }
 
 
         /*
+         * =====================================================
          * CARROT
+         * =====================================================
          */
 
         if (
             next === "cut_carrot" &&
-            (
-                ingredient ===
-                "cut_carrot"
-            )
+            ingredient === "cut_carrot"
         ) {
+
             matchedAction =
                 "cut_carrot";
         }
 
 
         /*
+         * =====================================================
          * RICE
+         * =====================================================
          */
 
         if (
             next === "rice" &&
-            ingredient ===
-            "rice"
+            ingredient === "rice"
         ) {
+
             matchedAction =
                 "rice";
         }
 
 
         /*
+         * =====================================================
          * EGG
+         * =====================================================
          */
 
         if (
             next === "egg" &&
-            ingredient ===
-            "egg"
+            ingredient === "egg"
         ) {
+
             matchedAction =
                 "egg";
         }
 
 
         /*
+         * =====================================================
          * SOY SAUCE
+         * =====================================================
          */
 
         if (
             next === "soy_sauce" &&
-            ingredient ===
-            "soy_sauce"
+            ingredient === "soy_sauce"
         ) {
+
             matchedAction =
                 "soy_sauce";
         }
 
 
         /*
+         * =====================================================
          * GREEN ONION
+         * =====================================================
          */
 
         if (
             next === "cut_green_onion" &&
-            (
-                ingredient ===
-                "cut_green_onion"
-            )
+            ingredient === "cut_green_onion"
         ) {
+
             matchedAction =
                 "cut_green_onion";
         }
@@ -787,8 +726,6 @@ export default function PanScreen({
 
         /*
          * Wrong ingredient.
-         *
-         * Nothing changes.
          */
 
         if (!matchedAction) {
@@ -798,19 +735,12 @@ export default function PanScreen({
 
         /*
          * =====================================================
-         * CONSUMABLE VS REUSABLE
+         * CONSUME INGREDIENT
          * =====================================================
-         *
-         * Oil is treated as consumed.
-         *
-         * Soy sauce is intentionally NOT removed.
-         *
-         * This keeps the seasoning bottle reusable.
          */
 
         if (
-            matchedAction ===
-            "cooking_oil"
+            matchedAction === "cooking_oil"
         ) {
 
             onRemoveIngredient(
@@ -819,21 +749,12 @@ export default function PanScreen({
         }
 
 
-        /*
-         * Normal ingredients are consumed.
-         */
-
         if (
-            matchedAction ===
-            "cut_garlic" ||
-            matchedAction ===
-            "cut_carrot" ||
-            matchedAction ===
-            "rice" ||
-            matchedAction ===
-            "egg" ||
-            matchedAction ===
-            "cut_green_onion"
+            matchedAction === "cut_garlic" ||
+            matchedAction === "cut_carrot" ||
+            matchedAction === "rice" ||
+            matchedAction === "egg" ||
+            matchedAction === "cut_green_onion"
         ) {
 
             onRemoveIngredient(
@@ -843,19 +764,18 @@ export default function PanScreen({
 
 
         /*
-         * Soy sauce is deliberately reusable.
-         *
-         * DO NOT call onRemoveIngredient().
+         * Soy sauce intentionally remains reusable.
          */
 
 
         /*
-         * Complete the queue action.
+         * Complete action.
          */
 
         completeAction(
             matchedAction
         );
+
     };
 
 
@@ -863,65 +783,82 @@ export default function PanScreen({
      * =========================================================
      * STIR
      * =========================================================
-     *
-     * Stir is the final queue action.
-     *
-     * We use a short timer to simulate the cooking process.
      */
 
     const handleStir = () => {
 
         if (
-            nextAction !==
-            "stir"
+            nextAction !== "stir"
         ) {
+
             return;
         }
+
 
         if (isStirring) {
             return;
         }
+
 
         if (!panOn) {
             return;
         }
 
 
-        setIsStirring(true);
-
-
         /*
-         * Stop normal frying while stirring.
+         * Stop cooking sounds.
          */
 
         stopFryingAudio();
-
         stopEggFryingAudio();
 
 
         /*
-         * Complete the queue action.
+         * Mark stirring immediately.
          */
 
-        completeAction(
-            "stir"
-        );
+        setPanProgress(
+            (current) => {
 
-        setPanStage(
-            "fried_rice"
+                if (
+                    current.isStirring
+                ) {
+
+                    return current;
+                }
+
+
+                return {
+
+                    ...current,
+
+                    stage:
+                        "stirring",
+
+                    isStirring:
+                        true,
+
+                    completedActions:
+                        current.completedActions.includes(
+                            "stir"
+                        )
+                            ? current.completedActions
+                            : [
+                                ...current.completedActions,
+                                "stir",
+                            ],
+                };
+
+            }
         );
 
 
         /*
-         * =========================================================
+         * =====================================================
          * STIR SOUND
-         * =========================================================
+         * =====================================================
          *
-         * Play the same stir sound 3 times.
-         *
-         * We deliberately create a fresh Audio object
-         * for each repetition so the sound can restart
-         * cleanly even if the WAV is still playing.
+         * Play stir.wav three times.
          */
 
         let stirCount = 0;
@@ -932,27 +869,40 @@ export default function PanScreen({
                 return;
             }
 
+
             stirCount += 1;
 
+
             const sound =
-                new Audio("/audio/stir.wav");
+                new Audio(
+                    "/audio/stir.wav"
+                );
+
 
             sound.currentTime = 0;
 
-            sound.play().catch(() => { });
+
+            sound.play()
+                .catch((error) => {
+
+                    console.warn(
+                        "Could not play stir.wav:",
+                        error
+                    );
+
+                });
 
 
-            /*
-             * Play three times total.
-             */
-
-            if (stirCount < 3) {
+            if (
+                stirCount < 3
+            ) {
 
                 window.setTimeout(
                     playStir,
                     700
                 );
             }
+
         };
 
 
@@ -960,31 +910,53 @@ export default function PanScreen({
 
 
         /*
-         * =========================================================
-         * READY
-         * =========================================================
-         *
-         * After stirring finishes, play complete.wav.
+         * =====================================================
+         * FOOD READY
+         * =====================================================
          */
 
         window.setTimeout(() => {
 
-            setIsStirring(false);
+            setPanProgress(
+                (current) => ({
 
-            setPanStage(
-                "ready"
+                    ...current,
+
+                    stage:
+                        "ready",
+
+                    isStirring:
+                        false,
+
+                })
             );
 
 
             /*
-             * Fried rice is now complete.
+             * Play food-ready.wav.
              */
 
-            completeAudio.current
-                ?.play()
-                .catch(() => { });
+            if (
+                completeAudio.current
+            ) {
+
+                completeAudio.current
+                    .currentTime = 0;
+
+                completeAudio.current
+                    .play()
+                    .catch((error) => {
+
+                        console.warn(
+                            "Could not play food-ready.wav:",
+                            error
+                        );
+
+                    });
+            }
 
         }, 3000);
+
     };
 
 
@@ -997,31 +969,34 @@ export default function PanScreen({
     const handleTurnOffStove = () => {
 
         if (
-            panStage !==
-            "ready"
+            panStage !== "ready"
         ) {
+
             return;
         }
 
 
-        /*
-         * Stop any remaining cooking audio.
-         */
-
         stopFryingAudio();
-
         stopEggFryingAudio();
 
 
-        setPanStage(
-            "ready_stove_off"
+        setPanProgress(
+            (current) => ({
+
+                ...current,
+
+                stage:
+                    "ready_stove_off",
+
+            })
         );
+
     };
 
 
     /*
      * =========================================================
-     * CURRENT PAN IMAGE
+     * CURRENT IMAGE
      * =========================================================
      */
 
@@ -1066,6 +1041,7 @@ export default function PanScreen({
                     return panOn
                         ? panInnerOn
                         : panInner;
+
             }
 
         }, [
@@ -1076,7 +1052,7 @@ export default function PanScreen({
 
     /*
      * =========================================================
-     * HUMAN-READABLE NEXT STEP
+     * NEXT ACTION TEXT
      * =========================================================
      */
 
@@ -1111,6 +1087,7 @@ export default function PanScreen({
 
                 default:
                     return "Fried rice complete!";
+
             }
 
         }, [
@@ -1125,6 +1102,7 @@ export default function PanScreen({
      */
 
     return (
+
         <div
             onDragOver={
                 handlePanDragOver
@@ -1148,15 +1126,13 @@ export default function PanScreen({
             }}
         >
 
-
             {/* =================================================
-                PAN INTERIOR
+                PAN
             ================================================= */}
 
             <img
                 src={
-                    typeof currentImage ===
-                        "string"
+                    typeof currentImage === "string"
                         ? currentImage
                         : currentImage.src
                 }
@@ -1209,7 +1185,8 @@ export default function PanScreen({
                     background:
                         "transparent",
 
-                    cursor: "pointer",
+                    cursor:
+                        "pointer",
 
                     zIndex: 100,
 
@@ -1217,27 +1194,24 @@ export default function PanScreen({
                         "transform 140ms ease",
                 }}
 
-                onMouseEnter={(
-                    event
-                ) => {
+                onMouseEnter={(event) => {
 
                     event.currentTarget.style.transform =
                         "scale(1.043)";
+
                 }}
 
-                onMouseLeave={(
-                    event
-                ) => {
+                onMouseLeave={(event) => {
 
                     event.currentTarget.style.transform =
                         "scale(1)";
+
                 }}
             >
 
                 <img
                     src={
-                        typeof backButton ===
-                            "string"
+                        typeof backButton === "string"
                             ? backButton
                             : backButton.src
                     }
@@ -1268,176 +1242,174 @@ export default function PanScreen({
             {panStage !==
                 "ready_stove_off" && (
 
-                    <div
-                        style={{
-                            position:
-                                "absolute",
+                <div
+                    style={{
+                        position:
+                            "absolute",
 
-                            left: "50%",
+                        left: "50%",
 
-                            top: "8%",
+                        top: "8%",
 
-                            transform:
-                                "translateX(-50%)",
+                        transform:
+                            "translateX(-50%)",
 
-                            zIndex: 90,
+                        zIndex: 90,
 
-                            color:
-                                "rgba(104,67,41,0.9)",
+                        color:
+                            "rgba(104,67,41,0.9)",
 
-                            fontSize:
-                                "20px",
+                        fontSize:
+                            "20px",
 
-                            fontWeight: 700,
+                        fontWeight:
+                            700,
 
-                            textAlign:
-                                "center",
+                        textAlign:
+                            "center",
 
-                            pointerEvents:
-                                "none",
+                        pointerEvents:
+                            "none",
 
-                            whiteSpace:
-                                "nowrap",
-                        }}
-                    >
-                        {nextActionText}
-                    </div>
-                )}
+                        whiteSpace:
+                            "nowrap",
+                    }}
+                >
+                    {nextActionText}
+                </div>
+            )}
 
 
             {/* =================================================
-                STIR BUTTON
-            =================================================
-            
-                Stir is represented as the final action in
-                the recipe queue.
-            
-                It only appears when every ingredient has
-                been added in the correct FIFO order.
+                STIR
             ================================================= */}
 
             {nextAction ===
                 "stir" && (
 
-                    <button
-                        type="button"
+                <button
+                    type="button"
 
-                        onClick={
-                            handleStir
-                        }
+                    onClick={
+                        handleStir
+                    }
 
-                        disabled={
+                    disabled={
+                        isStirring
+                    }
+
+                    style={{
+                        position:
+                            "absolute",
+
+                        left: "50%",
+
+                        bottom: "22%",
+
+                        transform:
+                            "translateX(-50%)",
+
+                        padding:
+                            "14px 28px",
+
+                        border:
+                            "none",
+
+                        borderRadius:
+                            "12px",
+
+                        background:
+                            "rgba(156,66,66,0.95)",
+
+                        color:
+                            "#fff",
+
+                        fontFamily:
+                            "Comfortaa, sans-serif",
+
+                        fontSize:
+                            "18px",
+
+                        fontWeight:
+                            700,
+
+                        cursor:
                             isStirring
-                        }
+                                ? "default"
+                                : "pointer",
 
-                        style={{
-                            position:
-                                "absolute",
+                        zIndex: 95,
 
-                            left: "50%",
+                        opacity:
+                            isStirring
+                                ? 0.6
+                                : 1,
+                    }}
+                >
 
-                            bottom: "22%",
+                    {isStirring
+                        ? "STIRRING..."
+                        : "STIR"}
 
-                            transform:
-                                "translateX(-50%)",
-
-                            padding:
-                                "14px 28px",
-
-                            border:
-                                "none",
-
-                            borderRadius:
-                                "12px",
-
-                            background:
-                                "rgba(156,66,66,0.95)",
-
-                            color:
-                                "#fff",
-
-                            fontFamily:
-                                "Comfortaa, sans-serif",
-
-                            fontSize:
-                                "18px",
-
-                            fontWeight: 700,
-
-                            cursor:
-                                isStirring
-                                    ? "default"
-                                    : "pointer",
-
-                            zIndex: 95,
-
-                            opacity:
-                                isStirring
-                                    ? 0.6
-                                    : 1,
-                        }}
-                    >
-                        {isStirring
-                            ? "STIRRING..."
-                            : "STIR"}
-                    </button>
-                )}
+                </button>
+            )}
 
 
             {/* =================================================
-                STOVE OFF
+                TURN STOVE OFF
             ================================================= */}
 
             {panStage ===
                 "ready" && (
 
-                    <button
-                        type="button"
+                <button
+                    type="button"
 
-                        onClick={
-                            handleTurnOffStove
-                        }
+                    onClick={
+                        handleTurnOffStove
+                    }
 
-                        style={{
-                            position:
-                                "absolute",
+                    style={{
+                        position:
+                            "absolute",
 
-                            right: "7%",
+                        right: "7%",
 
-                            top: "12%",
+                        top: "12%",
 
-                            padding:
-                                "12px 20px",
+                        padding:
+                            "12px 20px",
 
-                            border:
-                                "none",
+                        border:
+                            "none",
 
-                            borderRadius:
-                                "10px",
+                        borderRadius:
+                            "10px",
 
-                            background:
-                                "rgba(156,66,66,0.95)",
+                        background:
+                            "rgba(156,66,66,0.95)",
 
-                            color:
-                                "#fff",
+                        color:
+                            "#fff",
 
-                            fontFamily:
-                                "Comfortaa, sans-serif",
+                        fontFamily:
+                            "Comfortaa, sans-serif",
 
-                            fontSize:
-                                "15px",
+                        fontSize:
+                            "15px",
 
-                            fontWeight: 700,
+                        fontWeight:
+                            700,
 
-                            cursor:
-                                "pointer",
+                        cursor:
+                            "pointer",
 
-                            zIndex: 95,
-                        }}
-                    >
-                        TURN STOVE OFF
-                    </button>
-                )}
+                        zIndex: 95,
+                    }}
+                >
+                    TURN STOVE OFF
+                </button>
+            )}
 
 
             {/* =================================================
@@ -1447,58 +1419,46 @@ export default function PanScreen({
             {panStage ===
                 "ready_stove_off" && (
 
-                    <div
-                        style={{
-                            position:
-                                "absolute",
+                <div
+                    style={{
+                        position:
+                            "absolute",
 
-                            left: "50%",
+                        left: "50%",
 
-                            top: "12%",
+                        top: "12%",
 
-                            transform:
-                                "translateX(-50%)",
+                        transform:
+                            "translateX(-50%)",
 
-                            color:
-                                "rgb(104,67,41)",
+                        color:
+                            "rgb(104,67,41)",
 
-                            fontFamily:
-                                "Comfortaa, sans-serif",
+                        fontFamily:
+                            "Comfortaa, sans-serif",
 
-                            fontSize:
-                                "24px",
+                        fontSize:
+                            "24px",
 
-                            fontWeight: 700,
+                        fontWeight:
+                            700,
 
-                            zIndex: 90,
+                        zIndex: 90,
 
-                            pointerEvents:
-                                "none",
+                        pointerEvents:
+                            "none",
 
-                            textAlign:
-                                "center",
-                        }}
-                    >
-                        Fried Rice Ready!
-                    </div>
-                )}
+                        textAlign:
+                            "center",
+                    }}
+                >
+                    Fried Rice Ready!
+                </div>
+            )}
 
 
             {/* =================================================
-                DSA DEBUG PANEL
-            =================================================
-            
-                This is useful for your project demonstration.
-            
-                It visibly shows:
-            
-                • Queue
-                • peek()
-                • queue size
-                • completed Set
-            
-                Remove this entire block before final submission
-                if you don't want the debug information visible.
+                DSA DEBUG
             ================================================= */}
 
             <div
@@ -1506,11 +1466,14 @@ export default function PanScreen({
                     position:
                         "absolute",
 
-                    right: "15px",
+                    right:
+                        "15px",
 
-                    top: "15px",
+                    top:
+                        "15px",
 
-                    width: "230px",
+                    width:
+                        "230px",
 
                     padding:
                         "12px",
@@ -1533,7 +1496,8 @@ export default function PanScreen({
                     lineHeight:
                         1.6,
 
-                    zIndex: 200,
+                    zIndex:
+                        200,
 
                     pointerEvents:
                         "none",
@@ -1557,8 +1521,7 @@ export default function PanScreen({
 
                 <div>
                     size:{" "}
-                    {recipeQueue.current
-                        ?.size ?? 0}
+                    {recipeQueue.size}
                 </div>
 
                 <div>
@@ -1575,8 +1538,8 @@ export default function PanScreen({
                     Queue:
                 </div>
 
-                {recipeQueue.current
-                    ?.toArray()
+                {recipeQueue
+                    .toArray()
                     .map(
                         (
                             action,
@@ -1587,10 +1550,10 @@ export default function PanScreen({
                                 key={
                                     `${action}-${index}`
                                 }
+
                                 style={{
                                     opacity:
-                                        index ===
-                                            0
+                                        index === 0
                                             ? 1
                                             : 0.55,
                                 }}
@@ -1608,7 +1571,11 @@ export default function PanScreen({
                     }}
                 >
                     Completed:{" "}
-                    {completedActions.size}
+                    {
+                        panProgress
+                            .completedActions
+                            .length
+                    }
                 </div>
 
             </div>
@@ -1619,6 +1586,7 @@ export default function PanScreen({
             ================================================= */}
 
             <InventoryBar
+
                 inventory={
                     inventory
                 }
@@ -1632,22 +1600,15 @@ export default function PanScreen({
                     event
                 ) => {
 
-                    /*
-                     * PanScreen uses the same drag
-                     * data-transfer system as the
-                     * cutting board.
-                     *
-                     * InventoryBar can be expanded
-                     * to allow additional ingredients.
-                     */
-
                     event.dataTransfer.setData(
                         "application/x-cutting-board-ingredient",
                         ingredient
                     );
+
                 }}
 
                 onIngredientDragEnd={() => { }}
+
             />
 
         </div>

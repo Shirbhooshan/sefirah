@@ -58,6 +58,38 @@ type CookingGameScreen =
   | "boiler"
   | "pan";
 
+type PanStage =
+  | "idle"
+  | "oil"
+  | "garlic"
+  | "carrot"
+  | "rice"
+  | "egg"
+  | "soy"
+  | "green_onion"
+  | "stirring"
+  | "fried_rice"
+  | "ready"
+  | "ready_stove_off";
+
+type CookingAction =
+  | "cooking_oil"
+  | "cut_garlic"
+  | "cut_carrot"
+  | "rice"
+  | "egg"
+  | "soy_sauce"
+  | "cut_green_onion"
+  | "stir";
+
+interface PanProgress {
+  stage: PanStage;
+
+  completedActions: CookingAction[];
+
+  isStirring: boolean;
+}
+
 export default function CookingGame({
   onClose,
   onMove,
@@ -94,6 +126,27 @@ export default function CookingGame({
 
   const [panOn, setPanOn] =
     useState(false);
+
+  /*
+   * =========================================================
+   * PERSISTENT PAN PROGRESS
+   * =========================================================
+   *
+   * This state belongs to CookingGame rather than PanScreen.
+   *
+   * Therefore leaving PanScreen does NOT reset the recipe.
+   */
+
+  const [
+    panProgress,
+    setPanProgress,
+  ] = useState<PanProgress>({
+    stage: "idle",
+
+    completedActions: [],
+
+    isStirring: false,
+  });
 
   /*
    * =========================================================
@@ -951,10 +1004,21 @@ export default function CookingGame({
         {currentScreen === "pan" && (
           <PanScreen
             onBack={goBackToKitchen}
+
             panOn={panOn}
+
             inventory={inventory}
+
             onRemoveIngredient={
               removeIngredient
+            }
+
+            panProgress={
+              panProgress
+            }
+
+            setPanProgress={
+              setPanProgress
             }
           />
         )}
