@@ -8,8 +8,20 @@ import backButton from "@/assets/media/mise-en-place/buttons/back-button-1.png";
 import greenOnionImage from "@/assets/media/mise-en-place/icons/green-onion.png";
 import eggImage from "@/assets/media/mise-en-place/icons/egg.png";
 import carrotImage from "@/assets/media/mise-en-place/icons/carrot.png";
-import onionImage from "@/assets/media/mise-en-place/icons/onion.png";
+
+/*
+ * IMPORTANT:
+ *
+ * onion.png is actually the GARLIC illustration.
+ *
+ * We therefore import it as garlicImage.
+ */
+import garlicImage from "@/assets/media/mise-en-place/icons/onion.png";
+
+import riceImage from "@/assets/media/mise-en-place/icons/rice.png";
+
 import InventoryBar from "../components/InventoryBar";
+
 
 /*
  * =========================================================
@@ -21,17 +33,21 @@ export type IngredientId =
     | "green_onion"
     | "egg"
     | "carrot"
-    | "onion"
     | "garlic"
     | "rice"
     | "soy_sauce"
+    | "sauce"
+    | "salt"
     | "cooking_oil";
+
 
 interface Inventory {
     [key: string]: number;
 }
 
+
 interface FridgeScreenProps {
+
     onBack: () => void;
 
     inventory: Inventory;
@@ -41,29 +57,46 @@ interface FridgeScreenProps {
     ) => void;
 
     onRemoveIngredient: (
-        ingredient: IngredientId
+        ingredient: string
     ) => void;
 }
+
 
 /*
  * =========================================================
  * RECIPE REQUIREMENTS
  * =========================================================
+ *
+ * Only ingredients actually needed for this simplified
+ * fried rice recipe are listed as required.
+ *
+ * Onion has deliberately been removed.
  */
 
 const recipeRequirements: Record<
     IngredientId,
     number
 > = {
+
     green_onion: 1,
+
     egg: 1,
+
     carrot: 1,
-    onion: 1,
+
     garlic: 1,
+
     rice: 1,
+
     soy_sauce: 1,
+
+    sauce: 0,
+
+    salt: 0,
+
     cooking_oil: 1,
 };
+
 
 /*
  * =========================================================
@@ -75,27 +108,51 @@ const ingredientNames: Record<
     IngredientId,
     string
 > = {
-    green_onion: "Green Onion",
-    egg: "Egg",
-    carrot: "Carrot",
-    onion: "Onion",
-    garlic: "Garlic",
-    rice: "Rice",
-    soy_sauce: "Soy Sauce",
-    cooking_oil: "Cooking Oil",
+
+    green_onion:
+        "Green Onion",
+
+    egg:
+        "Egg",
+
+    carrot:
+        "Carrot",
+
+    garlic:
+        "Garlic",
+
+    rice:
+        "Rice",
+
+    soy_sauce:
+        "Soy Sauce",
+
+    sauce:
+        "Sauce",
+
+    salt:
+        "Salt",
+
+    cooking_oil:
+        "Cooking Oil",
 };
+
 
 /*
  * =========================================================
  * INGREDIENT IMAGES
  * =========================================================
  *
- * Add more images here later as you create them.
+ * NOTE:
+ *
+ * garlicImage points to onion.png because you explained
+ * that onion.png is actually the garlic illustration.
  */
 
 const ingredientImages: Partial<
     Record<IngredientId, string>
 > = {
+
     green_onion:
         typeof greenOnionImage === "string"
             ? greenOnionImage
@@ -111,37 +168,45 @@ const ingredientImages: Partial<
             ? carrotImage
             : carrotImage.src,
 
-    onion:
-        typeof onionImage === "string"
-            ? onionImage
-            : onionImage.src,
+    garlic:
+        typeof garlicImage === "string"
+            ? garlicImage
+            : garlicImage.src,
+
+    rice:
+        typeof riceImage === "string"
+            ? riceImage
+            : riceImage.src,
 };
+
 
 /*
  * =========================================================
- * INVENTORY ORDER
+ * INVENTORY / CHECKLIST ORDER
  * =========================================================
- *
- * This controls the order in which ingredients appear
- * inside the red inventory bar.
  */
 
 const inventoryOrder: IngredientId[] = [
+
     "garlic",
+
     "carrot",
+
     "green_onion",
+
     "egg",
-    "onion",
+
     "rice",
+
     "soy_sauce",
+
+    "sauce",
+
+    "salt",
+
     "cooking_oil",
 ];
 
-/*
- * =========================================================
- * COMPONENT
- * =========================================================
- */
 
 export default function FridgeScreen({
     onBack,
@@ -154,41 +219,11 @@ export default function FridgeScreen({
      * =====================================================
      * INVENTORY VISIBILITY
      * =====================================================
-     *
-     * true  = inventory is visible
-     * false = inventory slides down
      */
 
     const [inventoryVisible, setInventoryVisible] =
         useState(true);
 
-    /*
-     * =====================================================
-     * INVENTORY FLY-IN ANIMATIONS
-     * =====================================================
-     *
-     * These are completely separate from the fridge.
-     *
-     * When an ingredient is taken:
-     *
-     * right side
-     *      ↓
-     * fades in
-     *      ↓
-     * moves left
-     *      ↓
-     * disappears
-     *
-     * The actual inventory item remains in the red bar.
-     */
-
-    const [inventoryAnimations, setInventoryAnimations] =
-        useState<
-            {
-                id: number;
-                ingredient: IngredientId;
-            }[]
-        >([]);
 
     /*
      * =====================================================
@@ -199,42 +234,11 @@ export default function FridgeScreen({
     const getQuantity = (
         ingredient: IngredientId
     ) => {
+
         return inventory[ingredient] ?? 0;
+
     };
 
-    /*
-     * =====================================================
-     * PLAY INVENTORY FLY-IN
-     * =====================================================
-     */
-
-    const playInventoryAnimation = (
-        ingredient: IngredientId
-    ) => {
-        const id =
-            Date.now() +
-            Math.random();
-
-        setInventoryAnimations(
-            (current) => [
-                ...current,
-                {
-                    id,
-                    ingredient,
-                },
-            ]
-        );
-
-        window.setTimeout(() => {
-            setInventoryAnimations(
-                (current) =>
-                    current.filter(
-                        (animation) =>
-                            animation.id !== id
-                    )
-            );
-        }, 450);
-    };
 
     /*
      * =====================================================
@@ -250,12 +254,23 @@ export default function FridgeScreen({
             getQuantity(ingredient);
 
         const requiredQuantity =
-            recipeRequirements[
-                ingredient
-            ];
+            recipeRequirements[ingredient];
+
 
         /*
-         * Don't allow more than the recipe requires.
+         * Ingredient isn't required by this recipe.
+         */
+
+        if (
+            requiredQuantity <= 0
+        ) {
+            return;
+        }
+
+
+        /*
+         * Don't allow more than one of each required
+         * ingredient.
          */
 
         if (
@@ -265,33 +280,20 @@ export default function FridgeScreen({
             return;
         }
 
-        /*
-         * Add to actual inventory.
-         */
 
         onTakeIngredient(
             ingredient
         );
 
-        /*
-         * Play the visual inventory animation.
-         */
-
-        playInventoryAnimation(
-            ingredient
-        );
     };
 
-    /*
-     * =====================================================
-     * RENDER
-     * =====================================================
-     */
 
     return (
+
         <div
             style={{
                 position: "absolute",
+
                 inset: 0,
 
                 overflow: "hidden",
@@ -309,8 +311,7 @@ export default function FridgeScreen({
 
             <img
                 src={
-                    typeof fridgeInterior ===
-                        "string"
+                    typeof fridgeInterior === "string"
                         ? fridgeInterior
                         : fridgeInterior.src
                 }
@@ -329,8 +330,7 @@ export default function FridgeScreen({
 
                     objectFit: "cover",
 
-                    pointerEvents:
-                        "none",
+                    pointerEvents: "none",
                 }}
             />
 
@@ -340,6 +340,8 @@ export default function FridgeScreen({
             ================================================= */}
 
             <button
+                type="button"
+
                 onClick={onBack}
 
                 aria-label="Back"
@@ -355,7 +357,7 @@ export default function FridgeScreen({
 
                     padding: 0,
 
-                    border: 0,
+                    border: "none",
 
                     background:
                         "transparent",
@@ -369,19 +371,23 @@ export default function FridgeScreen({
                 }}
 
                 onMouseEnter={(event) => {
+
                     event.currentTarget.style.transform =
                         "scale(1.043)";
+
                 }}
 
                 onMouseLeave={(event) => {
+
                     event.currentTarget.style.transform =
                         "scale(1)";
+
                 }}
             >
+
                 <img
                     src={
-                        typeof backButton ===
-                            "string"
+                        typeof backButton === "string"
                             ? backButton
                             : backButton.src
                     }
@@ -401,6 +407,7 @@ export default function FridgeScreen({
                             "none",
                     }}
                 />
+
             </button>
 
 
@@ -415,11 +422,7 @@ export default function FridgeScreen({
                     left: "2%",
                     top: "15%",
 
-                    width: "240px",
-
-                    padding: "12px",
-
-                    borderRadius: "8px",
+                    width: "250px",
 
                     zIndex: 90,
 
@@ -429,9 +432,6 @@ export default function FridgeScreen({
                     fontSize: "18px",
 
                     lineHeight: 1.8,
-
-                    boxSizing:
-                        "border-box",
                 }}
             >
 
@@ -441,76 +441,85 @@ export default function FridgeScreen({
 
                         fontWeight: 700,
 
-                        marginBottom:
-                            "4px",
+                        marginBottom: "6px",
                     }}
                 >
                     Fried Rice
                 </div>
 
-                {inventoryOrder.map(
-                    (ingredient) => {
 
-                        const quantity =
-                            getQuantity(
+                {inventoryOrder
+                    .filter(
+                        (ingredient) =>
+                            recipeRequirements[
+                            ingredient
+                            ] > 0
+                    )
+                    .map(
+                        (ingredient) => {
+
+                            const quantity =
+                                getQuantity(
+                                    ingredient
+                                );
+
+                            const required =
+                                recipeRequirements[
                                 ingredient
+                                ];
+
+                            const complete =
+                                quantity >=
+                                required;
+
+
+                            return (
+
+                                <div
+                                    key={ingredient}
+
+                                    style={{
+                                        display:
+                                            "flex",
+
+                                        alignItems:
+                                            "center",
+
+                                        justifyContent:
+                                            "space-between",
+
+                                        opacity:
+                                            complete
+                                                ? 0.55
+                                                : 1,
+                                    }}
+                                >
+
+                                    <span>
+
+                                        {complete
+                                            ? "✓"
+                                            : "☐"}{" "}
+
+                                        {
+                                            ingredientNames[
+                                            ingredient
+                                            ]
+                                        }
+
+                                    </span>
+
+
+                                    <span>
+                                        {quantity}/{required}
+                                    </span>
+
+                                </div>
+
                             );
 
-                        const required =
-                            recipeRequirements[
-                                ingredient
-                            ];
-
-                        const complete =
-                            quantity >=
-                            required;
-
-                        return (
-                            <div
-                                key={ingredient}
-
-                                style={{
-                                    display:
-                                        "flex",
-
-                                    alignItems:
-                                        "center",
-
-                                    justifyContent:
-                                        "space-between",
-
-                                    opacity:
-                                        complete
-                                            ? 0.55
-                                            : 1,
-                                }}
-                            >
-
-                                <span>
-                                    {complete
-                                        ? "✓"
-                                        : "☐"}{" "}
-
-                                    {
-                                        ingredientNames[
-                                            ingredient
-                                        ]
-                                    }
-                                </span>
-
-                                <span>
-                                    {
-                                        quantity
-                                    }/
-                                    {
-                                        required
-                                    }
-                                </span>
-
-                            </div>
-                        );
-                    }
-                )}
+                        }
+                    )}
 
             </div>
 
@@ -520,6 +529,8 @@ export default function FridgeScreen({
             ================================================= */}
 
             <button
+                type="button"
+
                 aria-label="Take green onion"
 
                 onClick={() =>
@@ -540,8 +551,9 @@ export default function FridgeScreen({
 
                     padding: 0,
 
-                    border:
-                        "none",
+                    border: "none",
+
+                    outline: "none",
 
                     background:
                         "transparent",
@@ -558,6 +570,8 @@ export default function FridgeScreen({
             ================================================= */}
 
             <button
+                type="button"
+
                 aria-label="Take egg"
 
                 onClick={() =>
@@ -578,8 +592,9 @@ export default function FridgeScreen({
 
                     padding: 0,
 
-                    border:
-                        "none",
+                    border: "none",
+
+                    outline: "none",
 
                     background:
                         "transparent",
@@ -596,6 +611,8 @@ export default function FridgeScreen({
             ================================================= */}
 
             <button
+                type="button"
+
                 aria-label="Take carrot"
 
                 onClick={() =>
@@ -616,8 +633,9 @@ export default function FridgeScreen({
 
                     padding: 0,
 
-                    border:
-                        "none",
+                    border: "none",
+
+                    outline: "none",
 
                     background:
                         "transparent",
@@ -630,15 +648,23 @@ export default function FridgeScreen({
 
 
             {/* =================================================
-                ONION
+                GARLIC
+            =================================================
+            
+                IMPORTANT:
+                This is the old ONION hitbox.
+
+                The illustration is actually GARLIC.
             ================================================= */}
 
             <button
-                aria-label="Take onion"
+                type="button"
+
+                aria-label="Take garlic"
 
                 onClick={() =>
                     takeIngredient(
-                        "onion"
+                        "garlic"
                     )
                 }
 
@@ -654,8 +680,9 @@ export default function FridgeScreen({
 
                     padding: 0,
 
-                    border:
-                        "none",
+                    border: "none",
+
+                    outline: "none",
 
                     background:
                         "transparent",
@@ -667,22 +694,69 @@ export default function FridgeScreen({
             />
 
 
-            
+            {/* =================================================
+                RICE
+            ================================================= */}
+
+            <button
+                type="button"
+
+                aria-label="Take rice"
+
+                onClick={() =>
+                    takeIngredient(
+                        "rice"
+                    )
+                }
+
+                style={{
+                    position:
+                        "absolute",
+
+                    left: "55%",
+                    top: "52%",
+
+                    width: "15%",
+                    height: "15%",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    outline: "none",
+
+                    background:
+                        "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 50,
+                }}
+            />
+
+
             {/* =================================================
                 INVENTORY
             ================================================= */}
 
             <InventoryBar
-                inventory={inventory}
-
-                ingredientImages={
-                    ingredientImages
+                inventory={
+                    inventory
                 }
 
                 onRemoveIngredient={
                     onRemoveIngredient
                 }
+
+                onIngredientDragStart={
+                    () => { }
+                }
+
+                onIngredientDragEnd={
+                    () => { }
+                }
             />
-            </div>
+
+        </div>
     );
 }

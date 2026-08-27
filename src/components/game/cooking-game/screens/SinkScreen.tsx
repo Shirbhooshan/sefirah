@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import sinkBackground from "@/assets/media/mise-en-place/background/sink.jpg";
 import sinkOnBackground from "@/assets/media/mise-en-place/background/sink-on.jpg";
@@ -27,6 +27,35 @@ export default function SinkScreen({
 
     const [sinkIsOn, setSinkIsOn] =
         useState(false);
+
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    /*
+     * =========================================================
+     * SINK AUDIO CONTROL (PUBLIC FOLDER)
+     * =========================================================
+     */
+    useEffect(() => {
+        if (sinkIsOn) {
+            const audio = new Audio("/audio/sink-running.wav");
+            audio.loop = true;
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+            audioRef.current = audio;
+        } else if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
+        }
+
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+                audioRef.current = null;
+            }
+        };
+    }, [sinkIsOn]);
 
     const currentBackground =
         sinkIsOn
