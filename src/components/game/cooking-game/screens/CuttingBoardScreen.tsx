@@ -9,11 +9,23 @@ import {
 
 import cuttingBoardBackground from "@/assets/media/mise-en-place/background/cutting-board.jpg";
 
+/*
+ * =========================================================
+ * CARROT CUTTING SEQUENCE
+ * =========================================================
+ */
+
 import carrotBoard from "@/assets/media/mise-en-place/background/cutting-board-carrot.jpg";
 import carrotNoKnife from "@/assets/media/mise-en-place/background/cutting-board-carrot-no-knife.jpg";
 import carrotFirstCut from "@/assets/media/mise-en-place/background/cutting-board-carrot-first-cut.jpg";
 import carrotSecondCut from "@/assets/media/mise-en-place/background/cutting-board-carrot-second-cut.jpg";
 import carrotFinalCut from "@/assets/media/mise-en-place/background/cutting-board-carrot-final-cut.jpg";
+
+/*
+ * =========================================================
+ * GREEN ONION CUTTING SEQUENCE
+ * =========================================================
+ */
 
 import greenOnionBoard from "@/assets/media/mise-en-place/background/cutting-board-green-onion.jpg";
 import greenOnionNoKnife from "@/assets/media/mise-en-place/background/cutting-board-green-onion-no-knife.jpg";
@@ -21,10 +33,53 @@ import greenOnionFirstCut from "@/assets/media/mise-en-place/background/cutting-
 import greenOnionSecondCut from "@/assets/media/mise-en-place/background/cutting-board-green-onion-second-cut.jpg";
 import greenOnionFinalCut from "@/assets/media/mise-en-place/background/cutting-board-green-onion-final-cut.jpg";
 
+/*
+ * =========================================================
+ * GARLIC CUTTING SEQUENCE
+ * =========================================================
+ *
+ * IMPORTANT:
+ * "onion" was a naming mistake in the inventory.
+ * The ingredient used by the fried-rice recipe is GARLIC.
+ *
+ * These assets therefore map to:
+ *
+ * garlic
+ *    ↓
+ * garlicBoard
+ *    ↓
+ * garlicNoKnife
+ *    ↓
+ * garlicFirstCut
+ *    ↓
+ * garlicSecondCut
+ *    ↓
+ * garlicFinalCut
+ *
+ */
+
+import garlicBoard from "@/assets/media/mise-en-place/background/cutting-board-garlic.jpg";
+import garlicNoKnife from "@/assets/media/mise-en-place/background/cutting-board-garlic-no-knife.jpg";
+import garlicFirstCut from "@/assets/media/mise-en-place/background/cutting-board-garlic-first-cut.jpg";
+import garlicSecondCut from "@/assets/media/mise-en-place/background/cutting-board-garlic-second-cut.jpg";
+import garlicFinalCut from "@/assets/media/mise-en-place/background/cutting-board-garlic-final-cut.jpg";
+
+/*
+ * =========================================================
+ * UI ASSETS
+ * =========================================================
+ */
+
 import knifeLift from "@/assets/media/mise-en-place/icons/knife-lift.png";
 import backButton from "@/assets/media/mise-en-place/buttons/back-button-1.png";
 
 import InventoryBar from "../components/InventoryBar";
+
+/*
+ * =========================================================
+ * PROPS
+ * =========================================================
+ */
 
 interface CuttingBoardScreenProps {
     onBack: () => void;
@@ -40,16 +95,40 @@ interface CuttingBoardScreenProps {
     ) => void;
 }
 
+/*
+ * =========================================================
+ * BOARD INGREDIENT
+ * =========================================================
+ *
+ * "onion" is deliberately NOT included.
+ *
+ * The inventory item called garlic is what gets
+ * dragged onto this board.
+ */
+
 type BoardIngredient =
     | "carrot"
     | "green_onion"
+    | "garlic"
     | null;
+
+/*
+ * =========================================================
+ * CUT STAGE
+ * =========================================================
+ */
 
 type CutStage =
     | "none"
     | "first"
     | "second"
     | "final";
+
+/*
+ * =========================================================
+ * COMPONENT
+ * =========================================================
+ */
 
 export default function CuttingBoardScreen({
     onBack,
@@ -71,13 +150,24 @@ export default function CuttingBoardScreen({
         useState<CutStage>("none");
 
     /*
+     * =========================================================
+     * CUT CYCLE
+     * =========================================================
+     *
      * 0 = not started
      * 1 = first cut
      * 2 = second cut
      * 3 = final cut
      */
+
     const [cutCycle, setCutCycle] =
         useState(0);
+
+    /*
+     * =========================================================
+     * KNIFE
+     * =========================================================
+     */
 
     const [knifeVisible, setKnifeVisible] =
         useState(false);
@@ -85,27 +175,61 @@ export default function CuttingBoardScreen({
     const knifeRef =
         useRef<HTMLImageElement | null>(null);
 
-    const [isDraggingIngredient, setIsDraggingIngredient] =
-        useState(false);
+    /*
+     * =========================================================
+     * DRAG STATE
+     * =========================================================
+     */
+
+    const [
+        isDraggingIngredient,
+        setIsDraggingIngredient,
+    ] = useState(false);
 
 
     /*
      * =========================================================
      * CURRENT BACKGROUND
      * =========================================================
+     *
+     * This is the visual state machine for the board.
+     *
+     * Ingredient
+     *     ↓
+     * initial image
+     *     ↓
+     * no-knife image
+     *     ↓
+     * first cut
+     *     ↓
+     * second cut
+     *     ↓
+     * final cut
      */
 
     const currentBackground = useMemo(() => {
+
+        /*
+         * Empty board.
+         */
 
         if (!boardIngredient) {
             return cuttingBoardBackground;
         }
 
+
+        /*
+         * =====================================================
+         * CARROT
+         * =====================================================
+         */
+
         if (boardIngredient === "carrot") {
 
             /*
-             * Before the first cut:
-             * remove the background knife.
+             * After the cutting sequence has started,
+             * remove the knife that is baked into the
+             * original background.
              */
 
             if (
@@ -130,7 +254,17 @@ export default function CuttingBoardScreen({
             return carrotBoard;
         }
 
-        if (boardIngredient === "green_onion") {
+
+        /*
+         * =====================================================
+         * GREEN ONION
+         * =====================================================
+         */
+
+        if (
+            boardIngredient ===
+            "green_onion"
+        ) {
 
             if (
                 cutCycle >= 1 &&
@@ -154,6 +288,40 @@ export default function CuttingBoardScreen({
             return greenOnionBoard;
         }
 
+
+        /*
+         * =====================================================
+         * GARLIC
+         * =====================================================
+         *
+         * Same exact state machine as carrot and green onion.
+         */
+
+        if (boardIngredient === "garlic") {
+
+            if (
+                cutCycle >= 1 &&
+                cutStage === "none"
+            ) {
+                return garlicNoKnife;
+            }
+
+            if (cutStage === "first") {
+                return garlicFirstCut;
+            }
+
+            if (cutStage === "second") {
+                return garlicSecondCut;
+            }
+
+            if (cutStage === "final") {
+                return garlicFinalCut;
+            }
+
+            return garlicBoard;
+        }
+
+
         return cuttingBoardBackground;
 
     }, [
@@ -167,6 +335,13 @@ export default function CuttingBoardScreen({
      * =========================================================
      * DRAG START
      * =========================================================
+     *
+     * These are the ONLY ingredients that can be dragged
+     * onto the cutting board.
+     *
+     * carrot
+     * green_onion
+     * garlic
      */
 
     const handleIngredientDragStart = (
@@ -174,13 +349,25 @@ export default function CuttingBoardScreen({
         event: React.DragEvent
     ) => {
 
+        /*
+         * Reject everything except the three
+         * cutting ingredients.
+         */
+
         if (
             ingredient !== "carrot" &&
-            ingredient !== "green_onion"
+            ingredient !== "green_onion" &&
+            ingredient !== "garlic"
         ) {
             event.preventDefault();
             return;
         }
+
+
+        /*
+         * Ingredient must actually exist
+         * in the inventory.
+         */
 
         if (
             (inventory[ingredient] ?? 0) <= 0
@@ -189,17 +376,34 @@ export default function CuttingBoardScreen({
             return;
         }
 
+
+        /*
+         * Only one ingredient can occupy
+         * the cutting board at a time.
+         */
+
         if (boardIngredient !== null) {
             event.preventDefault();
             return;
         }
 
-        event.dataTransfer.effectAllowed = "move";
+
+        /*
+         * Tell the browser what is being dragged.
+         */
+
+        event.dataTransfer.effectAllowed =
+            "move";
 
         event.dataTransfer.setData(
             "application/x-cutting-board-ingredient",
             ingredient
         );
+
+
+        /*
+         * Show the drop-zone highlight.
+         */
 
         setIsDraggingIngredient(true);
     };
@@ -212,6 +416,7 @@ export default function CuttingBoardScreen({
      */
 
     const handleIngredientDragEnd = () => {
+
         setIsDraggingIngredient(false);
     };
 
@@ -226,13 +431,19 @@ export default function CuttingBoardScreen({
         event: React.DragEvent
     ) => {
 
+        /*
+         * Do not accept another ingredient while
+         * the board is occupied.
+         */
+
         if (boardIngredient !== null) {
             return;
         }
 
         event.preventDefault();
 
-        event.dataTransfer.dropEffect = "move";
+        event.dataTransfer.dropEffect =
+            "move";
     };
 
 
@@ -250,21 +461,44 @@ export default function CuttingBoardScreen({
 
         setIsDraggingIngredient(false);
 
+
+        /*
+         * Board is already occupied.
+         */
+
         if (boardIngredient !== null) {
             return;
         }
+
+
+        /*
+         * Read the ingredient from the drag payload.
+         */
 
         const ingredient =
             event.dataTransfer.getData(
                 "application/x-cutting-board-ingredient"
             );
 
+
+        /*
+         * Only the three valid ingredients
+         * can enter this board.
+         */
+
         if (
             ingredient !== "carrot" &&
-            ingredient !== "green_onion"
+            ingredient !== "green_onion" &&
+            ingredient !== "garlic"
         ) {
             return;
         }
+
+
+        /*
+         * Make sure the inventory still contains
+         * the ingredient.
+         */
 
         if (
             (inventory[ingredient] ?? 0) <= 0
@@ -272,9 +506,26 @@ export default function CuttingBoardScreen({
             return;
         }
 
-        onRemoveIngredient(ingredient);
 
-        setBoardIngredient(ingredient);
+        /*
+         * Remove the RAW ingredient from inventory.
+         *
+         * The CUT version will be added after
+         * the animation finishes.
+         */
+
+        onRemoveIngredient(
+            ingredient
+        );
+
+
+        /*
+         * Place ingredient on board.
+         */
+
+        setBoardIngredient(
+            ingredient as BoardIngredient
+        );
 
         setCutStage("none");
 
@@ -289,36 +540,44 @@ export default function CuttingBoardScreen({
      * KNIFE CLICK
      * =========================================================
      *
-     * ONE CLICK STARTS THE ENTIRE PROCESS.
-     *
-     * The player does NOT click the knife again.
+     * One click starts the entire three-cut sequence.
      */
 
     const handleKnifeClick = () => {
+
+        /*
+         * Nothing to cut.
+         */
 
         if (!boardIngredient) {
             return;
         }
 
+
         /*
-         * Already started.
+         * Cutting has already started.
          */
 
         if (cutCycle !== 0) {
             return;
         }
 
+
         /*
-         * Remove the background knife by switching
-         * to the no-knife background.
+         * Start cycle one.
+         *
+         * This also causes the baked-in knife to
+         * disappear because currentBackground now
+         * selects the no-knife image.
          */
 
         setCutStage("none");
 
         setCutCycle(1);
 
+
         /*
-         * Spawn the separate animated knife.
+         * Spawn the animated knife.
          */
 
         setKnifeVisible(true);
@@ -330,14 +589,23 @@ export default function CuttingBoardScreen({
      * AUTOMATIC CUTTING SEQUENCE
      * =========================================================
      *
-     * Each cycle:
+     * Every cycle:
      *
-     * 0ms     knife starts UP
-     * 700ms   knife reaches DOWN
-     * 700ms   cut image appears
-     * 1400ms  knife reaches UP
+     * 0ms
+     *   knife starts UP
+     *
+     * 700ms
+     *   knife reaches DOWN
+     *   cut image appears
+     *
+     * 1400ms
+     *   knife returns UP
      *
      * Then the next cycle begins.
+     *
+     * After cycle 3:
+     *   final cut image remains visible
+     *   cut ingredient is returned to inventory
      */
 
     useEffect(() => {
@@ -349,8 +617,11 @@ export default function CuttingBoardScreen({
             return;
         }
 
+
         /*
-         * DOWN / CUT MOMENT
+         * =====================================================
+         * CUT MOMENT
+         * =====================================================
          */
 
         const cutTimer =
@@ -372,17 +643,19 @@ export default function CuttingBoardScreen({
 
 
         /*
+         * =====================================================
          * END OF CURRENT KNIFE CYCLE
+         * =====================================================
          */
 
         const cycleTimer =
             window.setTimeout(() => {
 
-                if (cutCycle < 3) {
+                /*
+                 * Continue to next cut.
+                 */
 
-                    /*
-                     * Start the next knife movement.
-                     */
+                if (cutCycle < 3) {
 
                     setCutCycle(
                         current =>
@@ -392,45 +665,104 @@ export default function CuttingBoardScreen({
                     return;
                 }
 
+
                 /*
-                 * FINAL CUT COMPLETE.
+                 * =================================================
+                 * FINAL CUT COMPLETE
+                 * =================================================
                  *
-                 * Leave final image visible.
+                 * Leave the final image on screen for a moment
+                 * before returning the cut ingredient to inventory.
                  */
 
                 const ingredient =
                     boardIngredient;
 
-                window.setTimeout(() => {
 
-                    if (
-                        ingredient === "carrot"
-                    ) {
-                        onAddIngredient(
-                            "cut_carrot"
+                const finishTimer =
+                    window.setTimeout(() => {
+
+                        /*
+                         * CARROT
+                         */
+
+                        if (
+                            ingredient ===
+                            "carrot"
+                        ) {
+                            onAddIngredient(
+                                "cut_carrot"
+                            );
+                        }
+
+
+                        /*
+                         * GREEN ONION
+                         */
+
+                        if (
+                            ingredient ===
+                            "green_onion"
+                        ) {
+                            onAddIngredient(
+                                "cut_green_onion"
+                            );
+                        }
+
+
+                        /*
+                         * GARLIC
+                         *
+                         * IMPORTANT:
+                         * This is the new output.
+                         */
+
+                        if (
+                            ingredient === "garlic"
+                        ) {
+                            onAddIngredient(
+                                "cut_garlic"
+                            );
+                        }
+
+
+                        /*
+                         * Clear the board.
+                         */
+
+                        setBoardIngredient(
+                            null
                         );
-                    }
 
-                    if (
-                        ingredient === "green_onion"
-                    ) {
-                        onAddIngredient(
-                            "cut_green_onion"
+                        setCutStage(
+                            "none"
                         );
-                    }
 
-                    setBoardIngredient(null);
+                        setCutCycle(0);
 
-                    setCutStage("none");
+                        setKnifeVisible(
+                            false
+                        );
 
-                    setCutCycle(0);
+                    }, 1800);
 
-                    setKnifeVisible(false);
 
-                }, 1800);
+                /*
+                 * Cleanup the final delay.
+                 */
+
+                return () => {
+                    window.clearTimeout(
+                        finishTimer
+                    );
+                };
 
             }, 1400);
 
+
+        /*
+         * Cleanup the current cut timers.
+         */
 
         return () => {
 
@@ -450,23 +782,23 @@ export default function CuttingBoardScreen({
         onAddIngredient,
     ]);
 
+
     /*
- * =========================================================
- * KNIFE MOVEMENT
- * =========================================================
- *
- * This directly animates the knife image itself.
- *
- * Every cut cycle:
- *
- *      UP
- *       ↓
- *      DOWN
- *       ↓
- *      UP
- *
- * The knife remains mounted between cycles.
- */
+     * =========================================================
+     * KNIFE MOVEMENT
+     * =========================================================
+     *
+     * Every cycle:
+     *
+     * UP
+     *  ↓
+     * DOWN
+     *  ↓
+     * UP
+     *
+     * The knife image is separate from the
+     * invisible clickable hitbox.
+     */
 
     useEffect(() => {
 
@@ -478,12 +810,14 @@ export default function CuttingBoardScreen({
             return;
         }
 
+
         const knife =
             knifeRef.current;
 
+
         /*
-         * Cancel any previous animation
-         * before starting the current cycle.
+         * Cancel any animation from the
+         * previous cycle.
          */
 
         knife.getAnimations().forEach(
@@ -492,18 +826,17 @@ export default function CuttingBoardScreen({
             }
         );
 
+
         /*
-         * Force the knife to begin at the UP position.
+         * Force knife to UP position.
          */
 
         knife.style.transform =
             "translate3d(0, -120px, 0)";
 
+
         /*
-         * Animate the actual image.
-         *
-         * 180px movement gives the 256x256
-         * knife asset plenty of visible travel.
+         * Animate DOWN and back UP.
          */
 
         const animation =
@@ -534,6 +867,7 @@ export default function CuttingBoardScreen({
                 }
             );
 
+
         return () => {
             animation.cancel();
         };
@@ -542,6 +876,7 @@ export default function CuttingBoardScreen({
         knifeVisible,
         cutCycle,
     ]);
+
 
     /*
      * =========================================================
@@ -571,7 +906,8 @@ export default function CuttingBoardScreen({
 
             <img
                 src={
-                    typeof currentBackground === "string"
+                    typeof currentBackground ===
+                        "string"
                         ? currentBackground
                         : currentBackground.src
                 }
@@ -619,7 +955,8 @@ export default function CuttingBoardScreen({
 
                     border: "none",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -632,9 +969,11 @@ export default function CuttingBoardScreen({
                     justifyContent: "center",
                 }}
             >
+
                 <img
                     src={
-                        typeof backButton === "string"
+                        typeof backButton ===
+                            "string"
                             ? backButton
                             : backButton.src
                     }
@@ -647,11 +986,14 @@ export default function CuttingBoardScreen({
                         width: "100%",
                         height: "100%",
 
-                        objectFit: "contain",
+                        objectFit:
+                            "contain",
 
-                        pointerEvents: "none",
+                        pointerEvents:
+                            "none",
                     }}
                 />
+
             </button>
 
 
@@ -678,6 +1020,8 @@ export default function CuttingBoardScreen({
                     height: "38%",
 
                     /*
+                     * DEBUG DROP AREA
+                     *
                      * Keep this visible while mapping.
                      */
 
@@ -717,23 +1061,16 @@ export default function CuttingBoardScreen({
                         "0 1px 3px #000",
                 }}
             >
+
                 {boardIngredient
                     ? ""
                     : "DROP INGREDIENT HERE"}
+
             </div>
 
 
             {/* =================================================
                 INVISIBLE KNIFE HITBOX
-            =================================================
-            
-                IMPORTANT:
-                This is ONLY the clickable area.
-
-                It does NOT contain the knife image.
-
-                The actual knife is rendered separately
-                below it.
             ================================================= */}
 
             <button
@@ -749,10 +1086,8 @@ export default function CuttingBoardScreen({
                     position: "absolute",
 
                     /*
-                     * MAP THESE FOUR VALUES ONLY.
-                     *
-                     * This is the clickable area over
-                     * the knife in the background.
+                     * MAP THESE FOUR VALUES ONLY
+                     * if the knife click area needs adjustment.
                      */
 
                     left: "55%",
@@ -767,7 +1102,8 @@ export default function CuttingBoardScreen({
 
                     outline: "none",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor:
                         boardIngredient &&
@@ -782,22 +1118,16 @@ export default function CuttingBoardScreen({
 
             {/* =================================================
                 ANIMATED KNIFE
-            =================================================
-            
-                THIS IS COMPLETELY SEPARATE FROM THE HITBOX.
-
-                It is positioned over the actual cutting
-                location, NOT over the hitbox.
-
-                The 256x256 asset gets a large movement range.
             ================================================= */}
 
             {knifeVisible && (
+
                 <img
                     ref={knifeRef}
 
                     src={
-                        typeof knifeLift === "string"
+                        typeof knifeLift ===
+                            "string"
                             ? knifeLift
                             : knifeLift.src
                     }
@@ -809,37 +1139,30 @@ export default function CuttingBoardScreen({
                     style={{
                         position: "absolute",
 
-                        /*
-                         * =================================================
-                         * ACTUAL KNIFE POSITION
-                         * =================================================
-                         *
-                         * This is completely independent
-                         * from the invisible hitbox.
-                         */
-
                         left: "43%",
                         top: "27%",
 
                         width: "180px",
                         height: "180px",
 
-                        objectFit: "contain",
+                        objectFit:
+                            "contain",
 
                         zIndex: 45,
 
-                        pointerEvents: "none",
+                        pointerEvents:
+                            "none",
 
                         /*
-                         * Important:
-                         * Do NOT put a transform here.
-                         *
-                         * The Web Animations API controls it.
+                         * The Web Animations API controls
+                         * the transform.
                          */
 
-                        willChange: "transform",
+                        willChange:
+                            "transform",
                     }}
                 />
+
             )}
 
 
@@ -854,7 +1177,8 @@ export default function CuttingBoardScreen({
                     right: "15px",
                     top: "15px",
 
-                    padding: "8px 12px",
+                    padding:
+                        "8px 12px",
 
                     background:
                         "rgba(0,0,0,0.75)",
@@ -869,18 +1193,23 @@ export default function CuttingBoardScreen({
 
                     zIndex: 200,
 
-                    pointerEvents: "none",
+                    pointerEvents:
+                        "none",
 
-                    whiteSpace: "pre-line",
+                    whiteSpace:
+                        "pre-line",
 
                     fontFamily:
                         "Comfortaa, sans-serif",
                 }}
             >
-                {`Board: ${boardIngredient ?? "EMPTY"
+                {`Board: ${boardIngredient ??
+                    "EMPTY"
                     }
-Stage: ${cutStage}
-Cycle: ${cutCycle}
+Stage: ${cutStage
+                    }
+Cycle: ${cutCycle
+                    }
 Knife: ${knifeVisible
                         ? "VISIBLE"
                         : "HIDDEN"
@@ -893,7 +1222,9 @@ Knife: ${knifeVisible
             ================================================= */}
 
             <InventoryBar
-                inventory={inventory}
+                inventory={
+                    inventory
+                }
 
                 onRemoveIngredient={
                     onRemoveIngredient

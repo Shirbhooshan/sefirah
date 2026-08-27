@@ -744,6 +744,10 @@ export default function FridgeScreen({
                     inventory
                 }
 
+                allowIngredientClickRemoval={
+                    true
+                }
+
                 onRemoveIngredient={
                     onRemoveIngredient
                 }

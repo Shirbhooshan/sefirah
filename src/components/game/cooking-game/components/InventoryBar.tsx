@@ -12,6 +12,7 @@ import carrotImage from "@/assets/media/mise-en-place/icons/carrot.png";
 import onionImage from "@/assets/media/mise-en-place/icons/onion.png";
 import cutCarrotImage from "@/assets/media/mise-en-place/icons/cut-carrot.png";
 import cutGreenOnionImage from "@/assets/media/mise-en-place/icons/cut-green-onion.png";
+import cutGarlicImage from "@/assets/media/mise-en-place/icons/cut-garlic.png";
 import soySauceImage from "@/assets/media/mise-en-place/icons/soy-sauce.png";
 import sauceImage from "@/assets/media/mise-en-place/icons/sauce.png";
 import saltImage from "@/assets/media/mise-en-place/icons/salt.png";
@@ -30,7 +31,8 @@ export type IngredientId =
     | "salt"
     | "cooking_oil"
     | "cut_carrot"
-    | "cut_green_onion";
+    | "cut_green_onion"
+    | "cut_garlic";
 
 interface Inventory {
     [key: string]: number;
@@ -42,6 +44,8 @@ interface InventoryBarProps {
     onRemoveIngredient: (
         ingredient: string
     ) => void;
+
+    allowIngredientClickRemoval?: boolean;
 
     onIngredientDragStart?: (
         ingredient: string,
@@ -64,7 +68,10 @@ const ingredientNames: Record<
     cut_carrot: "Cut Carrot",
 
     onion: "Onion",
+
     garlic: "Garlic",
+    cut_garlic: "Cut Garlic",
+
     rice: "Rice",
 
     soy_sauce: "Soy Sauce",
@@ -91,10 +98,15 @@ const ingredientImages: Partial<
             ? carrotImage
             : carrotImage.src,
 
-    onion:
+    garlic:
         typeof onionImage === "string"
             ? onionImage
             : onionImage.src,
+
+    cut_garlic:
+        typeof cutGarlicImage === "string"
+            ? cutGarlicImage
+            : cutGarlicImage.src,
 
     cut_carrot:
         typeof cutCarrotImage === "string"
@@ -141,8 +153,8 @@ const inventoryOrder: IngredientId[] = [
     "carrot",
     "cut_carrot",
 
-    "onion",
     "garlic",
+    "cut_garlic",
     "rice",
 
     "soy_sauce",
@@ -161,6 +173,7 @@ const seasoningIngredients: IngredientId[] = [
 export default function InventoryBar({
     inventory,
     onRemoveIngredient,
+    allowIngredientClickRemoval = false,
     onIngredientDragStart,
     onIngredientDragEnd,
 }: InventoryBarProps) {
@@ -596,6 +609,11 @@ export default function InventoryBar({
                                         )
                                     }
 
+
+                                    allowClickRemoval={
+                                        allowIngredientClickRemoval
+                                    }
+
                                     onDragStart={
                                         onIngredientDragStart
                                     }
@@ -706,6 +724,10 @@ export default function InventoryBar({
                                     onRemoveIngredient(
                                         ingredient
                                     )
+                                }
+
+                                allowClickRemoval={
+                                    allowIngredientClickRemoval
                                 }
 
                                 onDragStart={
@@ -945,6 +967,7 @@ function InventoryItem({
     quantity,
     image,
     onRemove,
+    allowClickRemoval,
     onDragStart,
     onDragEnd,
 }: {
@@ -955,6 +978,8 @@ function InventoryItem({
     image?: string;
 
     onRemove: () => void;
+
+    allowClickRemoval?: boolean;
 
     onDragStart?: (
         ingredient: string,
@@ -971,7 +996,15 @@ function InventoryItem({
 
     const canDrag =
         ingredient === "carrot" ||
-        ingredient === "green_onion";
+        ingredient === "green_onion" ||
+        ingredient === "garlic" ||
+        ingredient === "cut_carrot" ||
+        ingredient === "cut_green_onion" ||
+        ingredient === "cut_garlic" ||
+        ingredient === "rice" ||
+        ingredient === "egg" ||
+        ingredient === "cooking_oil" ||
+        ingredient === "soy_sauce";
 
     const wasDragging =
         useRef(false);
@@ -1040,6 +1073,10 @@ function InventoryItem({
     const handleClick = () => {
 
         if (wasDragging.current) {
+            return;
+        }
+
+        if (!allowClickRemoval) {
             return;
         }
 
