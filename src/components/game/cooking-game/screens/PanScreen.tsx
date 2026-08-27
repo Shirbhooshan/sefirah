@@ -2,6 +2,7 @@
 
 import {
     useCallback,
+    useEffect,
     useMemo,
     useRef,
     useState,
@@ -192,6 +193,157 @@ export default function PanScreen({
     onRemoveIngredient,
 }: PanScreenProps) {
 
+    /*
+ * =========================================================
+ * COOKING AUDIO
+ * =========================================================
+ */
+
+    const fryingAudio =
+        useRef<HTMLAudioElement | null>(null);
+
+    const eggFryingAudio =
+        useRef<HTMLAudioElement | null>(null);
+
+    const stirAudio =
+        useRef<HTMLAudioElement | null>(null);
+
+    const completeAudio =
+        useRef<HTMLAudioElement | null>(null);
+
+
+    /*
+     * Create audio objects once.
+     */
+
+    useEffect(() => {
+
+        fryingAudio.current =
+            new Audio("/audio/frying.wav");
+
+        eggFryingAudio.current =
+            new Audio("/audio/frying-egg.wav");
+
+        stirAudio.current =
+            new Audio("/audio/stir.wav");
+
+        completeAudio.current =
+            new Audio("/audio/food-ready.wav");
+
+
+        /*
+         * Frying should loop while cooking.
+         */
+
+        fryingAudio.current.loop = true;
+
+        eggFryingAudio.current.loop = true;
+
+
+        /*
+         * Cleanup when leaving PanScreen.
+         */
+
+        return () => {
+
+            fryingAudio.current?.pause();
+            eggFryingAudio.current?.pause();
+            stirAudio.current?.pause();
+            completeAudio.current?.pause();
+
+            fryingAudio.current = null;
+            eggFryingAudio.current = null;
+            stirAudio.current = null;
+            completeAudio.current = null;
+        };
+
+    }, []);
+
+    /*
+ * =========================================================
+ * STOVE AUDIO SAFETY
+ * =========================================================
+ */
+
+    useEffect(() => {
+
+        if (!panOn) {
+
+            stopFryingAudio();
+
+            stopEggFryingAudio();
+        }
+
+    }, [panOn]);
+
+    /*
+ * =========================================================
+ * AUDIO HELPERS
+ * =========================================================
+ */
+
+    const stopFryingAudio = () => {
+
+        if (fryingAudio.current) {
+
+            fryingAudio.current.pause();
+
+            fryingAudio.current.currentTime = 0;
+        }
+    };
+
+
+    const stopEggFryingAudio = () => {
+
+        if (eggFryingAudio.current) {
+
+            eggFryingAudio.current.pause();
+
+            eggFryingAudio.current.currentTime = 0;
+        }
+    };
+
+
+    const startFryingAudio = () => {
+
+        /*
+         * Do not play cooking audio while
+         * the stove is off.
+         */
+
+        if (!panOn) {
+            return;
+        }
+
+        /*
+         * Egg frying must be stopped first.
+         */
+
+        stopEggFryingAudio();
+
+        fryingAudio.current
+            ?.play()
+            .catch(() => { });
+    };
+
+
+    const startEggFryingAudio = () => {
+
+        if (!panOn) {
+            return;
+        }
+
+        /*
+         * Normal frying sound stops
+         * when the egg enters.
+         */
+
+        stopFryingAudio();
+
+        eggFryingAudio.current
+            ?.play()
+            .catch(() => { });
+    };
 
     /*
      * =========================================================
@@ -406,7 +558,11 @@ export default function PanScreen({
             switch (completed) {
 
                 case "cooking_oil":
+
                     setPanStage("oil");
+
+                    startFryingAudio();
+
                     break;
 
                 case "cut_garlic":
@@ -422,11 +578,21 @@ export default function PanScreen({
                     break;
 
                 case "egg":
+
                     setPanStage("egg");
+
+                    startEggFryingAudio();
+
                     break;
 
                 case "soy_sauce":
+
                     setPanStage("soy");
+
+                    stopEggFryingAudio();
+
+                    startFryingAudio();
+
                     break;
 
                 case "cut_green_onion":
@@ -442,7 +608,7 @@ export default function PanScreen({
                     break;
             }
         },
-        []
+        [panOn]
     );
 
 
@@ -538,12 +704,7 @@ export default function PanScreen({
 
         if (
             next === "cut_garlic" &&
-            (
-                ingredient ===
-                "cut_garlic" ||
-                ingredient ===
-                "garlic"
-            )
+            ingredient === "cut_garlic"
         ) {
             matchedAction =
                 "cut_garlic";
@@ -573,7 +734,7 @@ export default function PanScreen({
         if (
             next === "rice" &&
             ingredient ===
-                "rice"
+            "rice"
         ) {
             matchedAction =
                 "rice";
@@ -587,7 +748,7 @@ export default function PanScreen({
         if (
             next === "egg" &&
             ingredient ===
-                "egg"
+            "egg"
         ) {
             matchedAction =
                 "egg";
@@ -601,7 +762,7 @@ export default function PanScreen({
         if (
             next === "soy_sauce" &&
             ingredient ===
-                "soy_sauce"
+            "soy_sauce"
         ) {
             matchedAction =
                 "soy_sauce";
@@ -664,15 +825,15 @@ export default function PanScreen({
 
         if (
             matchedAction ===
-                "cut_garlic" ||
+            "cut_garlic" ||
             matchedAction ===
-                "cut_carrot" ||
+            "cut_carrot" ||
             matchedAction ===
-                "rice" ||
+            "rice" ||
             matchedAction ===
-                "egg" ||
+            "egg" ||
             matchedAction ===
-                "cut_green_onion"
+            "cut_green_onion"
         ) {
 
             onRemoveIngredient(
@@ -721,11 +882,25 @@ export default function PanScreen({
             return;
         }
 
+        if (!panOn) {
+            return;
+        }
+
 
         setIsStirring(true);
 
+
         /*
-         * First transition to fried rice.
+         * Stop normal frying while stirring.
+         */
+
+        stopFryingAudio();
+
+        stopEggFryingAudio();
+
+
+        /*
+         * Complete the queue action.
          */
 
         completeAction(
@@ -738,8 +913,58 @@ export default function PanScreen({
 
 
         /*
-         * After a few seconds,
-         * the fried rice becomes ready.
+         * =========================================================
+         * STIR SOUND
+         * =========================================================
+         *
+         * Play the same stir sound 3 times.
+         *
+         * We deliberately create a fresh Audio object
+         * for each repetition so the sound can restart
+         * cleanly even if the WAV is still playing.
+         */
+
+        let stirCount = 0;
+
+        const playStir = () => {
+
+            if (!panOn) {
+                return;
+            }
+
+            stirCount += 1;
+
+            const sound =
+                new Audio("/audio/stir.wav");
+
+            sound.currentTime = 0;
+
+            sound.play().catch(() => { });
+
+
+            /*
+             * Play three times total.
+             */
+
+            if (stirCount < 3) {
+
+                window.setTimeout(
+                    playStir,
+                    700
+                );
+            }
+        };
+
+
+        playStir();
+
+
+        /*
+         * =========================================================
+         * READY
+         * =========================================================
+         *
+         * After stirring finishes, play complete.wav.
          */
 
         window.setTimeout(() => {
@@ -750,8 +975,16 @@ export default function PanScreen({
                 "ready"
             );
 
-        }, 3000);
 
+            /*
+             * Fried rice is now complete.
+             */
+
+            completeAudio.current
+                ?.play()
+                .catch(() => { });
+
+        }, 3000);
     };
 
 
@@ -769,6 +1002,16 @@ export default function PanScreen({
         ) {
             return;
         }
+
+
+        /*
+         * Stop any remaining cooking audio.
+         */
+
+        stopFryingAudio();
+
+        stopEggFryingAudio();
+
 
         setPanStage(
             "ready_stove_off"
@@ -1025,41 +1268,41 @@ export default function PanScreen({
             {panStage !==
                 "ready_stove_off" && (
 
-                <div
-                    style={{
-                        position:
-                            "absolute",
+                    <div
+                        style={{
+                            position:
+                                "absolute",
 
-                        left: "50%",
+                            left: "50%",
 
-                        top: "8%",
+                            top: "8%",
 
-                        transform:
-                            "translateX(-50%)",
+                            transform:
+                                "translateX(-50%)",
 
-                        zIndex: 90,
+                            zIndex: 90,
 
-                        color:
-                            "rgba(104,67,41,0.9)",
+                            color:
+                                "rgba(104,67,41,0.9)",
 
-                        fontSize:
-                            "20px",
+                            fontSize:
+                                "20px",
 
-                        fontWeight: 700,
+                            fontWeight: 700,
 
-                        textAlign:
-                            "center",
+                            textAlign:
+                                "center",
 
-                        pointerEvents:
-                            "none",
+                            pointerEvents:
+                                "none",
 
-                        whiteSpace:
-                            "nowrap",
-                    }}
-                >
-                    {nextActionText}
-                </div>
-            )}
+                            whiteSpace:
+                                "nowrap",
+                        }}
+                    >
+                        {nextActionText}
+                    </div>
+                )}
 
 
             {/* =================================================
@@ -1076,69 +1319,69 @@ export default function PanScreen({
             {nextAction ===
                 "stir" && (
 
-                <button
-                    type="button"
+                    <button
+                        type="button"
 
-                    onClick={
-                        handleStir
-                    }
+                        onClick={
+                            handleStir
+                        }
 
-                    disabled={
-                        isStirring
-                    }
-
-                    style={{
-                        position:
-                            "absolute",
-
-                        left: "50%",
-
-                        bottom: "22%",
-
-                        transform:
-                            "translateX(-50%)",
-
-                        padding:
-                            "14px 28px",
-
-                        border:
-                            "none",
-
-                        borderRadius:
-                            "12px",
-
-                        background:
-                            "rgba(156,66,66,0.95)",
-
-                        color:
-                            "#fff",
-
-                        fontFamily:
-                            "Comfortaa, sans-serif",
-
-                        fontSize:
-                            "18px",
-
-                        fontWeight: 700,
-
-                        cursor:
+                        disabled={
                             isStirring
-                                ? "default"
-                                : "pointer",
+                        }
 
-                        zIndex: 95,
+                        style={{
+                            position:
+                                "absolute",
 
-                        opacity:
-                            isStirring
-                                ? 0.6
-                                : 1,
-                    }}
-                >
-                    {isStirring
-                        ? "STIRRING..."
-                        : "STIR"}
-                </button>
-            )}
+                            left: "50%",
+
+                            bottom: "22%",
+
+                            transform:
+                                "translateX(-50%)",
+
+                            padding:
+                                "14px 28px",
+
+                            border:
+                                "none",
+
+                            borderRadius:
+                                "12px",
+
+                            background:
+                                "rgba(156,66,66,0.95)",
+
+                            color:
+                                "#fff",
+
+                            fontFamily:
+                                "Comfortaa, sans-serif",
+
+                            fontSize:
+                                "18px",
+
+                            fontWeight: 700,
+
+                            cursor:
+                                isStirring
+                                    ? "default"
+                                    : "pointer",
+
+                            zIndex: 95,
+
+                            opacity:
+                                isStirring
+                                    ? 0.6
+                                    : 1,
+                        }}
+                    >
+                        {isStirring
+                            ? "STIRRING..."
+                            : "STIR"}
+                    </button>
+                )}
 
 
             {/* =================================================
@@ -1148,53 +1391,53 @@ export default function PanScreen({
             {panStage ===
                 "ready" && (
 
-                <button
-                    type="button"
+                    <button
+                        type="button"
 
-                    onClick={
-                        handleTurnOffStove
-                    }
+                        onClick={
+                            handleTurnOffStove
+                        }
 
-                    style={{
-                        position:
-                            "absolute",
+                        style={{
+                            position:
+                                "absolute",
 
-                        right: "7%",
+                            right: "7%",
 
-                        top: "12%",
+                            top: "12%",
 
-                        padding:
-                            "12px 20px",
+                            padding:
+                                "12px 20px",
 
-                        border:
-                            "none",
+                            border:
+                                "none",
 
-                        borderRadius:
-                            "10px",
+                            borderRadius:
+                                "10px",
 
-                        background:
-                            "rgba(156,66,66,0.95)",
+                            background:
+                                "rgba(156,66,66,0.95)",
 
-                        color:
-                            "#fff",
+                            color:
+                                "#fff",
 
-                        fontFamily:
-                            "Comfortaa, sans-serif",
+                            fontFamily:
+                                "Comfortaa, sans-serif",
 
-                        fontSize:
-                            "15px",
+                            fontSize:
+                                "15px",
 
-                        fontWeight: 700,
+                            fontWeight: 700,
 
-                        cursor:
-                            "pointer",
+                            cursor:
+                                "pointer",
 
-                        zIndex: 95,
-                    }}
-                >
-                    TURN STOVE OFF
-                </button>
-            )}
+                            zIndex: 95,
+                        }}
+                    >
+                        TURN STOVE OFF
+                    </button>
+                )}
 
 
             {/* =================================================
@@ -1204,41 +1447,41 @@ export default function PanScreen({
             {panStage ===
                 "ready_stove_off" && (
 
-                <div
-                    style={{
-                        position:
-                            "absolute",
+                    <div
+                        style={{
+                            position:
+                                "absolute",
 
-                        left: "50%",
+                            left: "50%",
 
-                        top: "12%",
+                            top: "12%",
 
-                        transform:
-                            "translateX(-50%)",
+                            transform:
+                                "translateX(-50%)",
 
-                        color:
-                            "rgb(104,67,41)",
+                            color:
+                                "rgb(104,67,41)",
 
-                        fontFamily:
-                            "Comfortaa, sans-serif",
+                            fontFamily:
+                                "Comfortaa, sans-serif",
 
-                        fontSize:
-                            "24px",
+                            fontSize:
+                                "24px",
 
-                        fontWeight: 700,
+                            fontWeight: 700,
 
-                        zIndex: 90,
+                            zIndex: 90,
 
-                        pointerEvents:
-                            "none",
+                            pointerEvents:
+                                "none",
 
-                        textAlign:
-                            "center",
-                    }}
-                >
-                    Fried Rice Ready!
-                </div>
-            )}
+                            textAlign:
+                                "center",
+                        }}
+                    >
+                        Fried Rice Ready!
+                    </div>
+                )}
 
 
             {/* =================================================
@@ -1347,7 +1590,7 @@ export default function PanScreen({
                                 style={{
                                     opacity:
                                         index ===
-                                        0
+                                            0
                                             ? 1
                                             : 0.55,
                                 }}
@@ -1404,7 +1647,7 @@ export default function PanScreen({
                     );
                 }}
 
-                onIngredientDragEnd={() => {}}
+                onIngredientDragEnd={() => { }}
             />
 
         </div>
