@@ -18,9 +18,12 @@ import LoadingScreen from "./screens/LoadingScreen";
 import KitchenScreen from "./screens/KitchenScreen";
 import FridgeScreen from "./screens/FridgeScreen";
 import BoilerScreen from "./screens/BoilerScreen";
-import PanScreen from "./screens/PanScreen";
+import PanScreen, {
+  PanProgress,
+} from "./screens/PanScreen";
 import SinkScreen from "./screens/SinkScreen";
 import CuttingBoardScreen from "./screens/CuttingBoardScreen";
+import PlateScreen from "./screens/PlateScreen";
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -56,7 +59,8 @@ type CookingGameScreen =
   | "sink"
   | "cuttingBoard"
   | "boiler"
-  | "pan";
+  | "pan"
+  | "plate";
 
 type PanStage =
   | "idle"
@@ -81,14 +85,6 @@ type CookingAction =
   | "soy_sauce"
   | "cut_green_onion"
   | "stir";
-
-interface PanProgress {
-  stage: PanStage;
-
-  completedActions: CookingAction[];
-
-  isStirring: boolean;
-}
 
 export default function CookingGame({
   onClose,
@@ -124,8 +120,21 @@ export default function CookingGame({
   const [boilerOn, setBoilerOn] =
     useState(false);
 
+  const turnBoilerOff = () => {
+    setBoilerOn(false);
+  };
+
   const [panOn, setPanOn] =
     useState(false);
+
+  const turnPanOff = () => {
+    setPanOn(false);
+  };
+
+  const [
+    friedRicePlated,
+    setFriedRicePlated,
+  ] = useState(false);
 
   /*
    * =========================================================
@@ -743,6 +752,18 @@ export default function CookingGame({
     changeScreen("pan");
   };
 
+  const goToPlate = () => {
+
+    setPanProgress({
+      stage: "idle",
+      completedActions: [],
+      isStirring: false,
+    });
+
+    setPanOn(false);
+
+    changeScreen("plate");
+  };
 
   const goToFridge = () => {
     changeScreen("fridge");
@@ -856,7 +877,6 @@ export default function CookingGame({
           />
         )}
 
-
         {/* =====================================================
             KITCHEN
 
@@ -896,6 +916,8 @@ export default function CookingGame({
             boilerOn={boilerOn}
 
             panOn={panOn}
+
+            onPlate={goToPlate}
 
             onToggleBoiler={() => {
               setBoilerOn(
@@ -1005,8 +1027,16 @@ export default function CookingGame({
           <PanScreen
             onBack={goBackToKitchen}
 
+            onPlaceInPlate={() => {
+              setFriedRicePlated(true);
+              goToPlate();
+            }}
+
             panOn={panOn}
 
+            onTurnOff={() => {
+              setPanOn(false);
+            }}
             inventory={inventory}
 
             onRemoveIngredient={
@@ -1020,6 +1050,13 @@ export default function CookingGame({
             setPanProgress={
               setPanProgress
             }
+          />
+        )}
+
+        {currentScreen === "plate" && (
+          <PlateScreen
+            onBack={goBackToKitchen}
+            friedRicePlated={friedRicePlated}
           />
         )}
 

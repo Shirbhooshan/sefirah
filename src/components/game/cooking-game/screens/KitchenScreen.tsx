@@ -22,6 +22,8 @@ import boilerOnImage from "@/assets/media/mise-en-place/background/kitchen-defau
 import panOnImage from "@/assets/media/mise-en-place/background/kitchen-default-pan.jpg";
 import boilerPanOn from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-pan.jpg";
 
+import tableEmpty from "@/assets/media/mise-en-place/background/plate-empty.jpg";
+import tableFriedRice from "@/assets/media/mise-en-place/background/plate-fried-rice.jpg";
 
 interface KitchenScreenProps {
     onHome: () => void;
@@ -32,6 +34,7 @@ interface KitchenScreenProps {
 
     onCuttingBoard?: () => void;
     onSink?: () => void;
+    onPlate: () => void;
 
     boilerOn: boolean;
     panOn: boolean;
@@ -49,6 +52,7 @@ export default function KitchenScreen({
 
     onCuttingBoard,
     onSink,
+    onPlate,
 
     boilerOn,
     panOn,
@@ -78,7 +82,7 @@ export default function KitchenScreen({
 
         audio.currentTime = 0;
 
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
     };
 
 
@@ -170,7 +174,6 @@ export default function KitchenScreen({
             );
         }
     };
-
 
     /*
      * =========================================================
@@ -744,14 +747,13 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-                PLATE 1
-            ====================================================== */}
+    PLATE 1
+===================================================== */}
 
             <button
+                type="button"
                 aria-label="Plate 1"
-                onClick={() => {
-                    console.log("PLATE 1 CLICKED");
-                }}
+                onClick={onPlate}
                 style={{
                     position: "absolute",
 
@@ -764,7 +766,6 @@ Pan: ${panOn ? "ON" : "OFF"}`;
                     padding: 0,
 
                     border: "none",
-
                     borderRadius: "50%",
 
                     background: "transparent",
@@ -777,14 +778,13 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-                PLATE 2
-            ====================================================== */}
+    PLATE 2
+===================================================== */}
 
             <button
+                type="button"
                 aria-label="Plate 2"
-                onClick={() => {
-                    console.log("PLATE 2 CLICKED");
-                }}
+                onClick={onPlate}
                 style={{
                     position: "absolute",
 
@@ -797,7 +797,6 @@ Pan: ${panOn ? "ON" : "OFF"}`;
                     padding: 0,
 
                     border: "none",
-
                     borderRadius: "50%",
 
                     background: "transparent",

@@ -114,7 +114,11 @@ interface PanScreenProps {
 
     panOn: boolean;
 
+    onTurnOff: () => void;
+
     onBack: () => void;
+
+    onPlaceInPlate: () => void;
 
     inventory: Inventory;
 
@@ -142,7 +146,9 @@ interface PanScreenProps {
 
 export default function PanScreen({
     panOn,
+    onTurnOff,
     onBack,
+    onPlaceInPlate,
     inventory,
     onRemoveIngredient,
     panProgress,
@@ -181,20 +187,24 @@ export default function PanScreen({
         completeAudio.current =
             new Audio("/audio/food-ready.wav");
 
+        plateAudio.current =
+            new Audio("/audio/keep-in-plate.wav");
+
         fryingAudio.current.loop = true;
 
         eggFryingAudio.current.loop = true;
-
 
         return () => {
 
             fryingAudio.current?.pause();
             eggFryingAudio.current?.pause();
             completeAudio.current?.pause();
+            plateAudio.current?.pause();
 
             fryingAudio.current = null;
             eggFryingAudio.current = null;
             completeAudio.current = null;
+            plateAudio.current = null;
         };
 
     }, []);
@@ -274,6 +284,14 @@ export default function PanScreen({
         panOn,
         stopFryingAudio,
     ]);
+
+    const plateAudio =
+        useRef<HTMLAudioElement | null>(null);
+
+    const [
+        isPlating,
+        setIsPlating,
+    ] = useState(false);
 
 
     /*
@@ -959,6 +977,71 @@ export default function PanScreen({
 
     };
 
+    const handlePlaceInPlate = () => {
+
+        if (panStage !== "ready_stove_off") {
+            return;
+        }
+
+        if (isPlating) {
+            return;
+        }
+
+        setIsPlating(true);
+
+        /*
+         * =========================================================
+         * STOP COOKING AUDIO
+         * =========================================================
+         */
+
+        stopFryingAudio();
+        stopEggFryingAudio();
+
+        /*
+         * =========================================================
+         * PLATE AUDIO
+         * =========================================================
+         *
+         * The black curtain is already visible because
+         * isPlating becomes true above.
+         *
+         * plate.wav starts immediately while the screen
+         * is black.
+         */
+
+        const audio = plateAudio.current;
+
+        if (audio) {
+
+            audio.currentTime = 0;
+
+            audio.play().catch((error) => {
+
+                console.error(
+                    "Failed to play plate.wav:",
+                    error
+                );
+
+            });
+        }
+
+        /*
+         * =========================================================
+         * MOVE TO PLATE SCREEN
+         * =========================================================
+         *
+         * Keep the black screen visible for the duration
+         * of the transition, then CookingGame changes
+         * to PlateScreen.
+         */
+
+        window.setTimeout(() => {
+
+            onPlaceInPlate();
+
+        }, 1200);
+    };
 
     /*
      * =========================================================
@@ -1242,42 +1325,42 @@ export default function PanScreen({
             {panStage !==
                 "ready_stove_off" && (
 
-                <div
-                    style={{
-                        position:
-                            "absolute",
+                    <div
+                        style={{
+                            position:
+                                "absolute",
 
-                        left: "50%",
+                            left: "50%",
 
-                        top: "8%",
+                            top: "8%",
 
-                        transform:
-                            "translateX(-50%)",
+                            transform:
+                                "translateX(-50%)",
 
-                        zIndex: 90,
+                            zIndex: 90,
 
-                        color:
-                            "rgba(104,67,41,0.9)",
+                            color:
+                                "rgba(104,67,41,0.9)",
 
-                        fontSize:
-                            "20px",
+                            fontSize:
+                                "20px",
 
-                        fontWeight:
-                            700,
+                            fontWeight:
+                                700,
 
-                        textAlign:
-                            "center",
+                            textAlign:
+                                "center",
 
-                        pointerEvents:
-                            "none",
+                            pointerEvents:
+                                "none",
 
-                        whiteSpace:
-                            "nowrap",
-                    }}
-                >
-                    {nextActionText}
-                </div>
-            )}
+                            whiteSpace:
+                                "nowrap",
+                        }}
+                    >
+                        {nextActionText}
+                    </div>
+                )}
 
 
             {/* =================================================
@@ -1287,72 +1370,72 @@ export default function PanScreen({
             {nextAction ===
                 "stir" && (
 
-                <button
-                    type="button"
+                    <button
+                        type="button"
 
-                    onClick={
-                        handleStir
-                    }
+                        onClick={
+                            handleStir
+                        }
 
-                    disabled={
-                        isStirring
-                    }
-
-                    style={{
-                        position:
-                            "absolute",
-
-                        left: "50%",
-
-                        bottom: "22%",
-
-                        transform:
-                            "translateX(-50%)",
-
-                        padding:
-                            "14px 28px",
-
-                        border:
-                            "none",
-
-                        borderRadius:
-                            "12px",
-
-                        background:
-                            "rgba(156,66,66,0.95)",
-
-                        color:
-                            "#fff",
-
-                        fontFamily:
-                            "Comfortaa, sans-serif",
-
-                        fontSize:
-                            "18px",
-
-                        fontWeight:
-                            700,
-
-                        cursor:
+                        disabled={
                             isStirring
-                                ? "default"
-                                : "pointer",
+                        }
 
-                        zIndex: 95,
+                        style={{
+                            position:
+                                "absolute",
 
-                        opacity:
-                            isStirring
-                                ? 0.6
-                                : 1,
-                    }}
-                >
+                            left: "50%",
 
-                    {isStirring
-                        ? "STIRRING..."
-                        : "STIR"}
+                            bottom: "22%",
 
-                </button>
-            )}
+                            transform:
+                                "translateX(-50%)",
+
+                            padding:
+                                "14px 28px",
+
+                            border:
+                                "none",
+
+                            borderRadius:
+                                "12px",
+
+                            background:
+                                "rgba(156,66,66,0.95)",
+
+                            color:
+                                "#fff",
+
+                            fontFamily:
+                                "Comfortaa, sans-serif",
+
+                            fontSize:
+                                "18px",
+
+                            fontWeight:
+                                700,
+
+                            cursor:
+                                isStirring
+                                    ? "default"
+                                    : "pointer",
+
+                            zIndex: 95,
+
+                            opacity:
+                                isStirring
+                                    ? 0.6
+                                    : 1,
+                        }}
+                    >
+
+                        {isStirring
+                            ? "STIRRING..."
+                            : "STIR"}
+
+                    </button>
+                )}
 
 
             {/* =================================================
@@ -1362,97 +1445,115 @@ export default function PanScreen({
             {panStage ===
                 "ready" && (
 
-                <button
-                    type="button"
+                    <button
+                        type="button"
 
-                    onClick={
-                        handleTurnOffStove
-                    }
+                        onClick={() => {
+                            handleTurnOffStove();
+                            onTurnOff();
+                        }}
 
-                    style={{
-                        position:
-                            "absolute",
+                        style={{
+                            position:
+                                "absolute",
 
-                        right: "7%",
+                            right: "7%",
 
-                        top: "12%",
+                            top: "12%",
 
-                        padding:
-                            "12px 20px",
+                            padding:
+                                "12px 20px",
 
-                        border:
-                            "none",
+                            border:
+                                "none",
 
-                        borderRadius:
-                            "10px",
+                            borderRadius:
+                                "10px",
 
-                        background:
-                            "rgba(156,66,66,0.95)",
+                            background:
+                                "rgba(156,66,66,0.95)",
 
-                        color:
-                            "#fff",
+                            color:
+                                "#fff",
 
-                        fontFamily:
-                            "Comfortaa, sans-serif",
+                            fontFamily:
+                                "Comfortaa, sans-serif",
 
-                        fontSize:
-                            "15px",
+                            fontSize:
+                                "15px",
 
-                        fontWeight:
-                            700,
+                            fontWeight:
+                                700,
 
-                        cursor:
-                            "pointer",
+                            cursor:
+                                "pointer",
 
-                        zIndex: 95,
-                    }}
-                >
-                    TURN STOVE OFF
-                </button>
-            )}
+                            zIndex: 95,
+                        }}
+                    >
+                        TURN STOVE OFF
+                    </button>
+                )}
 
 
             {/* =================================================
-                COMPLETION
-            ================================================= */}
+    COMPLETION
+================================================= */}
 
-            {panStage ===
-                "ready_stove_off" && (
-
+            {panStage === "ready_stove_off" && !isPlating && (
                 <div
                     style={{
-                        position:
-                            "absolute",
+                        position: "absolute",
 
                         left: "50%",
-
                         top: "12%",
 
-                        transform:
-                            "translateX(-50%)",
+                        transform: "translateX(-50%)",
 
-                        color:
-                            "rgb(104,67,41)",
+                        color: "rgb(104,67,41)",
 
                         fontFamily:
                             "Comfortaa, sans-serif",
 
-                        fontSize:
-                            "24px",
-
-                        fontWeight:
-                            700,
+                        fontSize: "24px",
+                        fontWeight: 700,
 
                         zIndex: 90,
 
-                        pointerEvents:
-                            "none",
-
-                        textAlign:
-                            "center",
+                        textAlign: "center",
                     }}
                 >
-                    Fried Rice Ready!
+                    <div>
+                        Fried Rice Complete!
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handlePlaceInPlate}
+                        style={{
+                            marginTop: "24px",
+
+                            padding: "13px 24px",
+
+                            border: "none",
+                            borderRadius: "10px",
+
+                            background:
+                                "rgba(156,66,66,0.95)",
+
+                            color: "#fff",
+
+                            fontFamily:
+                                "Comfortaa, sans-serif",
+
+                            fontSize: "16px",
+                            fontWeight: 700,
+
+                            cursor: "pointer",
+                        }}
+                    >
+                        PLACE IN PLATE
+                    </button>
                 </div>
             )}
 
@@ -1610,6 +1711,34 @@ export default function PanScreen({
                 onIngredientDragEnd={() => { }}
 
             />
+
+            {isPlating && (
+                <div
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "#000",
+                        zIndex: 1000,
+                        pointerEvents: "all",
+                        animation:
+                            "plateCurtainIn 500ms ease forwards",
+                    }}
+                />
+            )}
+
+            <style>
+                {`
+    @keyframes plateCurtainIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+  `}
+            </style>
 
         </div>
     );
