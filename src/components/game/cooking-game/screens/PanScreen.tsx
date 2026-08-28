@@ -8,6 +8,10 @@ import {
     useState,
 } from "react";
 
+import {
+    getMasterVolume,
+} from "@/lib/audio";
+
 import panInner from "@/assets/media/mise-en-place/background/pan.jpg";
 import panInnerOn from "@/assets/media/mise-en-place/background/pan-on.jpg";
 
@@ -209,6 +213,47 @@ export default function PanScreen({
 
     }, []);
 
+    useEffect(() => {
+        const updateVolume = (event: Event) => {
+            const customEvent =
+                event as CustomEvent<number>;
+
+            const newVolume =
+                customEvent.detail;
+
+            if (fryingAudio.current) {
+                fryingAudio.current.volume =
+                    newVolume;
+            }
+
+            if (eggFryingAudio.current) {
+                eggFryingAudio.current.volume =
+                    newVolume;
+            }
+
+            if (completeAudio.current) {
+                completeAudio.current.volume =
+                    newVolume;
+            }
+
+            if (plateAudio.current) {
+                plateAudio.current.volume =
+                    newVolume;
+            }
+        };
+
+        window.addEventListener(
+            "sefirah-volume-change",
+            updateVolume
+        );
+
+        return () => {
+            window.removeEventListener(
+                "sefirah-volume-change",
+                updateVolume
+            );
+        };
+    }, []);
 
     /*
      * =========================================================
@@ -895,6 +940,8 @@ export default function PanScreen({
                 new Audio(
                     "/audio/stir.wav"
                 );
+
+            sound.volume = getMasterVolume();
 
 
             sound.currentTime = 0;

@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import menuBarLogo from "../../assets/media/menu-bar-logo.png";
 import wifiIcon from "../../assets/icons/wifi.svg";
 import searchIcon from "../../assets/icons/search.svg";
 import githubIcon from "../../assets/icons/github.svg";
-import { useAudio } from "@/context/AudioContext";
+
+import {
+  getMasterVolume,
+  setMasterVolume,
+} from "@/lib/audio";
 
 interface MenuBarProps {
   onSearch?: () => void;
@@ -16,15 +21,38 @@ export default function MenuBar({
 }: MenuBarProps) {
   const [date, setDate] = useState(new Date());
   const [showVolume, setShowVolume] = useState(false);
-  const { volume, setVolume } = useAudio();
   const [showWifi, setShowWifi] = useState(false);
+
+  const [volume, setVolumeState] = useState(35);
+
+  useEffect(() => {
+    const savedVolume = getMasterVolume();
+
+    setVolumeState(
+      Math.round(savedVolume * 100)
+    );
+  }, []);
+
+  const setVolume = (value: number) => {
+    setVolumeState(value);
+
+    setMasterVolume(value / 100);
+  };
+
+  /*
+   * =========================================================
+   * CLOCK
+   * =========================================================
+   */
 
   useEffect(() => {
     const timer = setInterval(() => {
       setDate(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
 
   const time = date.toLocaleTimeString([], {
@@ -41,6 +69,12 @@ export default function MenuBar({
     month: "short",
     day: "numeric",
   });
+
+  /*
+   * =========================================================
+   * RENDER
+   * =========================================================
+   */
 
   return (
     <header
@@ -59,23 +93,21 @@ export default function MenuBar({
 
         color: "#ffffff",
 
-        /* Subtle dark glass */
         background: "rgba(10, 10, 10, 0.48)",
 
-        /* Much lighter blur than the dock */
         backdropFilter: "blur(16px) saturate(120%)",
-        WebkitBackdropFilter: "blur(16px) saturate(120%)",
+        WebkitBackdropFilter:
+          "blur(16px) saturate(120%)",
 
-        /* Very subtle separation */
-        borderBottom: "1px solid rgba(255, 255, 255, 0.07)",
+        borderBottom:
+          "1px solid rgba(255, 255, 255, 0.07)",
 
         boxSizing: "border-box",
       }}
     >
-
-      {/* ================================================== */}
-      {/* LEFT SIDE */}
-      {/* ================================================== */}
+      {/* ==================================================
+          LEFT SIDE
+      ================================================== */}
 
       <div
         style={{
@@ -86,15 +118,17 @@ export default function MenuBar({
           flexShrink: 0,
         }}
       >
-
         {/* Sefirah Logo */}
+
         <div
           style={{
             width: "28px",
             height: "40px",
+
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+
             flexShrink: 0,
           }}
         >
@@ -108,6 +142,7 @@ export default function MenuBar({
             style={{
               width: "32px",
               height: "32px",
+
               objectFit: "contain",
               display: "block",
             }}
@@ -115,6 +150,7 @@ export default function MenuBar({
         </div>
 
         {/* Name */}
+
         <span
           style={{
             fontSize: "16px",
@@ -125,53 +161,63 @@ export default function MenuBar({
         >
           sefirah
         </span>
-
       </div>
 
-
-      {/* ================================================== */}
-      {/* RIGHT SIDE */}
-      {/* ================================================== */}
+      {/* ==================================================
+          RIGHT SIDE
+      ================================================== */}
 
       <div
         style={{
           height: "100%",
+
           display: "flex",
           alignItems: "center",
+
           gap: "10px",
+
           flexShrink: 0,
         }}
       >
-
-        {/* ---------------- VOLUME ---------------- */}
+        {/* ==================================================
+            VOLUME
+        ================================================== */}
 
         <div
           style={{
             position: "relative",
+
             display: "flex",
             alignItems: "center",
           }}
         >
-
           <button
-            onClick={() => setShowVolume((value) => !value)}
+            type="button"
+            onClick={() =>
+              setShowVolume((value) => !value)
+            }
             aria-label="Volume"
             style={{
               width: "30px",
               height: "30px",
+
               padding: 0,
               border: 0,
+
               background: "transparent",
               color: "#ffffff",
+
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+
               cursor: "pointer",
               borderRadius: "6px",
             }}
           >
+            {/* MUTED */}
+
             {volume === 0 ? (
-              // MUTED
               <svg
                 width="20"
                 height="20"
@@ -183,12 +229,24 @@ export default function MenuBar({
                 strokeLinejoin="round"
               >
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
-              </svg>
 
+                <line
+                  x1="23"
+                  y1="9"
+                  x2="17"
+                  y2="15"
+                />
+
+                <line
+                  x1="17"
+                  y1="9"
+                  x2="23"
+                  y2="15"
+                />
+              </svg>
             ) : volume <= 30 ? (
-              // LOW
+              /* LOW */
+
               <svg
                 width="20"
                 height="20"
@@ -200,11 +258,12 @@ export default function MenuBar({
                 strokeLinejoin="round"
               >
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+
                 <path d="M15 9a5 5 0 0 1 0 6" />
               </svg>
-
             ) : volume <= 65 ? (
-              // MEDIUM
+              /* MEDIUM */
+
               <svg
                 width="20"
                 height="20"
@@ -216,12 +275,14 @@ export default function MenuBar({
                 strokeLinejoin="round"
               >
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+
                 <path d="M15 9a5 5 0 0 1 0 6" />
+
                 <path d="M18 6a9 9 0 0 1 0 12" />
               </svg>
-
             ) : (
-              // HIGH
+              /* HIGH */
+
               <svg
                 width="21"
                 height="21"
@@ -233,41 +294,57 @@ export default function MenuBar({
                 strokeLinejoin="round"
               >
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+
                 <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+
                 <path d="M19 5a9 9 0 0 1 0 14" />
               </svg>
             )}
           </button>
 
-
-          {/* Volume Popup */}
+          {/* ==================================================
+              VOLUME POPUP
+          ================================================== */}
 
           {showVolume && (
             <div
               style={{
                 position: "absolute",
+
                 top: "42px",
                 right: 0,
 
                 width: "300px",
-                padding: "18px 18px 15px",
 
-                background: "rgba(32, 32, 32, 0.88)",
-                backdropFilter: "blur(24px) saturate(140%)",
-                WebkitBackdropFilter: "blur(24px) saturate(140%)",
+                padding:
+                  "18px 18px 15px",
 
-                border: "1px solid rgba(255,255,255,0.12)",
+                background:
+                  "rgba(32, 32, 32, 0.88)",
+
+                backdropFilter:
+                  "blur(24px) saturate(140%)",
+
+                WebkitBackdropFilter:
+                  "blur(24px) saturate(140%)",
+
+                border:
+                  "1px solid rgba(255,255,255,0.12)",
+
                 borderRadius: "14px",
 
                 boxShadow:
                   "0 12px 35px rgba(0,0,0,0.45)",
 
                 boxSizing: "border-box",
+
                 color: "#ffffff",
+
                 zIndex: 2000,
               }}
             >
               {/* Volume row */}
+
               <div
                 style={{
                   display: "flex",
@@ -276,13 +353,16 @@ export default function MenuBar({
                 }}
               >
                 {/* Speaker */}
+
                 <div
                   style={{
                     width: "24px",
                     height: "24px",
+
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+
                     flexShrink: 0,
                   }}
                 >
@@ -298,8 +378,20 @@ export default function MenuBar({
                       strokeLinejoin="round"
                     >
                       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                      <line x1="23" y1="9" x2="17" y2="15" />
-                      <line x1="17" y1="9" x2="23" y2="15" />
+
+                      <line
+                        x1="23"
+                        y1="9"
+                        x2="17"
+                        y2="15"
+                      />
+
+                      <line
+                        x1="17"
+                        y1="9"
+                        x2="23"
+                        y2="15"
+                      />
                     </svg>
                   ) : volume < 50 ? (
                     <svg
@@ -313,6 +405,7 @@ export default function MenuBar({
                       strokeLinejoin="round"
                     >
                       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+
                       <path d="M15 9a4 4 0 0 1 0 6" />
                     </svg>
                   ) : (
@@ -327,63 +420,91 @@ export default function MenuBar({
                       strokeLinejoin="round"
                     >
                       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11" />
+
                       <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+
                       <path d="M19 5a9 9 0 0 1 0 14" />
                     </svg>
                   )}
                 </div>
 
-                {/* Slider */}
+                {/* ==================================================
+                    SLIDER
+                ================================================== */}
+
                 <div
                   style={{
                     position: "relative",
+
                     flex: 1,
+
                     height: "24px",
+
                     display: "flex",
                     alignItems: "center",
                   }}
                 >
                   {/* Track */}
+
                   <div
                     style={{
                       position: "absolute",
+
                       left: 0,
                       right: 0,
+
                       height: "4px",
+
                       borderRadius: "999px",
-                      background: "rgba(255,255,255,0.28)",
+
+                      background:
+                        "rgba(255,255,255,0.28)",
+
                       overflow: "hidden",
                     }}
                   >
                     {/* Filled portion */}
+
                     <div
                       style={{
                         width: `${volume}%`,
+
                         height: "100%",
-                        background: "var(--dock-active-color, #3fa9ff)",
+
+                        background:
+                          "var(--dock-active-color, #3fa9ff)",
+
                         borderRadius: "999px",
-                        transition: "width 80ms ease",
+
+                        transition:
+                          "width 80ms ease",
                       }}
                     />
                   </div>
 
                   {/* Actual input */}
+
                   <input
                     type="range"
                     min="0"
                     max="100"
                     value={volume}
-                    onChange={(e) =>
-                      setVolume(Number(e.target.value))
-                    }
+                    onChange={(event) => {
+                      setVolume(
+                        Number(event.target.value)
+                      );
+                    }}
+                    aria-label="Master volume"
                     style={{
                       position: "absolute",
+
                       inset: 0,
 
                       width: "100%",
                       height: "24px",
 
                       margin: 0,
+
                       opacity: 0,
 
                       cursor: "pointer",
@@ -391,9 +512,11 @@ export default function MenuBar({
                   />
 
                   {/* Thumb */}
+
                   <div
                     style={{
                       position: "absolute",
+
                       left: `calc(${volume}% - 7px)`,
 
                       width: "14px",
@@ -408,52 +531,67 @@ export default function MenuBar({
 
                       pointerEvents: "none",
 
-                      transition: "left 80ms ease",
+                      transition:
+                        "left 80ms ease",
                     }}
                   />
                 </div>
               </div>
 
               {/* Volume percentage */}
+
               <div
                 style={{
                   marginTop: "8px",
+
                   marginLeft: "38px",
+
                   fontSize: "12px",
-                  color: "rgba(255,255,255,0.62)",
+
+                  color:
+                    "rgba(255,255,255,0.62)",
                 }}
               >
                 {volume}% volume
               </div>
             </div>
           )}
-
         </div>
 
-
-        {/* ---------------- WI-FI ---------------- */}
+        {/* ==================================================
+            WI-FI
+        ================================================== */}
 
         <div
           style={{
             position: "relative",
+
             display: "flex",
             alignItems: "center",
           }}
         >
           <button
-            onClick={() => setShowWifi((value) => !value)}
+            type="button"
+            onClick={() =>
+              setShowWifi((value) => !value)
+            }
             aria-label="Wi-Fi"
             style={{
               width: "30px",
               height: "30px",
+
               padding: 0,
               border: 0,
+
               background: "transparent",
               color: "#ffffff",
+
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+
               cursor: "pointer",
+
               borderRadius: "6px",
             }}
           >
@@ -463,8 +601,11 @@ export default function MenuBar({
               style={{
                 width: "19px",
                 height: "19px",
+
                 objectFit: "contain",
-                filter: "brightness(0) invert(1)",
+
+                filter:
+                  "brightness(0) invert(1)",
               }}
             />
           </button>
@@ -473,22 +614,36 @@ export default function MenuBar({
             <div
               style={{
                 position: "absolute",
+
                 top: "38px",
                 right: 0,
+
                 width: "230px",
+
                 padding: "14px",
+
                 backgroundColor: "#222222",
-                border: "1px solid rgba(255,255,255,0.12)",
+
+                border:
+                  "1px solid rgba(255,255,255,0.12)",
+
                 borderRadius: "10px",
+
                 zIndex: 2000,
-                boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+
+                boxShadow:
+                  "0 10px 30px rgba(0,0,0,0.45)",
+
                 boxSizing: "border-box",
               }}
             >
               <div
                 style={{
                   fontSize: "13px",
-                  color: "rgba(255,255,255,0.55)",
+
+                  color:
+                    "rgba(255,255,255,0.55)",
+
                   marginBottom: "5px",
                 }}
               >
@@ -498,17 +653,29 @@ export default function MenuBar({
               <div
                 style={{
                   fontSize: "15px",
+
                   color: "#ffffff",
+
                   marginBottom: "12px",
                 }}
               >
-                <span style={{ color: "#4ade80" }}>●</span> Connected
+                <span
+                  style={{
+                    color: "#4ade80",
+                  }}
+                >
+                  ●
+                </span>{" "}
+                Connected
               </div>
 
               <div
                 style={{
                   height: "1px",
-                  backgroundColor: "rgba(255,255,255,0.1)",
+
+                  backgroundColor:
+                    "rgba(255,255,255,0.1)",
+
                   marginBottom: "12px",
                 }}
               />
@@ -516,7 +683,9 @@ export default function MenuBar({
               <div
                 style={{
                   fontSize: "13px",
-                  color: "rgba(255,255,255,0.55)",
+
+                  color:
+                    "rgba(255,255,255,0.55)",
                 }}
               >
                 Current Network
@@ -525,7 +694,9 @@ export default function MenuBar({
               <div
                 style={{
                   marginTop: "4px",
+
                   fontSize: "15px",
+
                   color: "#ffffff",
                 }}
               >
@@ -535,8 +706,11 @@ export default function MenuBar({
               <div
                 style={{
                   marginTop: "12px",
+
                   fontSize: "12px",
-                  color: "rgba(255,255,255,0.45)",
+
+                  color:
+                    "rgba(255,255,255,0.45)",
                 }}
               >
                 Signal: Excellent
@@ -545,10 +719,12 @@ export default function MenuBar({
           )}
         </div>
 
-
-        {/* ---------------- SEARCH ---------------- */}
+        {/* ==================================================
+            SEARCH
+        ================================================== */}
 
         <button
+          type="button"
           onClick={onSearch}
           className="flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-white/10"
           aria-label="Search"
@@ -560,10 +736,12 @@ export default function MenuBar({
           />
         </button>
 
-
-        {/* ---------------- GITHUB ---------------- */}
+        {/* ==================================================
+            GITHUB
+        ================================================== */}
 
         <button
+          type="button"
           onClick={() =>
             window.open(
               "https://github.com/Shirbhooshan",
@@ -580,18 +758,24 @@ export default function MenuBar({
           />
         </button>
 
-
-        {/* ---------------- DATE + TIME ---------------- */}
+        {/* ==================================================
+            DATE + TIME
+        ================================================== */}
 
         <div
           style={{
             marginLeft: "4px",
+
             display: "flex",
             alignItems: "center",
+
             gap: "10px",
+
             whiteSpace: "nowrap",
+
             fontSize: "15px",
             fontWeight: 400,
+
             lineHeight: 1,
           }}
         >
@@ -603,9 +787,7 @@ export default function MenuBar({
             {time}
           </span>
         </div>
-
       </div>
-
     </header>
   );
 }
