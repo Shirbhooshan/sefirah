@@ -1,17 +1,51 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import type {
+  CSSProperties,
+  MouseEvent as ReactMouseEvent,
+} from "react";
+
+/*
+ * =========================================================
+ * DSA LAB
+ * =========================================================
+ *
+ * Interactive presentation + DSA visualizer for SEFIRAH.
+ *
+ * Demonstrates:
+ *
+ * 1. Queue
+ * 2. Set
+ * 3. State-machine style transitions
+ * 4. Actual project code
+ * 5. Complexity
+ * 6. Failure cases
+ *
+ * This component is intentionally self-contained.
+ * =========================================================
+ */
+
+
 /*
  * =========================================================
  * TYPES
  * =========================================================
  */
+
+interface WindowPosition {
+  left: number;
+  top: number;
+  zIndex: number;
+  centered: boolean;
+}
 
 interface DSALabProps {
   onClose?: () => void;
@@ -22,20 +56,22 @@ interface DSALabProps {
     top: number
   ) => void;
 
-  windowPosition: {
-    left: number;
-    top: number;
-    zIndex: number;
-    centered: boolean;
-  };
+  windowPosition: WindowPosition;
 }
 
 
-/*
- * =========================================================
- * DSA TYPES
- * =========================================================
- */
+type Section =
+  | "overview"
+  | "why"
+  | "queue"
+  | "code"
+  | "set"
+  | "state"
+  | "failure"
+  | "complexity"
+  | "presentation"
+  | "summary";
+
 
 type CookingAction =
   | "cooking_oil"
@@ -48,40 +84,11 @@ type CookingAction =
   | "stir";
 
 
-/*
- * =========================================================
- * QUEUE
- *
- * Same basic structure used by the cooking-game logic.
- * =========================================================
- */
-
-class CookingQueue<T> {
-  private items: T[] = [];
-
-  constructor(initial: T[] = []) {
-    this.items = [...initial];
-  }
-
-  enqueue(item: T) {
-    this.items.push(item);
-  }
-
-  peek(): T | undefined {
-    return this.items[0];
-  }
-
-  dequeue(): T | undefined {
-    return this.items.shift();
-  }
-
-  get size() {
-    return this.items.length;
-  }
-
-  toArray() {
-    return [...this.items];
-  }
+interface QueueItem {
+  id: number;
+  action: CookingAction;
+  label: string;
+  icon: string;
 }
 
 
@@ -91,103 +98,102 @@ class CookingQueue<T> {
  * =========================================================
  */
 
-const recipeActions: CookingAction[] = [
-  "cooking_oil",
-  "cut_garlic",
-  "cut_carrot",
-  "rice",
-  "egg",
-  "soy_sauce",
-  "cut_green_onion",
-  "stir",
+const RECIPE: QueueItem[] = [
+  {
+    id: 1,
+    action: "cooking_oil",
+    label: "Cooking Oil",
+    icon: "🫗",
+  },
+
+  {
+    id: 2,
+    action: "cut_garlic",
+    label: "Cut Garlic",
+    icon: "🧄",
+  },
+
+  {
+    id: 3,
+    action: "cut_carrot",
+    label: "Cut Carrot",
+    icon: "🥕",
+  },
+
+  {
+    id: 4,
+    action: "rice",
+    label: "Cold Rice",
+    icon: "🍚",
+  },
+
+  {
+    id: 5,
+    action: "egg",
+    label: "Egg",
+    icon: "🥚",
+  },
+
+  {
+    id: 6,
+    action: "soy_sauce",
+    label: "Soy Sauce",
+    icon: "🥣",
+  },
+
+  {
+    id: 7,
+    action: "cut_green_onion",
+    label: "Green Onion",
+    icon: "🌱",
+  },
+
+  {
+    id: 8,
+    action: "stir",
+    label: "Stir",
+    icon: "🥄",
+  },
 ];
-
-
-const actionLabels: Record<
-  CookingAction,
-  string
-> = {
-  cooking_oil: "Add Cooking Oil",
-  cut_garlic: "Add Cut Garlic",
-  cut_carrot: "Add Cut Carrot",
-  rice: "Add Cold Rice",
-  egg: "Add Egg",
-  soy_sauce: "Add Soy Sauce",
-  cut_green_onion: "Add Green Onion",
-  stir: "Stir Fried Rice",
-};
 
 
 /*
  * =========================================================
- * SLIDES
+ * HELPERS
  * =========================================================
  */
 
-const slides = [
-  {
-    title: "DSA IN SEFIRAH",
-    subtitle:
-      "How Data Structures actually control our cooking game",
-    type: "intro",
-  },
+const actionText: Record<
+  CookingAction,
+  string
+> = {
+  cooking_oil: "Add cooking oil",
+  cut_garlic: "Add cut garlic",
+  cut_carrot: "Add cut carrot",
+  rice: "Add cold rice",
+  egg: "Add egg",
+  soy_sauce: "Add soy sauce",
+  cut_green_onion:
+    "Add cut green onion",
+  stir: "Stir the fried rice",
+};
 
-  {
-    title: "1. THE PROBLEM",
-    subtitle:
-      "Why does the game need Data Structures?",
-    type: "problem",
-  },
 
-  {
-    title: "2. QUEUE",
-    subtitle:
-      "FIFO — First In, First Out",
-    type: "queue",
-  },
-
-  {
-    title: "3. LIVE QUEUE SIMULATION",
-    subtitle:
-      "Watch the cooking pipeline change in real time",
-    type: "queue-demo",
-  },
-
-  {
-    title: "4. SET",
-    subtitle:
-      "Tracking which cooking actions are already completed",
-    type: "set",
-  },
-
-  {
-    title: "5. STATE MACHINE",
-    subtitle:
-      "Data structures + state transitions control the game",
-    type: "state",
-  },
-
-  {
-    title: "6. TREE",
-    subtitle:
-      "Representing the recipe hierarchy",
-    type: "tree",
-  },
-
-  {
-    title: "7. STACK",
-    subtitle:
-      "A live LIFO demonstration",
-    type: "stack",
-  },
-
-  {
-    title: "8. HOW TO PRESENT THIS",
-    subtitle:
-      "The 60-second explanation for the evaluator",
-    type: "presentation",
-  },
-];
+const sectionLabels: Record<
+  Section,
+  string
+> = {
+  overview: "Overview",
+  why: "Why DSA?",
+  queue: "Queue",
+  code: "Source Code",
+  set: "Set",
+  state: "State Machine",
+  failure: "Failure Case",
+  complexity: "Complexity",
+  presentation: "How To Present",
+  summary: "Summary",
+};
 
 
 /*
@@ -203,80 +209,94 @@ export default function DSALab({
   windowPosition,
 }: DSALabProps) {
 
+
   /*
-   * ---------------------------------------------------------
-   * SLIDE STATE
-   * ---------------------------------------------------------
+   * =========================================================
+   * SECTION
+   * =========================================================
    */
 
   const [
-    currentSlide,
-    setCurrentSlide,
-  ] = useState(0);
+    section,
+    setSection,
+  ] = useState<Section>("overview");
 
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * QUEUE DEMO
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const [
-    queueItems,
-    setQueueItems,
-  ] = useState<CookingAction[]>(
-    recipeActions
-  );
+    queue,
+    setQueue,
+  ] = useState<QueueItem[]>(RECIPE);
+
 
   const [
-    completedQueueItems,
-    setCompletedQueueItems,
-  ] = useState<CookingAction[]>(
-    []
+    queueMessage,
+    setQueueMessage,
+  ] = useState(
+    "Queue initialized with the Fried Rice recipe."
+  );
+
+
+  const [
+    highlightedId,
+    setHighlightedId,
+  ] = useState<number | null>(null);
+
+
+  const [
+    lastOperation,
+    setLastOperation,
+  ] = useState(
+    "Waiting for an operation..."
   );
 
 
   /*
-   * ---------------------------------------------------------
+   * =========================================================
    * SET DEMO
-   * ---------------------------------------------------------
+   * =========================================================
    */
 
   const [
     completedSet,
     setCompletedSet,
-  ] = useState<Set<CookingAction>>(
-    new Set()
+  ] = useState<CookingAction[]>([
+    "cooking_oil",
+    "cut_garlic",
+    "cut_carrot",
+  ]);
+
+
+  const [
+    setMessage,
+    setSetMessage,
+  ] = useState(
+    "These actions have already been completed."
   );
 
 
   /*
-   * ---------------------------------------------------------
-   * STACK DEMO
-   * ---------------------------------------------------------
+   * =========================================================
+   * FAILURE DEMO
+   * =========================================================
    */
 
   const [
-    stackItems,
-    setStackItems,
-  ] = useState<string[]>([
-    "Serve",
-    "Cook",
-    "Add Soy Sauce",
-    "Add Rice",
-  ]);
+    failureStep,
+    setFailureStep,
+  ] = useState(0);
 
 
   /*
-   * ---------------------------------------------------------
-   * WINDOW DRAGGING
-   * ---------------------------------------------------------
+   * =========================================================
+   * DRAGGING
+   * =========================================================
    */
-
-  const dragOffset = useRef({
-    x: 0,
-    y: 0,
-  });
 
   const [
     isDragging,
@@ -284,8 +304,32 @@ export default function DSALab({
   ] = useState(false);
 
 
+  const dragOffset =
+    useRef({
+      x: 0,
+      y: 0,
+    });
+
+
+  /*
+   * =========================================================
+   * WINDOW DIMENSIONS
+   * =========================================================
+   */
+
+  const WINDOW_WIDTH = 1080;
+  const WINDOW_HEIGHT = 720;
+  const MENU_BAR_HEIGHT = 38;
+
+
+  /*
+   * =========================================================
+   * WINDOW DRAG START
+   * =========================================================
+   */
+
   const handleWindowDragStart = (
-    event: React.MouseEvent
+    event: ReactMouseEvent
   ) => {
 
     if (event.button !== 0) {
@@ -299,7 +343,7 @@ export default function DSALab({
 
     const windowElement =
       event.currentTarget.closest(
-        "[data-dsa-lab-window]"
+        "[data-dsa-window]"
       ) as HTMLElement | null;
 
     if (!windowElement) {
@@ -323,6 +367,12 @@ export default function DSALab({
   };
 
 
+  /*
+   * =========================================================
+   * WINDOW DRAGGING
+   * =========================================================
+   */
+
   useEffect(() => {
 
     if (!isDragging) {
@@ -341,31 +391,20 @@ export default function DSALab({
         event.clientY -
         dragOffset.current.y;
 
-      /*
-       * Keep the window below the menu bar.
-       */
-
-      const menuBarHeight = 38;
-
-      /*
-       * DSA Lab is intentionally larger
-       * than the Cooking Game.
-       */
-
-      const windowWidth = 1050;
-      const windowHeight = 680;
 
       const actualWidth =
         Math.min(
-          windowWidth,
-          window.innerWidth * 0.92
+          WINDOW_WIDTH,
+          window.innerWidth * 0.94
         );
+
 
       const actualHeight =
         Math.min(
-          windowHeight,
-          window.innerHeight * 0.86
+          WINDOW_HEIGHT,
+          window.innerHeight * 0.88
         );
+
 
       const maxLeft =
         Math.max(
@@ -374,12 +413,14 @@ export default function DSALab({
             actualWidth
         );
 
+
       const maxTop =
         Math.max(
-          menuBarHeight,
+          MENU_BAR_HEIGHT,
           window.innerHeight -
             actualHeight
         );
+
 
       const clampedLeft =
         Math.max(
@@ -390,14 +431,16 @@ export default function DSALab({
           )
         );
 
+
       const clampedTop =
         Math.max(
-          menuBarHeight,
+          MENU_BAR_HEIGHT,
           Math.min(
             newTop,
             maxTop
           )
         );
+
 
       onMove?.(
         clampedLeft,
@@ -433,7 +476,6 @@ export default function DSALab({
         "mouseup",
         handleMouseUp
       );
-
     };
 
   }, [
@@ -444,244 +486,2540 @@ export default function DSALab({
 
   /*
    * =========================================================
-   * QUEUE OPERATIONS
+   * FOCUS
    * =========================================================
    */
 
-  const runQueueStep = () => {
+  const focusWindow = useCallback(() => {
+    onFocus?.();
+  }, [onFocus]);
 
-    if (queueItems.length === 0) {
-      return;
-    }
 
-    const queue =
-      new CookingQueue(
-        queueItems
-      );
-
-    /*
-     * peek()
-     *
-     * Look at the next operation
-     * without removing it.
-     */
-
-    const next =
-      queue.peek();
-
-    if (!next) {
-      return;
-    }
-
-    /*
-     * dequeue()
-     *
-     * Complete the operation and
-     * remove it from the front.
-     */
-
-    const completed =
-      queue.dequeue();
-
-    if (!completed) {
-      return;
-    }
-
-    setQueueItems(
-      queue.toArray()
-    );
-
-    setCompletedQueueItems(
-      (previous) => [
-        ...previous,
-        completed,
-      ]
-    );
-  };
-
+  /*
+   * =========================================================
+   * QUEUE RESET
+   * =========================================================
+   */
 
   const resetQueue = () => {
 
-    setQueueItems(
-      recipeActions
+    setQueue(RECIPE);
+
+    setHighlightedId(null);
+
+    setQueueMessage(
+      "Queue reset. All 8 recipe actions are waiting."
     );
 
-    setCompletedQueueItems(
-      []
+    setLastOperation(
+      "RESET"
     );
-
   };
 
 
   /*
    * =========================================================
-   * SET OPERATION
+   * QUEUE PEEK
    * =========================================================
    */
 
-  const completeSetAction = (
-    action: CookingAction
-  ) => {
+  const peekQueue = () => {
 
-    setCompletedSet(
-      (previous) => {
+    const first =
+      queue[0];
 
-        const next =
-          new Set(previous);
+    if (!first) {
 
-        next.add(action);
+      setQueueMessage(
+        "Queue is empty."
+      );
 
-        return next;
-      }
+      setLastOperation(
+        "peek() → undefined"
+      );
+
+      return;
+    }
+
+
+    setHighlightedId(
+      first.id
     );
 
-  };
 
-
-  const resetSet = () => {
-
-    setCompletedSet(
-      new Set()
+    setQueueMessage(
+      `PEEK → ${first.label}`
     );
 
+
+    setLastOperation(
+      `peek() → ${first.action}`
+    );
   };
 
 
   /*
    * =========================================================
-   * STACK OPERATIONS
+   * QUEUE DEQUEUE
    * =========================================================
    */
 
-  const pushStack = () => {
+  const dequeueQueue = () => {
 
-    setStackItems(
+    if (queue.length === 0) {
+
+      setQueueMessage(
+        "Cannot dequeue. Queue is empty."
+      );
+
+      setLastOperation(
+        "dequeue() → undefined"
+      );
+
+      return;
+    }
+
+
+    const removed =
+      queue[0];
+
+
+    setHighlightedId(
+      removed.id
+    );
+
+
+    setLastOperation(
+      `dequeue() → ${removed.action}`
+    );
+
+
+    setQueueMessage(
+      `${removed.label} completed. The next action is now at FRONT.`
+    );
+
+
+    setTimeout(() => {
+
+      setQueue(
+        (previous) =>
+          previous.slice(1)
+      );
+
+      setHighlightedId(null);
+
+    }, 450);
+  };
+
+
+  /*
+   * =========================================================
+   * ENQUEUE
+   * =========================================================
+   */
+
+  const enqueueQueue = () => {
+
+    const nextId =
+      Math.max(
+        0,
+        ...queue.map(
+          (item) => item.id
+        )
+      ) + 1;
+
+
+    const newItem: QueueItem = {
+      id: nextId,
+
+      action:
+        "stir",
+
+      label:
+        "Extra Stir",
+
+      icon:
+        "🥄",
+    };
+
+
+    setQueue(
       (previous) => [
         ...previous,
-        "New Cooking Step",
+        newItem,
       ]
     );
 
-  };
 
-
-  const popStack = () => {
-
-    setStackItems(
-      (previous) => {
-
-        if (
-          previous.length === 0
-        ) {
-          return previous;
-        }
-
-        return previous.slice(
-          0,
-          -1
-        );
-
-      }
+    setLastOperation(
+      "enqueue(stir)"
     );
 
-  };
+
+    setQueueMessage(
+      "New action added at the REAR of the queue."
+    );
 
 
-  const resetStack = () => {
+    setHighlightedId(
+      nextId
+    );
 
-    setStackItems([
-      "Serve",
-      "Cook",
-      "Add Soy Sauce",
-      "Add Rice",
-    ]);
 
+    setTimeout(() => {
+      setHighlightedId(null);
+    }, 600);
   };
 
 
   /*
    * =========================================================
-   * NAVIGATION
+   * SET TOGGLE
    * =========================================================
    */
 
-  const goNext = () => {
+  const toggleSetAction = (
+    action: CookingAction
+  ) => {
 
-    setCurrentSlide(
-      (current) =>
-        Math.min(
-          slides.length - 1,
-          current + 1
-        )
+    const exists =
+      completedSet.includes(
+        action
+      );
+
+
+    if (exists) {
+
+      setCompletedSet(
+        (previous) =>
+          previous.filter(
+            (item) =>
+              item !== action
+          )
+      );
+
+
+      setSetMessage(
+        `"${action}" removed from completed Set.`
+      );
+
+      return;
+    }
+
+
+    setCompletedSet(
+      (previous) => [
+        ...previous,
+        action,
+      ]
     );
 
+
+    setSetMessage(
+      `"${action}" added to completed Set.`
+    );
+  };
+
+
+  /*
+   * =========================================================
+   * FAILURE DEMO
+   * =========================================================
+   */
+
+  const failureData = [
+    {
+      title:
+        "Player tries to add rice first",
+
+      text:
+        "The queue says OIL is the next required action.",
+
+      result:
+        "❌ Action rejected",
+
+      explanation:
+        "The game checks queue.peek() before accepting the action.",
+    },
+
+    {
+      title:
+        "Player tries soy sauce before egg",
+
+      text:
+        "The queue still expects the egg.",
+
+      result:
+        "❌ Action rejected",
+
+      explanation:
+        "The player cannot skip forward in the recipe.",
+    },
+
+    {
+      title:
+        "Player follows the queue",
+
+      text:
+        "The next action matches queue.peek().",
+
+      result:
+        "✅ Action accepted",
+
+      explanation:
+        "The ingredient is consumed and the action is marked complete.",
+    },
+  ];
+
+
+  /*
+   * =========================================================
+   * CURRENT FAILURE
+   * =========================================================
+   */
+
+  const currentFailure =
+    failureData[
+      failureStep
+    ];
+
+
+  /*
+   * =========================================================
+   * SECTION NAVIGATION
+   * =========================================================
+   */
+
+  const sections =
+    Object.keys(
+      sectionLabels
+    ) as Section[];
+
+
+  const currentSectionIndex =
+    sections.indexOf(
+      section
+    );
+
+
+  const goNext = () => {
+
+    if (
+      currentSectionIndex <
+      sections.length - 1
+    ) {
+
+      setSection(
+        sections[
+          currentSectionIndex + 1
+        ]
+      );
+
+    }
   };
 
 
   const goPrevious = () => {
 
-    setCurrentSlide(
-      (current) =>
-        Math.max(
-          0,
-          current - 1
-        )
-    );
+    if (
+      currentSectionIndex > 0
+    ) {
 
-  };
-
-
-  useEffect(() => {
-
-    const handleKeyboard = (
-      event: KeyboardEvent
-    ) => {
-
-      if (
-        event.key === "ArrowRight"
-      ) {
-        goNext();
-      }
-
-      if (
-        event.key === "ArrowLeft"
-      ) {
-        goPrevious();
-      }
-
-      if (
-        event.key === "Escape"
-      ) {
-        onClose?.();
-      }
-
-    };
-
-    window.addEventListener(
-      "keydown",
-      handleKeyboard
-    );
-
-    return () => {
-
-      window.removeEventListener(
-        "keydown",
-        handleKeyboard
+      setSection(
+        sections[
+          currentSectionIndex - 1
+        ]
       );
 
-    };
-
-  });
+    }
+  };
 
 
   /*
    * =========================================================
-   * CURRENT SLIDE
+   * QUEUE STATISTICS
    * =========================================================
    */
 
-  const slide =
-    slides[currentSlide];
+  const queueProgress =
+    Math.round(
+      (
+        (
+          RECIPE.length -
+          queue.length
+        ) /
+        RECIPE.length
+      ) * 100
+    );
+
+
+  /*
+   * =========================================================
+   * SHARED STYLES
+   * =========================================================
+   */
+
+  const panelStyle:
+    CSSProperties = {
+
+    background:
+      "rgba(255,255,255,0.045)",
+
+    border:
+      "1px solid rgba(255,255,255,0.10)",
+
+    borderRadius:
+      "14px",
+
+    boxShadow:
+      "inset 0 1px 0 rgba(255,255,255,0.035)",
+  };
+
+
+  const buttonStyle:
+    CSSProperties = {
+
+    border:
+      "1px solid rgba(255,255,255,0.12)",
+
+    background:
+      "rgba(255,255,255,0.07)",
+
+    color:
+      "#f7f7f7",
+
+    borderRadius:
+      "9px",
+
+    padding:
+      "9px 14px",
+
+    fontFamily:
+      "Comfortaa, sans-serif",
+
+    fontSize:
+      "12px",
+
+    fontWeight:
+      700,
+
+    cursor:
+      "pointer",
+
+    transition:
+      "all 140ms ease",
+  };
+
+
+  /*
+   * =========================================================
+   * RENDER: OVERVIEW
+   * =========================================================
+   */
+
+  const renderOverview = () => (
+
+    <div style={contentStyle}>
+
+      <div
+        style={{
+          fontSize: "13px",
+          color: "#8e9aaa",
+          marginBottom: "8px",
+          letterSpacing: "0.08em",
+        }}
+      >
+        SEFIRAH • DATA STRUCTURES LAB
+      </div>
+
+
+      <h1 style={heroTitleStyle}>
+        Data Structures
+        <br />
+        inside a real project.
+      </h1>
+
+
+      <p style={heroTextStyle}>
+        DSA is not a separate academic exercise
+        inside Sefirah. It controls actual game
+        behaviour.
+      </p>
+
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(3, 1fr)",
+          gap: "12px",
+          marginTop: "28px",
+        }}
+      >
+
+        {[
+          {
+            icon: "📋",
+            title: "Queue",
+            text:
+              "Controls recipe order.",
+          },
+
+          {
+            icon: "⚡",
+            title: "Set",
+            text:
+              "Tracks completed actions.",
+          },
+
+          {
+            icon: "🔄",
+            title: "State",
+            text:
+              "Controls what the game displays.",
+          },
+        ].map(
+          (item) => (
+
+            <div
+              key={item.title}
+              style={{
+                ...panelStyle,
+                padding: "20px",
+              }}
+            >
+
+              <div
+                style={{
+                  fontSize: "30px",
+                  marginBottom: "10px",
+                }}
+              >
+                {item.icon}
+              </div>
+
+              <div
+                style={{
+                  fontSize: "17px",
+                  fontWeight: 800,
+                  color: "#fff",
+                  marginBottom: "7px",
+                }}
+              >
+                {item.title}
+              </div>
+
+              <div
+                style={{
+                  color: "#9aa5b4",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {item.text}
+              </div>
+
+            </div>
+          )
+        )}
+
+      </div>
+
+
+      <div
+        style={{
+          ...panelStyle,
+          marginTop: "18px",
+          padding: "18px",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#aab4c2",
+            fontSize: "11px",
+            letterSpacing: "0.08em",
+            marginBottom: "10px",
+          }}
+        >
+          THE CORE IDEA
+        </div>
+
+        <div
+          style={{
+            fontSize: "18px",
+            color: "#fff",
+            fontWeight: 700,
+            lineHeight: 1.5,
+          }}
+        >
+          Data structures turn complicated
+          game logic into predictable operations.
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: WHY DSA
+   * =========================================================
+   */
+
+  const renderWhy = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="01 • MOTIVATION"
+        title="Why did we need DSA?"
+        subtitle="The problem existed before the data structure."
+      />
+
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 1fr",
+          gap: "16px",
+        }}
+      >
+
+        <div
+          style={{
+            ...panelStyle,
+            padding: "22px",
+          }}
+        >
+
+          <div
+            style={{
+              color: "#ff7676",
+              fontWeight: 800,
+              fontSize: "14px",
+              marginBottom: "14px",
+            }}
+          >
+            ❌ WITHOUT A STRUCTURE
+          </div>
+
+          <div
+            style={{
+              color: "#d4d9e0",
+              lineHeight: 1.8,
+              fontSize: "13px",
+            }}
+          >
+            The game would need to manually
+            remember which ingredient should
+            happen next.
+          </div>
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "14px",
+              background:
+                "rgba(255,80,80,0.07)",
+              borderRadius: "10px",
+              fontFamily:
+                "monospace",
+              fontSize: "11px",
+              color: "#ffaaa9",
+              lineHeight: 1.8,
+            }}
+          >
+            if (step === 1) ...
+            <br />
+            if (step === 2) ...
+            <br />
+            if (step === 3) ...
+            <br />
+            if (ingredient === "...") ...
+            <br />
+            if (ingredient === "...") ...
+          </div>
+
+        </div>
+
+
+        <div
+          style={{
+            ...panelStyle,
+            padding: "22px",
+          }}
+        >
+
+          <div
+            style={{
+              color: "#69e3a3",
+              fontWeight: 800,
+              fontSize: "14px",
+              marginBottom: "14px",
+            }}
+          >
+            ✅ WITH A QUEUE
+          </div>
+
+          <div
+            style={{
+              color: "#d4d9e0",
+              lineHeight: 1.8,
+              fontSize: "13px",
+            }}
+          >
+            The queue naturally represents
+            the recipe's ordered sequence.
+          </div>
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "14px",
+              background:
+                "rgba(70,220,150,0.07)",
+              borderRadius: "10px",
+              fontFamily:
+                "monospace",
+              fontSize: "11px",
+              color: "#9ff0c5",
+              lineHeight: 1.8,
+            }}
+          >
+            queue.peek()
+            <br />
+            ↓
+            <br />
+            "cooking_oil"
+            <br />
+            ↓
+            <br />
+            validate action
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          ...panelStyle,
+          marginTop: "16px",
+          padding: "20px",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#fff",
+            fontWeight: 800,
+            marginBottom: "8px",
+          }}
+        >
+          The important part
+        </div>
+
+        <div
+          style={{
+            color: "#aab4c2",
+            fontSize: "13px",
+            lineHeight: 1.7,
+          }}
+        >
+          The data structure isn't there just
+          because the assignment requires one.
+          It solves an actual problem in the
+          cooking game:{" "}
+          <strong
+            style={{ color: "#fff" }}
+          >
+            enforcing order.
+          </strong>
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: QUEUE
+   * =========================================================
+   */
+
+  const renderQueue = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="02 • LIVE VISUALIZER"
+        title="Recipe Queue"
+        subtitle="Operate the same concept used by the cooking game."
+      />
+
+
+      <div
+        style={{
+          ...panelStyle,
+          padding: "16px",
+          marginBottom: "14px",
+        }}
+      >
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent:
+              "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+          }}
+        >
+
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#7f8998",
+                marginBottom: "4px",
+              }}
+            >
+              RECIPE PROGRESS
+            </div>
+
+            <div
+              style={{
+                fontSize: "18px",
+                fontWeight: 800,
+                color: "#fff",
+              }}
+            >
+              {queueProgress}%
+            </div>
+          </div>
+
+
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#aeb7c4",
+            }}
+          >
+            {queue.length} actions remaining
+          </div>
+
+        </div>
+
+
+        <div
+          style={{
+            height: "6px",
+            background:
+              "rgba(255,255,255,0.08)",
+            borderRadius: "999px",
+            overflow: "hidden",
+          }}
+        >
+
+          <div
+            style={{
+              width:
+                `${queueProgress}%`,
+              height: "100%",
+              background:
+                "linear-gradient(90deg,#62d89b,#66aaff)",
+              transition:
+                "width 350ms ease",
+            }}
+          />
+
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          ...panelStyle,
+          padding: "22px 18px",
+          minHeight: "235px",
+        }}
+      >
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "18px",
+          }}
+        >
+
+          <span
+            style={{
+              color: "#69e3a3",
+              fontSize: "11px",
+              fontWeight: 800,
+              letterSpacing:
+                "0.08em",
+            }}
+          >
+            FRONT
+          </span>
+
+          <div
+            style={{
+              height: "1px",
+              flex: 1,
+              background:
+                "rgba(255,255,255,0.08)",
+            }}
+          />
+
+          <span
+            style={{
+              color: "#778191",
+              fontSize: "11px",
+              fontWeight: 700,
+            }}
+          >
+            REAR
+          </span>
+
+        </div>
+
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            overflowX: "auto",
+            paddingBottom: "8px",
+          }}
+        >
+
+          {queue.length === 0 ? (
+
+            <div
+              style={{
+                width: "100%",
+                textAlign: "center",
+                padding: "50px",
+                color: "#657080",
+                fontFamily:
+                  "monospace",
+                fontSize: "13px",
+              }}
+            >
+              QUEUE EMPTY
+            </div>
+
+          ) : (
+
+            queue.map(
+              (item, index) => {
+
+                const isFront =
+                  index === 0;
+
+                const isHighlighted =
+                  highlightedId ===
+                  item.id;
+
+                return (
+
+                  <div
+                    key={item.id}
+                    style={{
+                      minWidth: "105px",
+
+                      padding:
+                        "16px 10px",
+
+                      borderRadius:
+                        "12px",
+
+                      border:
+                        isHighlighted
+                          ? "1px solid #69e3a3"
+                          : isFront
+                            ? "1px solid rgba(105,227,163,0.4)"
+                            : "1px solid rgba(255,255,255,0.09)",
+
+                      background:
+                        isHighlighted
+                          ? "rgba(105,227,163,0.13)"
+                          : isFront
+                            ? "rgba(105,227,163,0.07)"
+                            : "rgba(255,255,255,0.035)",
+
+                      textAlign: "center",
+
+                      transform:
+                        isHighlighted
+                          ? "translateY(-6px)"
+                          : "translateY(0)",
+
+                      transition:
+                        "all 280ms ease",
+
+                      boxShadow:
+                        isHighlighted
+                          ? "0 8px 25px rgba(105,227,163,0.12)"
+                          : "none",
+                    }}
+                  >
+
+                    <div
+                      style={{
+                        fontSize: "30px",
+                        marginBottom: "7px",
+                      }}
+                    >
+                      {item.icon}
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#fff",
+                        fontSize: "10px",
+                        fontWeight: 800,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {item.label}
+                    </div>
+
+                    <div
+                      style={{
+                        color:
+                          isFront
+                            ? "#69e3a3"
+                            : "#697384",
+                        fontSize: "9px",
+                        marginTop: "6px",
+                        fontFamily:
+                          "monospace",
+                      }}
+                    >
+                      {isFront
+                        ? "PEEK"
+                        : `#${index + 1}`}
+                    </div>
+
+                  </div>
+
+                );
+              }
+            )
+
+          )}
+
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          marginTop: "14px",
+          flexWrap: "wrap",
+        }}
+      >
+
+        <DemoButton
+          label="PEEK()"
+          onClick={peekQueue}
+        />
+
+        <DemoButton
+          label="DEQUEUE()"
+          onClick={dequeueQueue}
+        />
+
+        <DemoButton
+          label="ENQUEUE()"
+          onClick={enqueueQueue}
+        />
+
+        <DemoButton
+          label="RESET"
+          onClick={resetQueue}
+        />
+
+      </div>
+
+
+      <div
+        style={{
+          ...panelStyle,
+          marginTop: "14px",
+          padding: "14px 16px",
+          display: "flex",
+          gap: "12px",
+          alignItems: "center",
+        }}
+      >
+
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background:
+              "#69e3a3",
+            boxShadow:
+              "0 0 12px rgba(105,227,163,0.7)",
+          }}
+        />
+
+        <div
+          style={{
+            color: "#d5dbe3",
+            fontSize: "12px",
+          }}
+        >
+          {queueMessage}
+        </div>
+
+        <div
+          style={{
+            marginLeft: "auto",
+            color: "#697384",
+            fontFamily:
+              "monospace",
+            fontSize: "10px",
+          }}
+        >
+          {lastOperation}
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: CODE
+   * =========================================================
+   */
+
+  const renderCode = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="03 • IMPLEMENTATION"
+        title="The actual Queue"
+        subtitle="This is the core structure behind the recipe ordering."
+      />
+
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1.15fr 0.85fr",
+          gap: "16px",
+        }}
+      >
+
+        <CodeBlock
+          title="CookingQueue<T>"
+          code={`class CookingQueue<T> {
+
+  private items: T[] = [];
+
+  enqueue(item: T) {
+    this.items.push(item);
+  }
+
+  peek(): T | undefined {
+    return this.items[0];
+  }
+
+  dequeue(): T | undefined {
+    return this.items.shift();
+  }
+
+  get size(): number {
+    return this.items.length;
+  }
+}`}
+        />
+
+
+        <div
+          style={{
+            ...panelStyle,
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color: "#69e3a3",
+              fontSize: "11px",
+              fontWeight: 800,
+              letterSpacing:
+                "0.08em",
+              marginBottom: "16px",
+            }}
+          >
+            WHAT EACH OPERATION DOES
+          </div>
+
+
+          {[
+            [
+              "enqueue()",
+              "Adds an action to the rear.",
+            ],
+
+            [
+              "peek()",
+              "Looks at the next action without removing it.",
+            ],
+
+            [
+              "dequeue()",
+              "Removes the action at the front.",
+            ],
+
+            [
+              "size",
+              "Tells us how many actions remain.",
+            ],
+          ].map(
+            ([name, explanation]) => (
+
+              <div
+                key={name}
+                style={{
+                  padding:
+                    "12px 0",
+                  borderBottom:
+                    "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+
+                <div
+                  style={{
+                    color: "#fff",
+                    fontFamily:
+                      "monospace",
+                    fontSize: "12px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  {name}
+                </div>
+
+                <div
+                  style={{
+                    color: "#8e99a9",
+                    fontSize: "11px",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {explanation}
+                </div>
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          ...panelStyle,
+          marginTop: "16px",
+          padding: "18px",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#7e8999",
+            fontSize: "10px",
+            letterSpacing:
+              "0.08em",
+            marginBottom: "10px",
+          }}
+        >
+          RECIPE ORDER
+        </div>
+
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+
+          {RECIPE.map(
+            (item, index) => (
+
+              <div
+                key={item.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+
+                <span
+                  style={{
+                    padding:
+                      "7px 10px",
+                    background:
+                      "rgba(255,255,255,0.06)",
+                    border:
+                      "1px solid rgba(255,255,255,0.09)",
+                    borderRadius:
+                      "8px",
+                    color: "#dce2e9",
+                    fontSize: "10px",
+                  }}
+                >
+                  {item.icon}{" "}
+                  {item.label}
+                </span>
+
+                {index <
+                  RECIPE.length - 1 && (
+                    <span
+                      style={{
+                        color: "#586272",
+                      }}
+                    >
+                      →
+                    </span>
+                  )}
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: SET
+   * =========================================================
+   */
+
+  const renderSet = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="04 • MEMBERSHIP"
+        title="Set — Have we done this already?"
+        subtitle="The Queue controls order. The Set remembers completion."
+      />
+
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 1fr",
+          gap: "16px",
+        }}
+      >
+
+        <div
+          style={{
+            ...panelStyle,
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color: "#69aaff",
+              fontSize: "11px",
+              fontWeight: 800,
+              letterSpacing:
+                "0.08em",
+              marginBottom: "15px",
+            }}
+          >
+            COMPLETED ACTIONS
+          </div>
+
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+
+            {RECIPE.map(
+              (item) => {
+
+                const completed =
+                  completedSet.includes(
+                    item.action
+                  );
+
+                return (
+
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() =>
+                      toggleSetAction(
+                        item.action
+                      )
+                    }
+                    style={{
+                      border:
+                        completed
+                          ? "1px solid rgba(105,170,255,0.55)"
+                          : "1px solid rgba(255,255,255,0.09)",
+
+                      background:
+                        completed
+                          ? "rgba(105,170,255,0.13)"
+                          : "rgba(255,255,255,0.035)",
+
+                      color:
+                        completed
+                          ? "#a9d0ff"
+                          : "#737d8c",
+
+                      borderRadius:
+                        "9px",
+
+                      padding:
+                        "9px 10px",
+
+                      cursor:
+                        "pointer",
+
+                      fontFamily:
+                        "Comfortaa, sans-serif",
+
+                      fontSize:
+                        "10px",
+
+                      transition:
+                        "all 160ms ease",
+                    }}
+                  >
+                    {completed
+                      ? "✓ "
+                      : ""}
+                    {item.label}
+                  </button>
+
+                );
+              }
+            )}
+
+          </div>
+
+
+          <div
+            style={{
+              marginTop: "18px",
+              color: "#8994a3",
+              fontSize: "11px",
+              lineHeight: 1.6,
+            }}
+          >
+            Click actions to add/remove them
+            from the simulated completed Set.
+          </div>
+
+        </div>
+
+
+        <div
+          style={{
+            ...panelStyle,
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color: "#69aaff",
+              fontSize: "11px",
+              fontWeight: 800,
+              letterSpacing:
+                "0.08em",
+              marginBottom: "15px",
+            }}
+          >
+            WHY A SET?
+          </div>
+
+
+          <div
+            style={{
+              fontSize: "17px",
+              color: "#fff",
+              fontWeight: 800,
+              marginBottom: "12px",
+            }}
+          >
+            Fast membership checking.
+          </div>
+
+
+          <div
+            style={{
+              color: "#9ba5b4",
+              fontSize: "12px",
+              lineHeight: 1.7,
+            }}
+          >
+            Before performing an operation,
+            the game can determine whether
+            an action has already been completed.
+          </div>
+
+
+          <div
+            style={{
+              marginTop: "18px",
+              background:
+                "rgba(0,0,0,0.28)",
+              borderRadius: "10px",
+              padding: "15px",
+              fontFamily:
+                "monospace",
+              color: "#bcd7ff",
+              fontSize: "11px",
+              lineHeight: 1.7,
+            }}
+          >
+            completedActions.has(action)
+            <br />
+            <br />
+            → true
+            <br />
+            <span
+              style={{
+                color: "#758193",
+              }}
+            >
+              Action already completed.
+            </span>
+          </div>
+
+
+          <div
+            style={{
+              marginTop: "14px",
+              color: "#697384",
+              fontSize: "10px",
+            }}
+          >
+            {setMessage}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: STATE MACHINE
+   * =========================================================
+   */
+
+  const renderState = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="05 • STATE"
+        title="State controls the screen"
+        subtitle="Completing an action changes the cooking state."
+      />
+
+
+      <div
+        style={{
+          ...panelStyle,
+          padding: "20px",
+          marginBottom: "16px",
+        }}
+      >
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent:
+              "center",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+
+          {[
+            "IDLE",
+            "OIL",
+            "GARLIC",
+            "CARROT",
+            "RICE",
+            "EGG",
+            "SOY",
+            "GREEN ONION",
+            "STIRRING",
+            "READY",
+          ].map(
+            (stateName, index, array) => (
+
+              <div
+                key={stateName}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+
+                <div
+                  style={{
+                    padding:
+                      "11px 13px",
+                    borderRadius:
+                      "9px",
+                    background:
+                      index === 0
+                        ? "rgba(105,227,163,0.12)"
+                        : "rgba(255,255,255,0.04)",
+                    border:
+                      index === 0
+                        ? "1px solid rgba(105,227,163,0.45)"
+                        : "1px solid rgba(255,255,255,0.08)",
+                    color:
+                      index === 0
+                        ? "#7deab0"
+                        : "#8c96a4",
+                    fontFamily:
+                      "monospace",
+                    fontSize:
+                      "9px",
+                    fontWeight:
+                      800,
+                  }}
+                >
+                  {stateName}
+                </div>
+
+                {index <
+                  array.length - 1 && (
+                    <span
+                      style={{
+                        color: "#515b69",
+                      }}
+                    >
+                      →
+                    </span>
+                  )}
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 1fr",
+          gap: "16px",
+        }}
+      >
+
+        <CodeBlock
+          title="State transition"
+          code={`switch (action) {
+
+  case "cooking_oil":
+    nextStage = "oil";
+    break;
+
+  case "cut_garlic":
+    nextStage = "garlic";
+    break;
+
+  case "rice":
+    nextStage = "rice";
+    break;
+
+  case "egg":
+    nextStage = "egg";
+    break;
+}`}
+        />
+
+
+        <div
+          style={{
+            ...panelStyle,
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: "14px",
+              marginBottom: "12px",
+            }}
+          >
+            What does this achieve?
+          </div>
+
+
+          <div
+            style={{
+              color: "#98a2b0",
+              fontSize: "12px",
+              lineHeight: 1.75,
+            }}
+          >
+            The game doesn't have to manually
+            redraw the entire cooking scene.
+            The current state determines which
+            visual stage and behaviour should
+            appear.
+          </div>
+
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "15px",
+              background:
+                "rgba(255,255,255,0.035)",
+              borderRadius: "10px",
+              color: "#dce1e8",
+              fontSize: "11px",
+              lineHeight: 1.7,
+            }}
+          >
+            Action completed
+            <br />
+            ↓
+            <br />
+            State changes
+            <br />
+            ↓
+            <br />
+            Image changes
+            <br />
+            ↓
+            <br />
+            Audio / controls change
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: FAILURE
+   * =========================================================
+   */
+
+  const renderFailure = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="06 • FAILURE ANALYSIS"
+        title="What breaks without DSA?"
+        subtitle="Let's deliberately give the player the wrong action."
+      />
+
+
+      <div
+        style={{
+          ...panelStyle,
+          padding: "24px",
+          minHeight: "280px",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#ffcb70",
+            fontSize: "12px",
+            fontWeight: 800,
+            letterSpacing:
+              "0.08em",
+            marginBottom: "18px",
+          }}
+        >
+          SCENARIO {failureStep + 1}
+        </div>
+
+
+        <div
+          style={{
+            fontSize: "23px",
+            color: "#fff",
+            fontWeight: 800,
+            marginBottom: "12px",
+          }}
+        >
+          {currentFailure.title}
+        </div>
+
+
+        <div
+          style={{
+            color: "#9da7b5",
+            fontSize: "13px",
+            marginBottom: "22px",
+          }}
+        >
+          {currentFailure.text}
+        </div>
+
+
+        <div
+          style={{
+            display: "inline-block",
+            padding:
+              "11px 16px",
+            borderRadius:
+              "9px",
+            background:
+              currentFailure.result.startsWith(
+                "❌"
+              )
+                ? "rgba(255,80,80,0.10)"
+                : "rgba(80,220,150,0.10)",
+            border:
+              currentFailure.result.startsWith(
+                "❌"
+              )
+                ? "1px solid rgba(255,100,100,0.25)"
+                : "1px solid rgba(100,220,160,0.25)",
+            color:
+              currentFailure.result.startsWith(
+                "❌"
+              )
+                ? "#ff9e9e"
+                : "#83eab1",
+            fontWeight: 800,
+            fontSize: "13px",
+          }}
+        >
+          {currentFailure.result}
+        </div>
+
+
+        <div
+          style={{
+            marginTop: "20px",
+            color: "#a3adbb",
+            fontSize: "12px",
+            lineHeight: 1.7,
+          }}
+        >
+          {currentFailure.explanation}
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          marginTop: "14px",
+        }}
+      >
+
+        <DemoButton
+          label="← PREVIOUS CASE"
+          onClick={() =>
+            setFailureStep(
+              (previous) =>
+                Math.max(
+                  0,
+                  previous - 1
+                )
+            )
+          }
+        />
+
+        <DemoButton
+          label="NEXT CASE →"
+          onClick={() =>
+            setFailureStep(
+              (previous) =>
+                Math.min(
+                  failureData.length - 1,
+                  previous + 1
+                )
+            )
+          }
+        />
+
+      </div>
+
+
+      <div
+        style={{
+          marginTop: "16px",
+          padding: "17px",
+          background:
+            "rgba(255,255,255,0.035)",
+          borderRadius: "10px",
+          color: "#d8dee6",
+          fontSize: "12px",
+          lineHeight: 1.7,
+        }}
+      >
+        <strong>
+          The important question:
+        </strong>{" "}
+        how does the game know whether an
+        ingredient is allowed?
+        <br />
+        <br />
+        It checks the current required action
+        before accepting the drop.
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: COMPLEXITY
+   * =========================================================
+   */
+
+  const renderComplexity = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="07 • PERFORMANCE"
+        title="Complexity & implementation"
+        subtitle="The data structure matters — but so does how we implement it."
+      />
+
+
+      <div
+        style={{
+          ...panelStyle,
+          overflow: "hidden",
+        }}
+      >
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "1fr 1fr 1fr",
+            background:
+              "rgba(255,255,255,0.035)",
+            padding:
+              "13px 16px",
+            color: "#7f8997",
+            fontSize: "10px",
+            fontWeight: 800,
+          }}
+        >
+
+          <div>
+            OPERATION
+          </div>
+
+          <div>
+            PURPOSE
+          </div>
+
+          <div>
+            CURRENT ARRAY COST
+          </div>
+
+        </div>
+
+
+        {[
+          [
+            "enqueue()",
+            "Add to rear",
+            "O(1) amortized",
+          ],
+
+          [
+            "peek()",
+            "Inspect front",
+            "O(1)",
+          ],
+
+          [
+            "dequeue()",
+            "Remove front",
+            "O(n) with shift()",
+          ],
+
+          [
+            "Set membership",
+            "Check completion",
+            "O(1) average",
+          ],
+        ].map(
+          ([operation, purpose, complexity]) => (
+
+            <div
+              key={operation}
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "1fr 1fr 1fr",
+                padding:
+                  "15px 16px",
+                borderTop:
+                  "1px solid rgba(255,255,255,0.06)",
+                color: "#c8ced7",
+                fontSize: "11px",
+              }}
+            >
+
+              <div
+                style={{
+                  fontFamily:
+                    "monospace",
+                  color: "#fff",
+                }}
+              >
+                {operation}
+              </div>
+
+              <div
+                style={{
+                  color: "#929dac",
+                }}
+              >
+                {purpose}
+              </div>
+
+              <div
+                style={{
+                  color:
+                    complexity.includes(
+                      "O(1)"
+                    )
+                      ? "#72dca3"
+                      : "#ffcb70",
+                  fontFamily:
+                    "monospace",
+                }}
+              >
+                {complexity}
+              </div>
+
+            </div>
+
+          )
+        )}
+
+      </div>
+
+
+      <div
+        style={{
+          ...panelStyle,
+          marginTop: "16px",
+          padding: "20px",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#ffcb70",
+            fontSize: "11px",
+            fontWeight: 800,
+            letterSpacing:
+              "0.08em",
+            marginBottom: "12px",
+          }}
+        >
+          IMPORTANT TECHNICAL DETAIL
+        </div>
+
+
+        <div
+          style={{
+            color: "#d7dce3",
+            fontSize: "13px",
+            lineHeight: 1.75,
+          }}
+        >
+          Our current queue uses a JavaScript
+          array and{" "}
+          <code
+            style={{
+              color: "#fff",
+              background:
+                "rgba(255,255,255,0.08)",
+              padding:
+                "2px 5px",
+              borderRadius:
+                "4px",
+            }}
+          >
+            shift()
+          </code>
+          .
+          <br />
+          <br />
+          That means removing the first item
+          can require the remaining elements
+          to be shifted.
+          <br />
+          <br />
+          A production queue could instead use
+          a front index or a linked structure
+          to avoid that repeated shifting.
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: PRESENTATION
+   * =========================================================
+   */
+
+  const renderPresentation = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="08 • DEMONSTRATION GUIDE"
+        title="How to present this"
+        subtitle="A short sequence that turns the lab into a live explanation."
+      />
+
+
+      {[
+        [
+          "01",
+          "Start with the problem",
+          "“Our cooking game has a fixed sequence of actions. We needed a way to enforce that order.”",
+        ],
+
+        [
+          "02",
+          "Show the Queue",
+          "Open the Queue visualizer and explain FRONT, REAR, PEEK and DEQUEUE.",
+        ],
+
+        [
+          "03",
+          "Run it",
+          "Click PEEK(), then DEQUEUE(). Let the teacher watch the FRONT move.",
+        ],
+
+        [
+          "04",
+          "Show the source",
+          "Open the Source Code section and point to enqueue(), peek() and dequeue().",
+        ],
+
+        [
+          "05",
+          "Break it",
+          "Go to Failure Case and show what happens when the player attempts to skip an action.",
+        ],
+
+        [
+          "06",
+          "Discuss complexity",
+          "Mention the current array implementation and honestly explain why shift() makes dequeue O(n).",
+        ],
+      ].map(
+        ([number, title, text]) => (
+
+          <div
+            key={number}
+            style={{
+              ...panelStyle,
+              padding:
+                "16px 18px",
+              marginBottom:
+                "9px",
+              display:
+                "flex",
+              gap:
+                "16px",
+              alignItems:
+                "flex-start",
+            }}
+          >
+
+            <div
+              style={{
+                color: "#69e3a3",
+                fontFamily:
+                  "monospace",
+                fontSize: "12px",
+                fontWeight: 800,
+                paddingTop: "2px",
+              }}
+            >
+              {number}
+            </div>
+
+
+            <div>
+
+              <div
+                style={{
+                  color: "#fff",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  marginBottom:
+                    "5px",
+                }}
+              >
+                {title}
+              </div>
+
+              <div
+                style={{
+                  color: "#929dab",
+                  fontSize: "11px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {text}
+              </div>
+
+            </div>
+
+          </div>
+
+        )
+      )}
+
+
+      <div
+        style={{
+          marginTop: "15px",
+          padding: "18px",
+          borderRadius: "12px",
+          background:
+            "linear-gradient(135deg, rgba(105,227,163,0.10), rgba(100,160,255,0.08))",
+          border:
+            "1px solid rgba(105,227,163,0.18)",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#fff",
+            fontWeight: 800,
+            fontSize: "13px",
+            marginBottom: "8px",
+          }}
+        >
+          The line to remember
+        </div>
+
+        <div
+          style={{
+            color: "#cbd3dc",
+            fontSize: "13px",
+            lineHeight: 1.7,
+          }}
+        >
+          “We didn't implement a Queue just to
+          demonstrate a Queue. We used it because
+          the recipe itself is a FIFO problem.”
+        </div>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * RENDER: SUMMARY
+   * =========================================================
+   */
+
+  const renderSummary = () => (
+
+    <div style={contentStyle}>
+
+      <SectionHeading
+        eyebrow="09 • FINAL"
+        title="DSA in Sefirah"
+        subtitle="Three structures. Three responsibilities."
+      />
+
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(3, 1fr)",
+          gap: "12px",
+        }}
+      >
+
+        {[
+          {
+            icon: "📋",
+            name: "QUEUE",
+            role:
+              "Controls the order of recipe actions.",
+          },
+
+          {
+            icon: "⚡",
+            name: "SET",
+            role:
+              "Tracks whether actions have already been completed.",
+          },
+
+          {
+            icon: "🔄",
+            name: "STATE",
+            role:
+              "Controls the current cooking stage and UI.",
+          },
+        ].map(
+          (item) => (
+
+            <div
+              key={item.name}
+              style={{
+                ...panelStyle,
+                padding: "22px",
+              }}
+            >
+
+              <div
+                style={{
+                  fontSize: "30px",
+                  marginBottom:
+                    "12px",
+                }}
+              >
+                {item.icon}
+              </div>
+
+              <div
+                style={{
+                  color: "#69e3a3",
+                  fontFamily:
+                    "monospace",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  marginBottom:
+                    "10px",
+                }}
+              >
+                {item.name}
+              </div>
+
+              <div
+                style={{
+                  color: "#a3adbb",
+                  fontSize: "11px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {item.role}
+              </div>
+
+            </div>
+
+          )
+        )}
+
+      </div>
+
+
+      <div
+        style={{
+          marginTop: "18px",
+          ...panelStyle,
+          padding: "25px",
+          textAlign: "center",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#fff",
+            fontSize: "22px",
+            fontWeight: 800,
+            lineHeight: 1.4,
+          }}
+        >
+          Theory became
+          <br />
+          working software.
+        </div>
+
+
+        <div
+          style={{
+            color: "#8994a3",
+            fontSize: "12px",
+            marginTop: "12px",
+          }}
+        >
+          That is the point of DSA in Sefirah.
+        </div>
+
+      </div>
+
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "center",
+          marginTop: "20px",
+        }}
+      >
+
+        <button
+          type="button"
+          onClick={() =>
+            setSection(
+              "queue"
+            )
+          }
+          style={{
+            ...buttonStyle,
+            background:
+              "rgba(105,227,163,0.13)",
+            border:
+              "1px solid rgba(105,227,163,0.35)",
+            color:
+              "#83eab1",
+            padding:
+              "12px 22px",
+          }}
+        >
+          RUN QUEUE DEMO AGAIN
+        </button>
+
+      </div>
+
+    </div>
+  );
+
+
+  /*
+   * =========================================================
+   * CONTENT SELECTOR
+   * =========================================================
+   */
+
+  const renderContent = () => {
+
+    switch (section) {
+
+      case "overview":
+        return renderOverview();
+
+      case "why":
+        return renderWhy();
+
+      case "queue":
+        return renderQueue();
+
+      case "code":
+        return renderCode();
+
+      case "set":
+        return renderSet();
+
+      case "state":
+        return renderState();
+
+      case "failure":
+        return renderFailure();
+
+      case "complexity":
+        return renderComplexity();
+
+      case "presentation":
+        return renderPresentation();
+
+      case "summary":
+        return renderSummary();
+
+      default:
+        return renderOverview();
+    }
+  };
 
 
   /*
@@ -691,9 +3029,10 @@ export default function DSALab({
    */
 
   const windowStyle:
-    React.CSSProperties = {
+    CSSProperties = {
 
-    position: "fixed",
+    position:
+      "fixed",
 
     left:
       windowPosition.centered
@@ -705,49 +3044,46 @@ export default function DSALab({
         ? "50%"
         : `${windowPosition.top}px`,
 
+    width:
+      `min(${WINDOW_WIDTH}px, 94vw)`,
+
+    height:
+      `min(${WINDOW_HEIGHT}px, 88vh)`,
+
     transform:
       windowPosition.centered
         ? "translate(-50%, -50%)"
         : "none",
 
-    width:
-      "min(1050px, 92vw)",
+    zIndex:
+      windowPosition.zIndex,
 
-    height:
-      "min(680px, 86vh)",
+    display:
+      "flex",
 
-    minWidth:
-      "760px",
-
-    minHeight:
-      "520px",
-
-    background:
-      "rgba(16,16,20,0.96)",
-
-    border:
-      "1px solid rgba(255,255,255,0.16)",
-
-    borderRadius:
-      "14px",
-
-    backdropFilter:
-      "blur(30px) saturate(150%)",
-
-    WebkitBackdropFilter:
-      "blur(30px) saturate(150%)",
-
-    boxShadow:
-      "0 30px 80px rgba(0,0,0,0.55)",
+    flexDirection:
+      "column",
 
     overflow:
       "hidden",
 
-    zIndex:
-      windowPosition.zIndex,
+    background:
+      "rgba(16,18,22,0.94)",
 
-    color:
-      "#fff",
+    border:
+      "1px solid rgba(255,255,255,0.13)",
+
+    borderRadius:
+      "14px",
+
+    boxShadow:
+      "0 30px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
+
+    backdropFilter:
+      "blur(30px) saturate(140%)",
+
+    WebkitBackdropFilter:
+      "blur(30px) saturate(140%)",
 
     fontFamily:
       "Comfortaa, sans-serif",
@@ -763,42 +3099,34 @@ export default function DSALab({
   return (
 
     <div
-      data-dsa-lab-window
+      data-dsa-window
       style={windowStyle}
-      onMouseDown={() =>
-        onFocus?.()
-      }
+      onMouseDown={focusWindow}
     >
 
       {/* =====================================================
           TITLE BAR
-      ====================================================== */}
+      ===================================================== */}
 
       <div
         onMouseDown={
           handleWindowDragStart
         }
-
         style={{
           height: "42px",
-
           flexShrink: 0,
 
           display: "flex",
-
           alignItems: "center",
 
-          justifyContent:
-            "space-between",
-
           padding:
-            "0 14px",
+            "0 12px",
 
           background:
-            "rgba(255,255,255,0.055)",
+            "rgba(255,255,255,0.045)",
 
           borderBottom:
-            "1px solid rgba(255,255,255,0.10)",
+            "1px solid rgba(255,255,255,0.08)",
 
           cursor:
             isDragging
@@ -813,215 +3141,169 @@ export default function DSALab({
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "9px",
+            gap: "7px",
+            marginRight: "14px",
           }}
         >
 
-          <div
-            style={{
-              width: "10px",
-              height: "10px",
-              borderRadius: "50%",
-              background:
-                "#e96b6b",
-            }}
+          <WindowDot
+            color="#ff5f57"
+            onClick={onClose}
           />
 
-          <div
-            style={{
-              width: "10px",
-              height: "10px",
-              borderRadius: "50%",
-              background:
-                "#e5bd5c",
-            }}
+          <WindowDot
+            color="#febc2e"
           />
 
-          <div
-            style={{
-              width: "10px",
-              height: "10px",
-              borderRadius: "50%",
-              background:
-                "#67c879",
-            }}
+          <WindowDot
+            color="#28c840"
           />
-
-          <span
-            style={{
-              marginLeft: "8px",
-
-              fontSize: "13px",
-
-              fontWeight: 700,
-
-              opacity: 0.82,
-            }}
-          >
-            Data Structures Lab
-          </span>
 
         </div>
 
 
-        <button
-          type="button"
-          onClick={onClose}
-          onMouseDown={(event) =>
-            event.stopPropagation()
-          }
+        <div
           style={{
-            width: "28px",
-            height: "28px",
-
-            border: "none",
-            borderRadius: "7px",
-
-            background:
-              "rgba(255,255,255,0.08)",
-
-            color: "#fff",
-
-            cursor: "pointer",
-
-            fontSize: "16px",
+            fontSize: "11px",
+            color: "#dbe1e8",
+            fontWeight: 800,
           }}
         >
-          ×
-        </button>
+          Data Structures Lab
+        </div>
+
+
+        <div
+          style={{
+            marginLeft: "auto",
+            fontSize: "9px",
+            color: "#657080",
+            fontFamily:
+              "monospace",
+          }}
+        >
+          SEFIRAH • DSA
+        </div>
 
       </div>
 
 
       {/* =====================================================
-          MAIN CONTENT
-      ====================================================== */}
+          BODY
+      ===================================================== */}
 
       <div
         style={{
+          flex: 1,
+          minHeight: 0,
           display: "flex",
-          height:
-            "calc(100% - 42px)",
         }}
       >
 
-        {/* =================================================
-            SLIDE SIDEBAR
-        ================================================= */}
+        {/* ===================================================
+            SIDEBAR
+        =================================================== */}
 
         <aside
           style={{
             width: "190px",
-
             flexShrink: 0,
-
-            padding: "18px 10px",
-
-            background:
-              "rgba(0,0,0,0.18)",
 
             borderRight:
               "1px solid rgba(255,255,255,0.08)",
 
-            overflowY: "auto",
+            background:
+              "rgba(0,0,0,0.16)",
+
+            padding:
+              "14px 10px",
+
+            overflowY:
+              "auto",
           }}
         >
 
           <div
             style={{
-              fontSize: "10px",
-
-              fontWeight: 700,
-
-              letterSpacing:
-                "0.12em",
-
-              opacity: 0.42,
-
               padding:
-                "0 10px 12px",
+                "7px 9px",
+              color:
+                "#687384",
+              fontSize:
+                "9px",
+              fontWeight:
+                800,
+              letterSpacing:
+                "0.08em",
             }}
           >
-            PRESENTATION
+            LAB SECTIONS
           </div>
 
 
-          {slides.map(
-            (
-              item,
-              index
-            ) => {
+          {sections.map(
+            (item, index) => {
 
               const active =
-                index ===
-                currentSlide;
+                section === item;
 
               return (
 
                 <button
-                  key={
-                    item.title
-                  }
-
+                  key={item}
                   type="button"
-
                   onClick={() =>
-                    setCurrentSlide(
-                      index
-                    )
+                    setSection(item)
                   }
-
                   style={{
                     width: "100%",
-
-                    padding:
-                      "10px",
-
-                    marginBottom:
-                      "4px",
-
                     border: "none",
-
-                    borderRadius:
-                      "8px",
-
                     background:
                       active
-                        ? "rgba(63,169,255,0.16)"
+                        ? "rgba(105,227,163,0.10)"
                         : "transparent",
-
                     color:
                       active
-                        ? "#fff"
-                        : "rgba(255,255,255,0.48)",
-
+                        ? "#82eab0"
+                        : "#8994a3",
+                    borderRadius:
+                      "8px",
+                    padding:
+                      "9px 10px",
+                    marginBottom:
+                      "2px",
                     textAlign:
                       "left",
-
                     cursor:
                       "pointer",
-
                     fontFamily:
                       "Comfortaa, sans-serif",
+                    fontSize:
+                      "10px",
+                    fontWeight:
+                      active
+                        ? 800
+                        : 600,
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    gap:
+                      "9px",
                   }}
                 >
 
-                  <div
+                  <span
                     style={{
-                      fontSize:
-                        "10px",
-
-                      fontWeight:
-                        700,
-
-                      marginBottom:
-                        "4px",
-
-                      opacity:
+                      width: "18px",
+                      color:
                         active
-                          ? 1
-                          : 0.7,
+                          ? "#69e3a3"
+                          : "#596373",
+                      fontFamily:
+                        "monospace",
+                      fontSize:
+                        "9px",
                     }}
                   >
                     {String(
@@ -1030,2263 +3312,503 @@ export default function DSALab({
                       2,
                       "0"
                     )}
-                  </div>
+                  </span>
 
-                  <div
-                    style={{
-                      fontSize:
-                        "11px",
-
-                      lineHeight:
-                        1.4,
-                    }}
-                  >
-                    {item.title}
-                  </div>
+                  {sectionLabels[item]}
 
                 </button>
 
               );
-
             }
           )}
+
+
+          <div
+            style={{
+              marginTop:
+                "18px",
+              padding:
+                "12px 9px",
+              borderTop:
+                "1px solid rgba(255,255,255,0.07)",
+              color:
+                "#596373",
+              fontSize:
+                "9px",
+              lineHeight:
+                1.6,
+            }}
+          >
+            TIP
+            <br />
+            Use Queue → Source Code →
+            Failure Case when presenting
+            this lab live.
+          </div>
 
         </aside>
 
 
-        {/* =================================================
-            SLIDE
-        ================================================= */}
+        {/* ===================================================
+            MAIN CONTENT
+        =================================================== */}
 
         <main
           style={{
             flex: 1,
-
             minWidth: 0,
-
-            display: "flex",
-
-            flexDirection:
-              "column",
+            overflowY: "auto",
+            background:
+              "radial-gradient(circle at 80% 0%, rgba(80,120,180,0.06), transparent 40%)",
           }}
         >
 
-          {/* =================================================
-              SLIDE HEADER
-          ================================================= */}
-
-          <div
-            style={{
-              padding:
-                "25px 34px 15px",
-
-              flexShrink: 0,
-            }}
-          >
-
-            <div
-              style={{
-                fontSize:
-                  "11px",
-
-                letterSpacing:
-                  "0.14em",
-
-                color:
-                  "#67b7ff",
-
-                fontWeight:
-                  700,
-
-                marginBottom:
-                  "7px",
-              }}
-            >
-              DSA LAB ·{" "}
-              {String(
-                currentSlide + 1
-              ).padStart(
-                2,
-                "0"
-              )}{" "}
-              /{" "}
-              {String(
-                slides.length
-              ).padStart(
-                2,
-                "0"
-              )}
-            </div>
-
-            <h1
-              style={{
-                margin: 0,
-
-                fontSize:
-                  "27px",
-
-                lineHeight:
-                  1.2,
-
-                fontWeight:
-                  800,
-              }}
-            >
-              {slide.title}
-            </h1>
-
-            <div
-              style={{
-                marginTop:
-                  "7px",
-
-                fontSize:
-                  "13px",
-
-                opacity:
-                  0.52,
-              }}
-            >
-              {slide.subtitle}
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              SLIDE BODY
-          ================================================= */}
-
-          <div
-            style={{
-              flex: 1,
-
-              overflowY:
-                "auto",
-
-              padding:
-                "8px 34px 20px",
-            }}
-          >
-
-            {/* =================================================
-                INTRO
-            ================================================= */}
-
-            {slide.type ===
-              "intro" && (
-
-              <div
-                style={{
-                  minHeight:
-                    "100%",
-
-                  display:
-                    "flex",
-
-                  flexDirection:
-                    "column",
-
-                  justifyContent:
-                    "center",
-
-                  maxWidth:
-                    "760px",
-                }}
-              >
-
-                <div
-                  style={{
-                    fontSize:
-                      "58px",
-
-                    fontWeight:
-                      900,
-
-                    lineHeight:
-                      1,
-
-                    marginBottom:
-                      "22px",
-                  }}
-                >
-                  DSA
-                  <span
-                    style={{
-                      opacity:
-                        0.35,
-                    }}
-                  >
-                    ×
-                  </span>
-                  SEFIRAH
-                </div>
-
-                <div
-                  style={{
-                    fontSize:
-                      "19px",
-
-                    lineHeight:
-                      1.7,
-
-                    opacity:
-                      0.72,
-                  }}
-                >
-                  We didn't add Data Structures
-                  just to satisfy a subject
-                  requirement.
-                </div>
-
-                <div
-                  style={{
-                    marginTop:
-                      "22px",
-
-                    padding:
-                      "18px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(63,169,255,0.08)",
-
-                    border:
-                      "1px solid rgba(63,169,255,0.18)",
-
-                    fontSize:
-                      "15px",
-
-                    lineHeight:
-                      1.7,
-                  }}
-                >
-                  Our cooking engine has to
-                  maintain an ordered sequence
-                  of operations, track completed
-                  operations, and transition
-                  between cooking states.
-                  <br />
-                  <br />
-                  That is where DSA becomes
-                  part of the actual application.
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                PROBLEM
-            ================================================= */}
-
-            {slide.type ===
-              "problem" && (
-
-              <div
-                style={{
-                  display:
-                    "grid",
-
-                  gridTemplateColumns:
-                    "1fr 1fr",
-
-                  gap:
-                    "18px",
-
-                  maxWidth:
-                    "850px",
-
-                  margin:
-                    "20px auto",
-                }}
-              >
-
-                <div
-                  style={{
-                    padding:
-                      "22px",
-
-                    borderRadius:
-                      "14px",
-
-                    background:
-                      "rgba(255,255,255,0.045)",
-
-                    border:
-                      "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      color:
-                        "#ff8585",
-
-                      fontWeight:
-                        800,
-
-                      marginBottom:
-                        "15px",
-                    }}
-                  >
-                    WITHOUT DSA
-                  </div>
-
-                  <div
-                    style={{
-                      lineHeight:
-                        1.8,
-
-                      opacity:
-                        0.65,
-                    }}
-                  >
-                    Random UI handlers
-                    <br />
-                    Random recipe checks
-                    <br />
-                    Hard-coded progression
-                    <br />
-                    Difficult state tracking
-                  </div>
-
-                </div>
-
-
-                <div
-                  style={{
-                    padding:
-                      "22px",
-
-                    borderRadius:
-                      "14px",
-
-                    background:
-                      "rgba(63,169,255,0.07)",
-
-                    border:
-                      "1px solid rgba(63,169,255,0.18)",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      color:
-                        "#69bbff",
-
-                      fontWeight:
-                        800,
-
-                      marginBottom:
-                        "15px",
-                    }}
-                  >
-                    WITH DSA
-                  </div>
-
-                  <div
-                    style={{
-                      lineHeight:
-                        1.8,
-
-                      opacity:
-                        0.78,
-                    }}
-                  >
-                    Ordered operations
-                    <br />
-                    Fast state lookup
-                    <br />
-                    Predictable progression
-                    <br />
-                    Explicit algorithms
-                  </div>
-
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                QUEUE
-            ================================================= */}
-
-            {slide.type ===
-              "queue" && (
-
-              <div
-                style={{
-                  maxWidth:
-                    "850px",
-
-                  margin:
-                    "15px auto",
-                }}
-              >
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    justifyContent:
-                      "space-between",
-
-                    alignItems:
-                      "center",
-
-                    marginBottom:
-                      "22px",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize:
-                        "18px",
-
-                      fontWeight:
-                        800,
-                    }}
-                  >
-                    Cooking Queue
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize:
-                        "11px",
-
-                      padding:
-                        "6px 10px",
-
-                      borderRadius:
-                        "999px",
-
-                      background:
-                        "rgba(103,187,255,0.12)",
-
-                      color:
-                        "#70c2ff",
-                    }}
-                  >
-                    FIFO
-                  </div>
-
-                </div>
-
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    alignItems:
-                      "center",
-
-                    gap:
-                      "8px",
-
-                    overflowX:
-                      "auto",
-
-                    padding:
-                      "20px 0",
-                  }}
-                >
-
-                  {[
-                    "Egg",
-                    "Rice",
-                    "Final Cook",
-                  ].map(
-                    (
-                      item,
-                      index
-                    ) => (
-
-                      <div
-                        key={
-                          item
-                        }
-
-                        style={{
-                          display:
-                            "flex",
-
-                          alignItems:
-                            "center",
-
-                          gap:
-                            "8px",
-                        }}
-                      >
-
-                        <div
-                          style={{
-                            minWidth:
-                              "120px",
-
-                            padding:
-                              "18px 14px",
-
-                            textAlign:
-                              "center",
-
-                            borderRadius:
-                              "12px",
-
-                            background:
-                              index === 0
-                                ? "rgba(103,187,255,0.16)"
-                                : "rgba(255,255,255,0.055)",
-
-                            border:
-                              index === 0
-                                ? "1px solid rgba(103,187,255,0.35)"
-                                : "1px solid rgba(255,255,255,0.08)",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize:
-                                "10px",
-
-                              opacity:
-                                0.45,
-
-                              marginBottom:
-                                "5px",
-                            }}
-                          >
-                            {index === 0
-                              ? "FRONT"
-                              : ""}
-                          </div>
-
-                          {item}
-
-                        </div>
-
-                        {index <
-                          2 && (
-                          <span
-                            style={{
-                              opacity:
-                                0.35,
-
-                              fontSize:
-                                "20px",
-                            }}
-                          >
-                            →
-                          </span>
-                        )}
-
-                      </div>
-
-                    )
-                  )}
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      "15px",
-
-                    padding:
-                      "18px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(255,255,255,0.035)",
-
-                    lineHeight:
-                      1.7,
-
-                    opacity:
-                      0.7,
-                  }}
-                >
-                  <strong
-                    style={{
-                      color:
-                        "#fff",
-                    }}
-                  >
-                    Why Queue?
-                  </strong>
-
-                  <br />
-
-                  Cooking operations can be
-                  processed in the order they
-                  are scheduled.
-
-                  <br />
-                  <br />
-
-                  The implementation provides:
-
-                  <br />
-
-                  <code>
-                    enqueue()
-                  </code>{" "}
-                  → add an operation
-
-                  <br />
-
-                  <code>
-                    peek()
-                  </code>{" "}
-                  → inspect the next operation
-
-                  <br />
-
-                  <code>
-                    dequeue()
-                  </code>{" "}
-                  → process/remove it
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                QUEUE DEMO
-            ================================================= */}
-
-            {slide.type ===
-              "queue-demo" && (
-
-              <div>
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    gap:
-                      "10px",
-
-                    marginBottom:
-                      "18px",
-                  }}
-                >
-
-                  <button
-                    type="button"
-                    onClick={
-                      runQueueStep
-                    }
-
-                    disabled={
-                      queueItems.length ===
-                      0
-                    }
-
-                    style={{
-                      padding:
-                        "10px 15px",
-
-                      border:
-                        "none",
-
-                      borderRadius:
-                        "8px",
-
-                      background:
-                        "#3fa9ff",
-
-                      color:
-                        "#fff",
-
-                      fontWeight:
-                        700,
-
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    PROCESS NEXT → dequeue()
-                  </button>
-
-
-                  <button
-                    type="button"
-                    onClick={
-                      resetQueue
-                    }
-
-                    style={{
-                      padding:
-                        "10px 15px",
-
-                      border:
-                        "1px solid rgba(255,255,255,0.12)",
-
-                      borderRadius:
-                        "8px",
-
-                      background:
-                        "rgba(255,255,255,0.05)",
-
-                      color:
-                        "#fff",
-
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    RESET
-                  </button>
-
-                </div>
-
-
-                <div
-                  style={{
-                    fontSize:
-                      "11px",
-
-                    opacity:
-                      0.45,
-
-                    marginBottom:
-                      "8px",
-                  }}
-                >
-                  FRONT → next required operation → REAR
-                </div>
-
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    gap:
-                      "8px",
-
-                    minHeight:
-                      "90px",
-
-                    padding:
-                      "15px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(255,255,255,0.035)",
-
-                    border:
-                      "1px solid rgba(255,255,255,0.08)",
-
-                    overflowX:
-                      "auto",
-                  }}
-                >
-
-                  {queueItems.length ===
-                    0 && (
-
-                    <div
-                      style={{
-                        display:
-                          "flex",
-
-                        alignItems:
-                          "center",
-
-                        opacity:
-                          0.35,
-                      }}
-                    >
-                      QUEUE EMPTY
-                    </div>
-
-                  )}
-
-
-                  {queueItems.map(
-                    (
-                      action,
-                      index
-                    ) => (
-
-                      <div
-                        key={
-                          `${action}-${index}`
-                        }
-
-                        style={{
-                          minWidth:
-                            "130px",
-
-                          padding:
-                            "14px",
-
-                          borderRadius:
-                            "10px",
-
-                          background:
-                            index === 0
-                              ? "rgba(63,169,255,0.16)"
-                              : "rgba(255,255,255,0.05)",
-
-                          border:
-                            index === 0
-                              ? "1px solid rgba(63,169,255,0.38)"
-                              : "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      >
-
-                        <div
-                          style={{
-                            fontSize:
-                              "9px",
-
-                            opacity:
-                              0.45,
-
-                            marginBottom:
-                              "6px",
-                          }}
-                        >
-                          {index === 0
-                            ? "PEEK()"
-                            : `QUEUE[${index}]`}
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize:
-                              "12px",
-
-                            fontWeight:
-                              700,
-                          }}
-                        >
-                          {
-                            actionLabels[
-                              action
-                            ]
-                          }
-                        </div>
-
-                      </div>
-
-                    )
-                  )}
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      "20px",
-
-                    display:
-                      "grid",
-
-                    gridTemplateColumns:
-                      "1fr 1fr",
-
-                    gap:
-                      "12px",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      padding:
-                        "15px",
-
-                      borderRadius:
-                        "10px",
-
-                      background:
-                        "rgba(103,187,255,0.07)",
-
-                      border:
-                        "1px solid rgba(103,187,255,0.15)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize:
-                          "10px",
-
-                        opacity:
-                          0.45,
-
-                        marginBottom:
-                          "5px",
-                      }}
-                    >
-                      COMPLETED
-                    </div>
-
-                    {
-                      completedQueueItems
-                        .map(
-                          (
-                            action
-                          ) =>
-                            actionLabels[
-                              action
-                            ]
-                        )
-                        .join(
-                          " → "
-                        ) ||
-                      "Nothing yet"
-                    }
-                  </div>
-
-
-                  <div
-                    style={{
-                      padding:
-                        "15px",
-
-                      borderRadius:
-                        "10px",
-
-                      background:
-                        "rgba(255,255,255,0.04)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize:
-                          "10px",
-
-                        opacity:
-                          0.45,
-
-                        marginBottom:
-                          "5px",
-                      }}
-                    >
-                      QUEUE SIZE
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize:
-                          "25px",
-
-                        fontWeight:
-                          800,
-                      }}
-                    >
-                      {
-                        queueItems.length
-                      }
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                SET
-            ================================================= */}
-
-            {slide.type ===
-              "set" && (
-
-              <div
-                style={{
-                  maxWidth:
-                    "850px",
-
-                  margin:
-                    "10px auto",
-                }}
-              >
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    gap:
-                      "10px",
-
-                    flexWrap:
-                      "wrap",
-
-                    marginBottom:
-                      "18px",
-                  }}
-                >
-
-                  {recipeActions.map(
-                    (
-                      action
-                    ) => {
-
-                      const exists =
-                        completedSet.has(
-                          action
-                        );
-
-                      return (
-
-                        <button
-                          key={
-                            action
-                          }
-
-                          type="button"
-
-                          onClick={() =>
-                            completeSetAction(
-                              action
-                            )
-                          }
-
-                          style={{
-                            padding:
-                              "9px 12px",
-
-                            border:
-                              "1px solid " +
-                              (
-                                exists
-                                  ? "rgba(103,200,121,0.4)"
-                                  : "rgba(255,255,255,0.1)"
-                              ),
-
-                            borderRadius:
-                              "8px",
-
-                            background:
-                              exists
-                                ? "rgba(103,200,121,0.12)"
-                                : "rgba(255,255,255,0.04)",
-
-                            color:
-                              "#fff",
-
-                            cursor:
-                              "pointer",
-
-                            fontSize:
-                              "11px",
-                          }}
-                        >
-                          {exists
-                            ? "✓ "
-                            : "+ "}
-                          {
-                            actionLabels[
-                              action
-                            ]
-                          }
-                        </button>
-
-                      );
-
-                    }
-                  )}
-
-                </div>
-
-
-                <button
-                  type="button"
-                  onClick={
-                    resetSet
-                  }
-
-                  style={{
-                    padding:
-                      "9px 13px",
-
-                    border:
-                      "none",
-
-                    borderRadius:
-                      "8px",
-
-                    background:
-                      "rgba(255,255,255,0.07)",
-
-                    color:
-                      "#fff",
-
-                    cursor:
-                      "pointer",
-
-                    marginBottom:
-                      "20px",
-                  }}
-                >
-                  RESET SET
-                </button>
-
-
-                <div
-                  style={{
-                    padding:
-                      "20px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(255,255,255,0.04)",
-
-                    border:
-                      "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize:
-                        "11px",
-
-                      opacity:
-                        0.45,
-
-                      marginBottom:
-                        "10px",
-                    }}
-                  >
-                    COMPLETED ACTIONS SET
-                  </div>
-
-                  <code
-                    style={{
-                      fontSize:
-                        "14px",
-
-                      lineHeight:
-                        2,
-                    }}
-                  >
-                    {"{"}
-                    {" "}
-                    {
-                      Array.from(
-                        completedSet
-                      ).join(
-                        ", "
-                      )
-                    }{" "}
-                    {"}"}
-                  </code>
-
-                  <div
-                    style={{
-                      marginTop:
-                        "14px",
-
-                      opacity:
-                        0.65,
-
-                      fontSize:
-                        "12px",
-
-                      lineHeight:
-                        1.6,
-                    }}
-                  >
-                    A Set prevents duplicate
-                    entries and lets the game
-                    quickly check whether an
-                    action has already been
-                    completed.
-                  </div>
-
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                STATE MACHINE
-            ================================================= */}
-
-            {slide.type ===
-              "state" && (
-
-              <div
-                style={{
-                  maxWidth:
-                    "850px",
-
-                  margin:
-                    "15px auto",
-                }}
-              >
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    flexWrap:
-                      "wrap",
-
-                    gap:
-                      "8px",
-
-                    alignItems:
-                      "center",
-                  }}
-                >
-
-                  {[
-                    "IDLE",
-                    "OIL",
-                    "GARLIC",
-                    "CARROT",
-                    "RICE",
-                    "EGG",
-                    "SOY",
-                    "GREEN ONION",
-                    "STIRRING",
-                    "READY",
-                  ].map(
-                    (
-                      state,
-                      index,
-                      array
-                    ) => (
-
-                      <div
-                        key={
-                          state
-                        }
-
-                        style={{
-                          display:
-                            "flex",
-
-                          alignItems:
-                            "center",
-
-                          gap:
-                            "8px",
-                        }}
-                      >
-
-                        <div
-                          style={{
-                            padding:
-                              "12px",
-
-                            borderRadius:
-                              "10px",
-
-                            background:
-                              "rgba(63,169,255,0.09)",
-
-                            border:
-                              "1px solid rgba(63,169,255,0.20)",
-
-                            fontSize:
-                              "11px",
-
-                            fontWeight:
-                              700,
-                          }}
-                        >
-                          {state}
-                        </div>
-
-                        {index <
-                          array.length -
-                            1 && (
-                          <span
-                            style={{
-                              opacity:
-                                0.3,
-                            }}
-                          >
-                            →
-                          </span>
-                        )}
-
-                      </div>
-
-                    )
-                  )}
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      "28px",
-
-                    padding:
-                      "20px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(255,255,255,0.035)",
-
-                    lineHeight:
-                      1.8,
-
-                    fontSize:
-                      "13px",
-
-                    opacity:
-                      0.72,
-                  }}
-                >
-
-                  <strong
-                    style={{
-                      color:
-                        "#fff",
-                    }}
-                  >
-                    Example:
-                  </strong>
-
-                  <br />
-
-                  The queue tells us what action
-                  should happen next.
-
-                  <br />
-
-                  The game then changes its
-                  cooking state after that action
-                  is successfully completed.
-
-                  <br />
-                  <br />
-
-                  <code>
-                    Queue → Validator → State
-                    Transition → New Image
-                  </code>
-
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                TREE
-            ================================================= */}
-
-            {slide.type ===
-              "tree" && (
-
-              <div
-                style={{
-                  maxWidth:
-                    "800px",
-
-                  margin:
-                    "10px auto",
-
-                  textAlign:
-                    "center",
-                }}
-              >
-
-                <div
-                  style={{
-                    display:
-                      "inline-block",
-
-                    padding:
-                      "15px 24px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(103,187,255,0.14)",
-
-                    border:
-                      "1px solid rgba(103,187,255,0.3)",
-
-                    fontWeight:
-                      800,
-                  }}
-                >
-                  FRIED RICE
-                </div>
-
-
-                <div
-                  style={{
-                    fontSize:
-                      "30px",
-
-                    opacity:
-                      0.35,
-
-                    lineHeight:
-                      1,
-                  }}
-                >
-                  ↓
-                </div>
-
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    justifyContent:
-                      "center",
-
-                    gap:
-                      "50px",
-                  }}
-                >
-
-                  <div>
-
-                    <div
-                      style={{
-                        padding:
-                          "12px 18px",
-
-                        borderRadius:
-                          "10px",
-
-                        background:
-                          "rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      PREPARATION
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop:
-                          "10px",
-
-                        display:
-                          "flex",
-
-                        gap:
-                          "8px",
-                      }}
-                    >
-
-                      {[
-                        "Garlic",
-                        "Carrot",
-                      ].map(
-                        (
-                          item
-                        ) => (
-                          <div
-                            key={
-                              item
-                            }
-                            style={{
-                              padding:
-                                "9px",
-
-                              borderRadius:
-                                "8px",
-
-                              background:
-                                "rgba(255,255,255,0.04)",
-
-                              fontSize:
-                                "11px",
-                            }}
-                          >
-                            {item}
-                          </div>
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-
-                  <div>
-
-                    <div
-                      style={{
-                        padding:
-                          "12px 18px",
-
-                        borderRadius:
-                          "10px",
-
-                        background:
-                          "rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      COOKING
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop:
-                          "10px",
-
-                        display:
-                          "flex",
-
-                        gap:
-                          "8px",
-                      }}
-                    >
-
-                      {[
-                        "Oil",
-                        "Rice",
-                        "Egg",
-                      ].map(
-                        (
-                          item
-                        ) => (
-                          <div
-                            key={
-                              item
-                            }
-                            style={{
-                              padding:
-                                "9px",
-
-                              borderRadius:
-                                "8px",
-
-                              background:
-                                "rgba(255,255,255,0.04)",
-
-                              fontSize:
-                                "11px",
-                            }}
-                          >
-                            {item}
-                          </div>
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      "28px",
-
-                    opacity:
-                      0.55,
-
-                    fontSize:
-                      "12px",
-
-                    lineHeight:
-                      1.6,
-                  }}
-                >
-                  This is a general recipe
-                  hierarchy/tree representation,
-                  not a Binary Search Tree or AVL
-                  Tree.
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                STACK
-            ================================================= */}
-
-            {slide.type ===
-              "stack" && (
-
-              <div
-                style={{
-                  maxWidth:
-                    "750px",
-
-                  margin:
-                    "10px auto",
-                }}
-              >
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    gap:
-                      "10px",
-
-                    marginBottom:
-                      "18px",
-                  }}
-                >
-
-                  <button
-                    type="button"
-                    onClick={
-                      pushStack
-                    }
-
-                    style={{
-                      padding:
-                        "10px 16px",
-
-                      border:
-                        "none",
-
-                      borderRadius:
-                        "8px",
-
-                      background:
-                        "#3fa9ff",
-
-                      color:
-                        "#fff",
-
-                      fontWeight:
-                        700,
-
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    PUSH
-                  </button>
-
-
-                  <button
-                    type="button"
-                    onClick={
-                      popStack
-                    }
-
-                    style={{
-                      padding:
-                        "10px 16px",
-
-                      border:
-                        "none",
-
-                      borderRadius:
-                        "8px",
-
-                      background:
-                        "rgba(255,255,255,0.08)",
-
-                      color:
-                        "#fff",
-
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    POP
-                  </button>
-
-
-                  <button
-                    type="button"
-                    onClick={
-                      resetStack
-                    }
-
-                    style={{
-                      padding:
-                        "10px 16px",
-
-                      border:
-                        "none",
-
-                      borderRadius:
-                        "8px",
-
-                      background:
-                        "rgba(255,255,255,0.08)",
-
-                      color:
-                        "#fff",
-
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    RESET
-                  </button>
-
-                </div>
-
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-
-                    flexDirection:
-                      "column",
-
-                    alignItems:
-                      "center",
-
-                    gap:
-                      "5px",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize:
-                        "10px",
-
-                      opacity:
-                        0.45,
-
-                      marginBottom:
-                        "5px",
-                    }}
-                  >
-                    TOP
-                  </div>
-
-                  {[
-                    ...stackItems,
-                  ]
-                    .reverse()
-                    .map(
-                      (
-                        item,
-                        index
-                      ) => (
-
-                        <div
-                          key={
-                            `${item}-${index}`
-                          }
-
-                          style={{
-                            width:
-                              "300px",
-
-                            padding:
-                              "13px",
-
-                            textAlign:
-                              "center",
-
-                            borderRadius:
-                              "8px",
-
-                            background:
-                              index === 0
-                                ? "rgba(103,187,255,0.16)"
-                                : "rgba(255,255,255,0.05)",
-
-                            border:
-                              "1px solid rgba(255,255,255,0.09)",
-
-                            fontSize:
-                              "12px",
-                          }}
-                        >
-                          {item}
-                        </div>
-
-                      )
-                    )}
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      "20px",
-
-                    textAlign:
-                      "center",
-
-                    opacity:
-                      0.6,
-
-                    fontSize:
-                      "12px",
-                  }}
-                >
-                  LIFO — Last In, First Out
-                </div>
-
-              </div>
-            )}
-
-
-            {/* =================================================
-                PRESENTATION
-            ================================================= */}
-
-            {slide.type ===
-              "presentation" && (
-
-              <div
-                style={{
-                  maxWidth:
-                    "850px",
-
-                  margin:
-                    "5px auto",
-                }}
-              >
-
-                <div
-                  style={{
-                    padding:
-                      "20px",
-
-                    borderRadius:
-                      "12px",
-
-                    background:
-                      "rgba(103,187,255,0.08)",
-
-                    border:
-                      "1px solid rgba(103,187,255,0.18)",
-
-                    marginBottom:
-                      "18px",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize:
-                        "10px",
-
-                      letterSpacing:
-                        "0.12em",
-
-                      color:
-                        "#6bbcff",
-
-                      fontWeight:
-                        800,
-
-                      marginBottom:
-                        "10px",
-                    }}
-                  >
-                    SAY THIS FIRST
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize:
-                        "16px",
-
-                      lineHeight:
-                        1.7,
-
-                      fontWeight:
-                        700,
-                    }}
-                  >
-                    "Instead of implementing DSA
-                    separately from our project,
-                    we used it to solve actual
-                    problems inside the cooking
-                    engine."
-                  </div>
-
-                </div>
-
-
-                <div
-                  style={{
-                    display:
-                      "grid",
-
-                    gridTemplateColumns:
-                      "1fr 1fr",
-
-                    gap:
-                      "12px",
-                  }}
-                >
-
-                  {[
-                    [
-                      "1",
-                      "Show the Queue",
-                      "Explain FIFO and demonstrate peek() and dequeue().",
-                    ],
-
-                    [
-                      "2",
-                      "Run the Simulation",
-                      "Click PROCESS NEXT and let the teacher watch the queue shrink.",
-                    ],
-
-                    [
-                      "3",
-                      "Show the Set",
-                      "Explain how completed cooking actions are tracked without duplicates.",
-                    ],
-
-                    [
-                      "4",
-                      "Connect It To Gameplay",
-                      "Explain that the data structure determines what the player can do next.",
-                    ],
-
-                  ].map(
-                    (
-                      item
-                    ) => (
-
-                      <div
-                        key={
-                          item[0]
-                        }
-
-                        style={{
-                          padding:
-                            "16px",
-
-                          borderRadius:
-                            "10px",
-
-                          background:
-                            "rgba(255,255,255,0.04)",
-
-                          border:
-                            "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      >
-
-                        <div
-                          style={{
-                            fontSize:
-                              "10px",
-
-                            color:
-                              "#6bbcff",
-
-                            fontWeight:
-                              800,
-
-                            marginBottom:
-                              "7px",
-                          }}
-                        >
-                          STEP{" "}
-                          {item[0]}
-                        </div>
-
-                        <div
-                          style={{
-                            fontWeight:
-                              800,
-
-                            marginBottom:
-                              "5px",
-                          }}
-                        >
-                          {item[1]}
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize:
-                              "11px",
-
-                            lineHeight:
-                              1.6,
-
-                            opacity:
-                              0.55,
-                          }}
-                        >
-                          {item[2]}
-                        </div>
-
-                      </div>
-
-                    )
-                  )}
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      "18px",
-
-                    padding:
-                      "15px",
-
-                    borderRadius:
-                      "10px",
-
-                    background:
-                      "rgba(255,255,255,0.035)",
-
-                    fontSize:
-                      "12px",
-
-                    lineHeight:
-                      1.7,
-
-                    opacity:
-                      0.65,
-                  }}
-                >
-                  <strong
-                    style={{
-                      color:
-                        "#fff",
-                    }}
-                  >
-                    The killer line:
-                  </strong>
-
-                  <br />
-
-                  "The data structure isn't just
-                  displayed in our project — it
-                  controls the workflow."
-                </div>
-
-              </div>
-            )}
-
-          </div>
-
-
-          {/* =================================================
-              NAVIGATION
-          ================================================= */}
-
-          <div
-            style={{
-              height:
-                "62px",
-
-              flexShrink: 0,
-
-              display:
-                "flex",
-
-              alignItems:
-                "center",
-
-              justifyContent:
-                "space-between",
-
-              padding:
-                "0 25px",
-
-              borderTop:
-                "1px solid rgba(255,255,255,0.08)",
-
-              background:
-                "rgba(0,0,0,0.16)",
-            }}
-          >
-
-            <button
-              type="button"
-
-              onClick={
-                goPrevious
-              }
-
-              disabled={
-                currentSlide === 0
-              }
-
-              style={{
-                padding:
-                  "9px 16px",
-
-                border:
-                  "1px solid rgba(255,255,255,0.1)",
-
-                borderRadius:
-                  "8px",
-
-                background:
-                  "rgba(255,255,255,0.05)",
-
-                color:
-                  "#fff",
-
-                opacity:
-                  currentSlide === 0
-                    ? 0.3
-                    : 1,
-
-                cursor:
-                  "pointer",
-              }}
-            >
-              ← PREVIOUS
-            </button>
-
-
-            <div
-              style={{
-                display:
-                  "flex",
-
-                gap:
-                  "5px",
-              }}
-            >
-
-              {slides.map(
-                (
-                  _,
-                  index
-                ) => (
-
-                  <button
-                    key={
-                      index
-                    }
-
-                    type="button"
-
-                    onClick={() =>
-                      setCurrentSlide(
-                        index
-                      )
-                    }
-
-                    aria-label={`Go to slide ${index + 1}`}
-
-                    style={{
-                      width:
-                        index ===
-                        currentSlide
-                          ? "22px"
-                          : "6px",
-
-                      height:
-                        "6px",
-
-                      padding: 0,
-
-                      border:
-                        "none",
-
-                      borderRadius:
-                        "999px",
-
-                      background:
-                        index ===
-                        currentSlide
-                          ? "#3fa9ff"
-                          : "rgba(255,255,255,0.2)",
-
-                      cursor:
-                        "pointer",
-
-                      transition:
-                        "all 150ms ease",
-                    }}
-                  />
-
-                )
-              )}
-
-            </div>
-
-
-            <button
-              type="button"
-
-              onClick={
-                goNext
-              }
-
-              disabled={
-                currentSlide ===
-                slides.length - 1
-              }
-
-              style={{
-                padding:
-                  "9px 16px",
-
-                border:
-                  "none",
-
-                borderRadius:
-                  "8px",
-
-                background:
-                  "#3fa9ff",
-
-                color:
-                  "#fff",
-
-                opacity:
-                  currentSlide ===
-                  slides.length - 1
-                    ? 0.3
-                    : 1,
-
-                cursor:
-                  "pointer",
-
-                fontWeight:
-                  700,
-              }}
-            >
-              NEXT →
-            </button>
-
-          </div>
+          {renderContent()}
 
         </main>
+
+      </div>
+
+
+      {/* =====================================================
+          FOOTER / PRESENTATION CONTROLS
+      ===================================================== */}
+
+      <div
+        style={{
+          height: "45px",
+          flexShrink: 0,
+
+          borderTop:
+            "1px solid rgba(255,255,255,0.08)",
+
+          display:
+            "flex",
+
+          alignItems:
+            "center",
+
+          padding:
+            "0 12px",
+
+          background:
+            "rgba(0,0,0,0.12)",
+        }}
+      >
+
+        <div
+          style={{
+            color: "#626d7c",
+            fontFamily:
+              "monospace",
+            fontSize: "9px",
+          }}
+        >
+          {String(
+            currentSectionIndex + 1
+          ).padStart(2, "0")}
+          {" / "}
+          {String(
+            sections.length
+          ).padStart(2, "0")}
+        </div>
+
+
+        <div
+          style={{
+            marginLeft:
+              "auto",
+            display:
+              "flex",
+            gap:
+              "7px",
+          }}
+        >
+
+          <button
+            type="button"
+            onClick={goPrevious}
+            disabled={
+              currentSectionIndex === 0
+            }
+            style={{
+              ...buttonStyle,
+              padding:
+                "6px 10px",
+              opacity:
+                currentSectionIndex === 0
+                  ? 0.35
+                  : 1,
+            }}
+          >
+            ←
+          </button>
+
+
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={
+              currentSectionIndex ===
+              sections.length - 1
+            }
+            style={{
+              ...buttonStyle,
+              padding:
+                "6px 10px",
+              opacity:
+                currentSectionIndex ===
+                sections.length - 1
+                  ? 0.35
+                  : 1,
+            }}
+          >
+            →
+          </button>
+
+        </div>
 
       </div>
 
     </div>
   );
 }
+
+
+/*
+ * =========================================================
+ * SECTION HEADING
+ * =========================================================
+ */
+
+function SectionHeading({
+  eyebrow,
+  title,
+  subtitle,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}) {
+
+  return (
+
+    <div
+      style={{
+        marginBottom:
+          "22px",
+      }}
+    >
+
+      <div
+        style={{
+          color:
+            "#69e3a3",
+          fontSize:
+            "10px",
+          fontWeight:
+            800,
+          letterSpacing:
+            "0.1em",
+          marginBottom:
+            "8px",
+        }}
+      >
+        {eyebrow}
+      </div>
+
+
+      <h2
+        style={{
+          margin:
+            0,
+          color:
+            "#fff",
+          fontSize:
+            "27px",
+          lineHeight:
+            1.2,
+          fontWeight:
+            800,
+        }}
+      >
+        {title}
+      </h2>
+
+
+      <div
+        style={{
+          marginTop:
+            "8px",
+          color:
+            "#818c9b",
+          fontSize:
+            "12px",
+        }}
+      >
+        {subtitle}
+      </div>
+
+    </div>
+  );
+}
+
+
+/*
+ * =========================================================
+ * CODE BLOCK
+ * =========================================================
+ */
+
+function CodeBlock({
+  title,
+  code,
+}: {
+  title: string;
+  code: string;
+}) {
+
+  return (
+
+    <div
+      style={{
+        background:
+          "#0a0c0f",
+        border:
+          "1px solid rgba(255,255,255,0.09)",
+        borderRadius:
+          "12px",
+        overflow:
+          "hidden",
+      }}
+    >
+
+      <div
+        style={{
+          padding:
+            "10px 13px",
+          borderBottom:
+            "1px solid rgba(255,255,255,0.07)",
+          color:
+            "#7d8897",
+          fontSize:
+            "10px",
+          fontFamily:
+            "monospace",
+        }}
+      >
+        {title}
+      </div>
+
+
+      <pre
+        style={{
+          margin:
+            0,
+          padding:
+            "18px",
+          color:
+            "#dce3ec",
+          fontFamily:
+            "monospace",
+          fontSize:
+            "10px",
+          lineHeight:
+            1.7,
+          overflowX:
+            "auto",
+        }}
+      >
+        <code>
+          {code}
+        </code>
+      </pre>
+
+    </div>
+  );
+}
+
+
+/*
+ * =========================================================
+ * DEMO BUTTON
+ * =========================================================
+ */
+
+function DemoButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+
+  return (
+
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border:
+          "1px solid rgba(105,227,163,0.22)",
+
+        background:
+          "rgba(105,227,163,0.07)",
+
+        color:
+          "#83eab1",
+
+        borderRadius:
+          "8px",
+
+        padding:
+          "9px 13px",
+
+        fontFamily:
+          "Comfortaa, sans-serif",
+
+        fontSize:
+          "10px",
+
+        fontWeight:
+          800,
+
+        cursor:
+          "pointer",
+
+        transition:
+          "all 140ms ease",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+
+/*
+ * =========================================================
+ * WINDOW DOT
+ * =========================================================
+ */
+
+function WindowDot({
+  color,
+  onClick,
+}: {
+  color: string;
+  onClick?: () => void;
+}) {
+
+  return (
+
+    <button
+      type="button"
+      onClick={(event) => {
+
+        event.stopPropagation();
+
+        onClick?.();
+      }}
+      style={{
+        width:
+          "11px",
+
+        height:
+          "11px",
+
+        padding:
+          0,
+
+        border:
+          "none",
+
+        borderRadius:
+          "50%",
+
+        background:
+          color,
+
+        cursor:
+          onClick
+            ? "pointer"
+            : "default",
+
+        boxShadow:
+          `inset 0 0 0 1px rgba(0,0,0,0.15)`,
+      }}
+      aria-label={
+        onClick
+          ? "Close"
+          : undefined
+      }
+    />
+
+  );
+}
+
+
+/*
+ * =========================================================
+ * STYLES
+ * =========================================================
+ */
+
+const contentStyle:
+  CSSProperties = {
+
+  padding:
+    "28px 30px 35px",
+
+  maxWidth:
+    "930px",
+
+  margin:
+    "0 auto",
+
+  minHeight:
+    "100%",
+};
+
+
+const heroTitleStyle:
+  CSSProperties = {
+
+  margin:
+    0,
+
+  color:
+    "#ffffff",
+
+  fontSize:
+    "42px",
+
+  lineHeight:
+    1.08,
+
+  fontWeight:
+    800,
+
+  letterSpacing:
+    "-0.025em",
+};
+
+
+const heroTextStyle:
+  CSSProperties = {
+
+  maxWidth:
+    "650px",
+
+  marginTop:
+    "16px",
+
+  color:
+    "#9aa5b4",
+
+  fontSize:
+    "14px",
+
+  lineHeight:
+    1.75,
+};
