@@ -93,6 +93,8 @@ interface CuttingBoardScreenProps {
     onAddIngredient: (
         ingredient: string
     ) => void;
+
+    showDebug?: boolean;
 }
 
 /*
@@ -135,6 +137,7 @@ export default function CuttingBoardScreen({
     inventory,
     onRemoveIngredient,
     onAddIngredient,
+    showDebug = false,
 }: CuttingBoardScreenProps) {
 
     /*
@@ -1169,52 +1172,53 @@ export default function CuttingBoardScreen({
             {/* =================================================
                 STATE DEBUG
             ================================================= */}
+            {showDebug && (
+                <div
+                    style={{
+                        position: "absolute",
 
-            <div
-                style={{
-                    position: "absolute",
+                        right: "15px",
+                        top: "15px",
 
-                    right: "15px",
-                    top: "15px",
+                        padding:
+                            "8px 12px",
 
-                    padding:
-                        "8px 12px",
+                        background:
+                            "rgba(0,0,0,0.75)",
 
-                    background:
-                        "rgba(0,0,0,0.75)",
+                        color: "#fff",
 
-                    color: "#fff",
+                        borderRadius: "6px",
 
-                    borderRadius: "6px",
+                        fontSize: "10px",
 
-                    fontSize: "10px",
+                        lineHeight: 1.5,
 
-                    lineHeight: 1.5,
+                        zIndex: 200,
 
-                    zIndex: 200,
+                        pointerEvents:
+                            "none",
 
-                    pointerEvents:
-                        "none",
+                        whiteSpace:
+                            "pre-line",
 
-                    whiteSpace:
-                        "pre-line",
-
-                    fontFamily:
-                        "Comfortaa, sans-serif",
-                }}
-            >
-                {`Board: ${boardIngredient ??
-                    "EMPTY"
-                    }
+                        fontFamily:
+                            "Comfortaa, sans-serif",
+                    }}
+                >
+                    {`Board: ${boardIngredient ??
+                        "EMPTY"
+                        }
 Stage: ${cutStage
-                    }
+                        }
 Cycle: ${cutCycle
-                    }
+                        }
 Knife: ${knifeVisible
-                        ? "VISIBLE"
-                        : "HIDDEN"
-                    }`}
-            </div>
+                            ? "VISIBLE"
+                            : "HIDDEN"
+                        }`}
+                </div>
+            )}
 
 
             {/* =================================================

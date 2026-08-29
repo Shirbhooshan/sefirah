@@ -1,18 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { PanProgress } from "./PanScreen";
 
 import kitchenBackground from "@/assets/media/mise-en-place/background/kitchen-default-2.jpg";
 import homeButton from "@/assets/media/mise-en-place/buttons/home-button.png";
 
-/*
- * =========================================================
- * KITCHEN STATE IMAGES
- * =========================================================
- */
-
 import fridgeClosed from "@/assets/media/mise-en-place/background/kitchen-default-2.jpg";
-
 import fridgeOpen from "@/assets/media/mise-en-place/background/kitchen-default-fridge-open.jpg";
 import fridgeOpenBoiler from "@/assets/media/mise-en-place/background/kitchen-default-boiler-and-fridge-open.jpg";
 import fridgeOpenPan from "@/assets/media/mise-en-place/background/kitchen-default-pan-and-fridge-open.jpg";
@@ -25,11 +20,16 @@ import boilerPanOn from "@/assets/media/mise-en-place/background/kitchen-default
 import tableEmpty from "@/assets/media/mise-en-place/background/plate-empty.jpg";
 import tableFriedRice from "@/assets/media/mise-en-place/background/plate-fried-rice.jpg";
 
+import recipeBookButton from "@/assets/media/mise-en-place/buttons/recipe-button.png";
+
+import RecipeBook from "./../RecipeBook";
+
 interface KitchenScreenProps {
     onHome: () => void;
 
     onFridge?: () => void;
     onPan?: () => void;
+    panProgress: PanProgress;
     onBoiler?: () => void;
 
     onCuttingBoard?: () => void;
@@ -43,11 +43,11 @@ interface KitchenScreenProps {
     onTogglePan: () => void;
 }
 
-
 export default function KitchenScreen({
     onHome,
     onFridge,
     onPan,
+    panProgress,
     onBoiler,
 
     onCuttingBoard,
@@ -70,6 +70,52 @@ export default function KitchenScreen({
     const [fridgeIsOpen, setFridgeIsOpen] =
         useState(false);
 
+    const [recipeBookOpen, setRecipeBookOpen] =
+        useState(false);
+
+    const [debugVisible, setDebugVisible] =
+        useState(true);
+
+    /*
+     * =========================================================
+     * DEBUG TOGGLE
+     * =========================================================
+     */
+
+    useEffect(() => {
+
+        const handleKeyDown = (
+            event: KeyboardEvent
+        ) => {
+
+            if (
+                event.ctrlKey &&
+                event.key.toLowerCase() === "m"
+            ) {
+
+                event.preventDefault();
+
+                setDebugVisible(
+                    (current) => !current
+                );
+            }
+        };
+
+        window.addEventListener(
+            "keydown",
+            handleKeyDown
+        );
+
+        return () => {
+
+            window.removeEventListener(
+                "keydown",
+                handleKeyDown
+            );
+        };
+
+    }, []);
+
 
     /*
      * =========================================================
@@ -78,11 +124,12 @@ export default function KitchenScreen({
      */
 
     const playSound = (src: string) => {
+
         const audio = new Audio(src);
 
         audio.currentTime = 0;
 
-        audio.play().catch(() => { });
+        audio.play().catch(() => {});
     };
 
 
@@ -110,10 +157,6 @@ export default function KitchenScreen({
             return;
         }
 
-        /*
-         * KEEPING YOUR ORIGINAL CLOSE SOUND
-         */
-
         playSound("/audio/fridge-close.wav");
 
         setFridgeIsOpen(false);
@@ -123,8 +166,11 @@ export default function KitchenScreen({
     const enterFridge = () => {
 
         if (onFridge) {
+
             onFridge();
+
         } else {
+
             console.log(
                 "FRIDGE SCREEN NOT CONNECTED YET"
             );
@@ -136,10 +182,6 @@ export default function KitchenScreen({
      * =========================================================
      * STOVE KNOBS
      * =========================================================
-     *
-     * KitchenScreen remains responsible for these.
-     *
-     * Clicking the knob changes the kitchen artwork.
      */
 
     const toggleBoiler = () => {
@@ -167,13 +209,17 @@ export default function KitchenScreen({
     const openBoilerScreen = () => {
 
         if (onBoiler) {
+
             onBoiler();
+
         } else {
+
             console.log(
                 "BOILER SCREEN NOT CONNECTED YET"
             );
         }
     };
+
 
     /*
      * =========================================================
@@ -184,8 +230,11 @@ export default function KitchenScreen({
     const openPanScreen = () => {
 
         if (onPan) {
+
             onPan();
+
         } else {
+
             console.log(
                 "PAN SCREEN NOT CONNECTED YET"
             );
@@ -202,8 +251,11 @@ export default function KitchenScreen({
     const handleCuttingBoard = () => {
 
         if (onCuttingBoard) {
+
             onCuttingBoard();
+
         } else {
+
             console.log(
                 "CUTTING BOARD SCREEN NOT CONNECTED YET"
             );
@@ -220,8 +272,11 @@ export default function KitchenScreen({
     const handleSink = () => {
 
         if (onSink) {
+
             onSink();
+
         } else {
+
             console.log(
                 "SINK SCREEN NOT CONNECTED YET"
             );
@@ -233,92 +288,57 @@ export default function KitchenScreen({
      * =========================================================
      * DETERMINE KITCHEN IMAGE
      * =========================================================
-     *
-     * IMPORTANT:
-     * Keep these exact combinations.
      */
 
     const getKitchenImage = () => {
-
-        /*
-         * FRIDGE + BOILER + PAN
-         */
 
         if (
             fridgeIsOpen &&
             boilerOn &&
             panOn
         ) {
+
             return fridgeOpenBoilerPan;
         }
-
-
-        /*
-         * FRIDGE + BOILER
-         */
 
         if (
             fridgeIsOpen &&
             boilerOn
         ) {
+
             return fridgeOpenBoiler;
         }
-
-
-        /*
-         * FRIDGE + PAN
-         */
 
         if (
             fridgeIsOpen &&
             panOn
         ) {
+
             return fridgeOpenPan;
         }
-
-
-        /*
-         * BOILER + PAN
-         */
 
         if (
             boilerOn &&
             panOn
         ) {
+
             return boilerPanOn;
         }
 
-
-        /*
-         * ONLY FRIDGE
-         */
-
         if (fridgeIsOpen) {
+
             return fridgeOpen;
         }
 
-
-        /*
-         * ONLY BOILER
-         */
-
         if (boilerOn) {
+
             return boilerOnImage;
         }
 
-
-        /*
-         * ONLY PAN
-         */
-
         if (panOn) {
+
             return panOnImage;
         }
-
-
-        /*
-         * DEFAULT
-         */
 
         return fridgeClosed;
     };
@@ -412,14 +432,17 @@ Pan: ${panOn ? "ON" : "OFF"}`;
                         "transform 140ms ease",
                 }}
                 onMouseEnter={(event) => {
+
                     event.currentTarget.style.transform =
                         "scale(1.043)";
                 }}
                 onMouseLeave={(event) => {
+
                     event.currentTarget.style.transform =
                         "scale(1)";
                 }}
             >
+
                 <img
                     src={
                         typeof homeButton === "string"
@@ -437,42 +460,112 @@ Pan: ${panOn ? "ON" : "OFF"}`;
                         pointerEvents: "none",
                     }}
                 />
+
             </button>
+
+
+            {/* =====================================================
+                RECIPE BOOK BUTTON
+            ====================================================== */}
+
+            <button
+                onClick={() => {
+                    setRecipeBookOpen(true);
+                }}
+                aria-label="Recipe book"
+                style={{
+                    position: "absolute",
+
+                    top: "18px",
+                    right: "18px",
+
+                    width: "64px",
+                    height: "64px",
+
+                    padding: 0,
+
+                    border: "none",
+
+                    background: "transparent",
+
+                    cursor: "pointer",
+
+                    zIndex: 100,
+
+                    transition:
+                        "transform 140ms ease",
+                }}
+                onMouseEnter={(event) => {
+
+                    event.currentTarget.style.transform =
+                        "scale(1.043)";
+                }}
+                onMouseLeave={(event) => {
+
+                    event.currentTarget.style.transform =
+                        "scale(1)";
+                }}
+            >
+
+                <img
+                    src={
+                        typeof recipeBookButton === "string"
+                            ? recipeBookButton
+                            : recipeBookButton.src
+                    }
+                    alt="Recipe Book"
+                    draggable={false}
+                    style={{
+                        width: "100%",
+                        height: "100%",
+
+                        objectFit: "contain",
+
+                        pointerEvents: "none",
+                    }}
+                />
+
+            </button>  
 
 
             {/* =====================================================
                 DEBUG
             ====================================================== */}
 
-            <div
-                style={{
-                    position: "absolute",
+            {debugVisible && (
+                <div
+                    style={{
+                        position: "absolute",
 
-                    top: "20px",
-                    right: "20px",
+                        top: "20px",
+                        right: "20px",
 
-                    padding: "10px 14px",
+                        padding:
+                            "10px 14px",
 
-                    background:
-                        "rgba(0, 0, 0, 0.75)",
+                        background:
+                            "rgba(0, 0, 0, 0.75)",
 
-                    color: "#fff",
+                        color: "#fff",
 
-                    borderRadius: "6px",
+                        borderRadius: "6px",
 
-                    fontSize: "11px",
+                        fontSize: "11px",
 
-                    lineHeight: 1.6,
+                        lineHeight: 1.6,
 
-                    whiteSpace: "pre-line",
+                        whiteSpace:
+                            "pre-line",
 
-                    zIndex: 200,
+                        zIndex: 200,
 
-                    pointerEvents: "none",
-                }}
-            >
-                {currentState}
-            </div>
+                        pointerEvents:
+                            "none",
+                    }}
+                >
+                    {currentState}
+                </div>
+            )}
 
 
             {/* =====================================================
@@ -496,7 +589,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                         border: "none",
 
-                        background: "transparent",
+                        background:
+                            "transparent",
 
                         cursor: "pointer",
 
@@ -527,7 +621,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                         border: "none",
 
-                        background: "transparent",
+                        background:
+                            "transparent",
 
                         cursor: "pointer",
 
@@ -558,7 +653,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                         border: "none",
 
-                        background: "transparent",
+                        background:
+                            "transparent",
 
                         cursor: "pointer",
 
@@ -590,7 +686,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                     borderRadius: "50%",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -621,7 +718,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                     borderRadius: "50%",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -650,7 +748,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -679,7 +778,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -708,7 +808,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -737,7 +838,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
                     border: "none",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -747,8 +849,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-    PLATE 1
-===================================================== */}
+                PLATE 1
+            ====================================================== */}
 
             <button
                 type="button"
@@ -766,9 +868,11 @@ Pan: ${panOn ? "ON" : "OFF"}`;
                     padding: 0,
 
                     border: "none",
+
                     borderRadius: "50%",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
@@ -778,8 +882,8 @@ Pan: ${panOn ? "ON" : "OFF"}`;
 
 
             {/* =====================================================
-    PLATE 2
-===================================================== */}
+                PLATE 2
+            ====================================================== */}
 
             <button
                 type="button"
@@ -797,13 +901,27 @@ Pan: ${panOn ? "ON" : "OFF"}`;
                     padding: 0,
 
                     border: "none",
+
                     borderRadius: "50%",
 
-                    background: "transparent",
+                    background:
+                        "transparent",
 
                     cursor: "pointer",
 
                     zIndex: 50,
+                }}
+            />
+
+
+            {/* =====================================================
+                RECIPE BOOK
+            ====================================================== */}
+
+            <RecipeBook
+                isOpen={recipeBookOpen}
+                onClose={() => {
+                    setRecipeBookOpen(false);
                 }}
             />
 

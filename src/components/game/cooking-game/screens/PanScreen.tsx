@@ -73,6 +73,7 @@ interface PanProgress {
     stage: PanStage;
     completedActions: CookingAction[];
     isStirring: boolean;
+    showDebug?: boolean;
 }
 
 
@@ -157,6 +158,7 @@ export default function PanScreen({
     onRemoveIngredient,
     panProgress,
     setPanProgress,
+    showDebug = false,
 }: PanScreenProps) {
 
 
@@ -1366,48 +1368,91 @@ export default function PanScreen({
 
 
             {/* =================================================
-                INSTRUCTION
-            ================================================= */}
+    INSTRUCTION
+================================================= */}
 
-            {panStage !==
-                "ready_stove_off" && (
+            {panStage !== "ready_stove_off" && (
+                <div
+                    style={{
+                        position: "absolute",
+
+                        left: "2%",
+                        top: "18%",
+
+                        width: "260px",
+
+                        zIndex: 90,
+
+                        pointerEvents: "none",
+
+                        fontFamily:
+                            "Comfortaa, sans-serif",
+
+                        textAlign: "left",
+
+                        padding: "16px 20px",
+
+                        background:
+                            "rgba(158, 110, 65, 0.48)",
+
+                        border:
+                            "1px solid rgba(255,255,255,0.16)",
+
+                        borderRadius: "12px",
+
+                        backdropFilter:
+                            "blur(10px)",
+
+                        boxShadow:
+                            "0 8px 25px rgba(0,0,0,0.22)",
+                    }}
+                >
+
+                    {/* SMALL LABEL */}
 
                     <div
                         style={{
-                            position:
-                                "absolute",
-
-                            left: "50%",
-
-                            top: "8%",
-
-                            transform:
-                                "translateX(-50%)",
-
-                            zIndex: 90,
+                            marginBottom: "6px",
 
                             color:
-                                "rgba(104,67,41,0.9)",
+                                "rgba(255,255,255,0.58)",
 
-                            fontSize:
-                                "20px",
+                            fontSize: "10px",
 
-                            fontWeight:
-                                700,
+                            fontWeight: 700,
 
-                            textAlign:
-                                "center",
+                            letterSpacing:
+                                "0.16em",
 
-                            pointerEvents:
-                                "none",
+                            textTransform:
+                                "uppercase",
+                        }}
+                    >
+                        Next Action
+                    </div>
 
-                            whiteSpace:
-                                "nowrap",
+
+                    {/* MAIN INSTRUCTION */}
+
+                    <div
+                        style={{
+                            color: "#ffffff",
+
+                            fontSize: "20px",
+
+                            fontWeight: 700,
+
+                            lineHeight: 1.3,
+
+                            textShadow:
+                                "0 2px 8px rgba(0,0,0,0.55)",
                         }}
                     >
                         {nextActionText}
                     </div>
-                )}
+
+                </div>
+            )}
 
 
             {/* =================================================
@@ -1608,125 +1653,126 @@ export default function PanScreen({
             {/* =================================================
                 DSA DEBUG
             ================================================= */}
-
-            <div
-                style={{
-                    position:
-                        "absolute",
-
-                    right:
-                        "15px",
-
-                    top:
-                        "15px",
-
-                    width:
-                        "230px",
-
-                    padding:
-                        "12px",
-
-                    background:
-                        "rgba(0,0,0,0.72)",
-
-                    color:
-                        "#fff",
-
-                    borderRadius:
-                        "8px",
-
-                    fontFamily:
-                        "monospace",
-
-                    fontSize:
-                        "11px",
-
-                    lineHeight:
-                        1.6,
-
-                    zIndex:
-                        200,
-
-                    pointerEvents:
-                        "none",
-                }}
-            >
-
+            {showDebug && (
                 <div
                     style={{
-                        fontWeight: 700,
-                        marginBottom: "5px",
+                        position:
+                            "absolute",
+
+                        right:
+                            "15px",
+
+                        top:
+                            "15px",
+
+                        width:
+                            "230px",
+
+                        padding:
+                            "12px",
+
+                        background:
+                            "rgba(0,0,0,0.72)",
+
+                        color:
+                            "#fff",
+
+                        borderRadius:
+                            "8px",
+
+                        fontFamily:
+                            "monospace",
+
+                        fontSize:
+                            "11px",
+
+                        lineHeight:
+                            1.6,
+
+                        zIndex:
+                            200,
+
+                        pointerEvents:
+                            "none",
                     }}
                 >
-                    DSA — RECIPE QUEUE
+
+                    <div
+                        style={{
+                            fontWeight: 700,
+                            marginBottom: "5px",
+                        }}
+                    >
+                        DSA — RECIPE QUEUE
+                    </div>
+
+                    <div>
+                        peek():{" "}
+                        {nextAction ??
+                            "EMPTY"}
+                    </div>
+
+                    <div>
+                        size:{" "}
+                        {recipeQueue.size}
+                    </div>
+
+                    <div>
+                        stage:{" "}
+                        {panStage}
+                    </div>
+
+                    <div
+                        style={{
+                            marginTop:
+                                "5px",
+                        }}
+                    >
+                        Queue:
+                    </div>
+
+                    {recipeQueue
+                        .toArray()
+                        .map(
+                            (
+                                action,
+                                index
+                            ) => (
+
+                                <div
+                                    key={
+                                        `${action}-${index}`
+                                    }
+
+                                    style={{
+                                        opacity:
+                                            index === 0
+                                                ? 1
+                                                : 0.55,
+                                    }}
+                                >
+                                    {index + 1}.{" "}
+                                    {action}
+                                </div>
+                            )
+                        )}
+
+                    <div
+                        style={{
+                            marginTop:
+                                "5px",
+                        }}
+                    >
+                        Completed:{" "}
+                        {
+                            panProgress
+                                .completedActions
+                                .length
+                        }
+                    </div>
+
                 </div>
-
-                <div>
-                    peek():{" "}
-                    {nextAction ??
-                        "EMPTY"}
-                </div>
-
-                <div>
-                    size:{" "}
-                    {recipeQueue.size}
-                </div>
-
-                <div>
-                    stage:{" "}
-                    {panStage}
-                </div>
-
-                <div
-                    style={{
-                        marginTop:
-                            "5px",
-                    }}
-                >
-                    Queue:
-                </div>
-
-                {recipeQueue
-                    .toArray()
-                    .map(
-                        (
-                            action,
-                            index
-                        ) => (
-
-                            <div
-                                key={
-                                    `${action}-${index}`
-                                }
-
-                                style={{
-                                    opacity:
-                                        index === 0
-                                            ? 1
-                                            : 0.55,
-                                }}
-                            >
-                                {index + 1}.{" "}
-                                {action}
-                            </div>
-                        )
-                    )}
-
-                <div
-                    style={{
-                        marginTop:
-                            "5px",
-                    }}
-                >
-                    Completed:{" "}
-                    {
-                        panProgress
-                            .completedActions
-                            .length
-                    }
-                </div>
-
-            </div>
+            )}
 
 
             {/* =================================================

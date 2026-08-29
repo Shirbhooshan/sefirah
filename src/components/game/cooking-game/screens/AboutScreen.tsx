@@ -98,7 +98,7 @@ export default function AboutScreen({
             color: "#555",
           }}
         >
-          All illustrations are something I’ve made myself for this project.
+          All illustrations are something I’ve made myself for this project. Music Credits to Stream Cafe. 
           <br></br>
           <br></br>
           If you ever want to connect, feel free to reach out!

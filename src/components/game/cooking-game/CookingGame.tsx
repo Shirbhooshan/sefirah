@@ -113,6 +113,33 @@ export default function CookingGame({
     setFriedRicePlated,
   ] = useState(false);
 
+  const [showDebug, setShowDebug] = useState(false);
+
+  useEffect(() => {
+    const handleDebugToggle = (event: KeyboardEvent) => {
+      if (
+        event.ctrlKey &&
+        event.key.toLowerCase() === "m"
+      ) {
+        event.preventDefault();
+
+        setShowDebug((current) => !current);
+      }
+    };
+
+    window.addEventListener(
+      "keydown",
+      handleDebugToggle
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleDebugToggle
+      );
+    };
+  }, []);
+
   /*
    * =========================================================
    * AUDIO
@@ -396,7 +423,7 @@ export default function CookingGame({
 
     const maximum =
       recipeRequirements[
-        ingredient
+      ingredient
       ] ?? 0;
 
     if (current >= maximum) {
@@ -673,14 +700,14 @@ export default function CookingGame({
         Math.max(
           0,
           window.innerWidth -
-            actualWidth
+          actualWidth
         );
 
       const maxTop =
         Math.max(
           menuBarHeight,
           window.innerHeight -
-            actualHeight
+          actualHeight
         );
 
       const clampedLeft =
@@ -1047,7 +1074,7 @@ export default function CookingGame({
             onViewMenu={
               goToRecipeMenu
             }
-            onInstructions={() => {}}
+            onInstructions={() => { }}
           />
         )}
 
@@ -1104,6 +1131,8 @@ export default function CookingGame({
               goToPan
             }
 
+            panProgress={panProgress}
+
             boilerOn={
               boilerOn
             }
@@ -1129,6 +1158,8 @@ export default function CookingGame({
                   !current
               );
             }}
+
+            showDebug={showDebug}
           />
         )}
 
@@ -1185,6 +1216,8 @@ export default function CookingGame({
             onAddIngredient={
               addIngredient
             }
+
+            showDebug={showDebug}
           />
         )}
 
@@ -1245,6 +1278,8 @@ export default function CookingGame({
             setPanProgress={
               setPanProgress
             }
+
+            showDebug={showDebug}
           />
         )}
 

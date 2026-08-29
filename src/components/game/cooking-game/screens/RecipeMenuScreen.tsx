@@ -3,6 +3,8 @@
 import menuBook from "@/assets/media/mise-en-place/background/menu.png";
 import backButton from "@/assets/media/mise-en-place/buttons/back-button-1.png";
 
+import friedRiceImage from "@/assets/media/mise-en-place/icons/fried-rice.png";
+
 interface RecipeMenuScreenProps {
     onBack: () => void;
     onFriedRice: () => void;
@@ -218,8 +220,8 @@ export default function RecipeMenuScreen({
                     onClick={onFriedRice}
                     aria-label="Cook Fried Rice"
                     style={{
-                        width: "105px",
-                        height: "105px",
+                        width: "115px",
+                        height: "115px",
 
                         padding: 0,
 
@@ -228,8 +230,6 @@ export default function RecipeMenuScreen({
                         borderRadius: "6px",
 
                         overflow: "hidden",
-
-                        background: "#ddd",
 
                         display: "flex",
 
@@ -253,7 +253,11 @@ export default function RecipeMenuScreen({
                             "scale(1)";
                     }}
                 >
-                    Image
+                    <img
+                        src={friedRiceImage.src}
+                        alt="Fried Rice"
+                        style={{ maxWidth: "100%", height: "auto", display: "block" }}
+                    />
                 </button>
             </div>
 

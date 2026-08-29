@@ -4,7 +4,6 @@ import GameButton from "./GameButton";
 
 import backButton from "@/assets/media/mise-en-place/buttons/back-button-1.png";
 import viewMenuButton from "@/assets/media/mise-en-place/buttons/view-menu-button-1.png";
-import instructionsButton from "@/assets/media/mise-en-place/buttons/instructions-button-1.png";
 import aboutButton from "@/assets/media/mise-en-place/buttons/about-button-1.png";
 
 import menuBackground from "@/assets/media/mise-en-place/background/title-screen-background.jpg";
@@ -104,13 +103,6 @@ export default function MenuScreen({
           src={viewMenuButton.src}
           alt="View Menu"
           onClick={onViewMenu}
-          width={260}
-        />
-
-        <GameButton
-          src={instructionsButton.src}
-          alt="Instructions"
-          onClick={onInstructions}
           width={260}
         />
 
