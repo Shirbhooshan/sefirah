@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
 
-        items: items.map((item) => ({
+        items: items.map((item: any) => ({
           id:
             item._id.toString(),
 

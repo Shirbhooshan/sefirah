@@ -803,6 +803,8 @@ export default function FileExplorer({
     setSelectedItem(itemId);
   };
 
+  const tabIcon = getTabIcon(activeTab);
+
   /*
    * =========================================================
    * DOUBLE CLICK
@@ -1698,37 +1700,24 @@ export default function FileExplorer({
               0,
           }}
         >
-          <img
-            src={
-              typeof getTabIcon(
-                activeTab
-              ) === "string"
-                ? getTabIcon(
-                  activeTab
-                )
-                : getTabIcon(
-                  activeTab
-                ).src
-            }
-            alt=""
-            draggable={false}
-            style={{
-              width:
-                "19px",
-
-              height:
-                "19px",
-
-              objectFit:
-                "contain",
-
-              marginRight:
-                "8px",
-
-              flexShrink:
-                0,
-            }}
-          />
+          {tabIcon && (
+            <img
+              src={
+                typeof tabIcon === "string"
+                  ? tabIcon
+                  : tabIcon.src
+              }
+              alt=""
+              draggable={false}
+              style={{
+                width: "19px",
+                height: "19px",
+                objectFit: "contain",
+                marginRight: "8px",
+                flexShrink: 0,
+              }}
+            />
+          )}
 
           <span
             style={{

@@ -41,6 +41,8 @@ interface KitchenScreenProps {
 
     onToggleBoiler: () => void;
     onTogglePan: () => void;
+
+    showDebug?: boolean;
 }
 
 export default function KitchenScreen({

@@ -1230,14 +1230,6 @@ export default function CookingGame({
             boilerOn={
               boilerOn
             }
-
-            inventory={
-              inventory
-            }
-
-            onRemoveIngredient={
-              removeIngredient
-            }
           />
         )}
 

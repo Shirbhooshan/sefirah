@@ -1,4 +1,27 @@
-export const bootSequence = [
+export type BootStatus = "OK" | "INFO" | "WARN";
+
+export type BootSequenceEntry =
+    | {
+        type: "text";
+        text: string;
+        delay?: number;
+    }
+    | {
+        type: "space";
+    }
+    | {
+        type: "task";
+        text: string;
+        status: BootStatus;
+        duration: number;
+    }
+    | {
+        type: "typewriter";
+        text: string;
+        speed: number;
+    };
+
+export const bootSequence: BootSequenceEntry[] = [
 
     // =========================================
     // HARDWARE — RAPID

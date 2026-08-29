@@ -69,7 +69,7 @@ export type CookingAction =
     | "stir";
 
 
-interface PanProgress {
+export interface PanProgress {
     stage: PanStage;
     completedActions: CookingAction[];
     isStirring: boolean;
@@ -140,6 +140,8 @@ interface PanScreenProps {
     setPanProgress: React.Dispatch<
         React.SetStateAction<PanProgress>
     >;
+
+    showDebug?: boolean;
 }
 
 
