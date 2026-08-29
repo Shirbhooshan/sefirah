@@ -291,9 +291,6 @@ export async function PATCH(
                     recipe:
                         "fried_rice",
 
-                    inventory:
-                        {},
-
                     checklist:
                         {},
 

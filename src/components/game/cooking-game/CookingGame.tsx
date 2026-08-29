@@ -414,7 +414,6 @@ export default function CookingGame({
       green_onion: 1,
       egg: 1,
       carrot: 1,
-      onion: 1,
       garlic: 1,
       rice: 1,
       soy_sauce: 1,
