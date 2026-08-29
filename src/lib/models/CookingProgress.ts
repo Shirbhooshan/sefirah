@@ -1,4 +1,4 @@
-import mongoose, { Schema, models } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const ChecklistItemSchema = new Schema(
     {
@@ -59,7 +59,7 @@ CookingProgressSchema.index(
 );
 
 const CookingProgress =
-    models.CookingProgress ||
+    mongoose.models.CookingProgress ||
     mongoose.model(
         "CookingProgress",
         CookingProgressSchema
