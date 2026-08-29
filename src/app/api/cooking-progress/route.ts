@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 
 import CookingProgress from "@/lib/models/CookingProgress";
 
-// CHANGE THIS IMPORT TO THE SAME DB CONNECTION
-// USED BY YOUR EXISTING /api/filesystem ROUTE.
-import { connectToDatabase } from "@/lib/mongodb";
+import connectToDatabase from "@/lib/mongodb";
 
 
 const RECIPE_ID = "fried-rice";

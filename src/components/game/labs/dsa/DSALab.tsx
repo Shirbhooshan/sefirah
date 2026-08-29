@@ -1,3814 +1,4059 @@
 "use client";
 
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 
-import type {
-  CSSProperties,
-  MouseEvent as ReactMouseEvent,
-} from "react";
+import oilIcon from "@/assets/media/mise-en-place/icons/cooking-oil.png";
+import riceIcon from "@/assets/media/mise-en-place/icons/rice.png";
+import garlicIcon from "@/assets/media/mise-en-place/icons/onion.png";
+import carrotIcon from "@/assets/media/mise-en-place/icons/carrot.png";
+import eggIcon from "@/assets/media/mise-en-place/icons/egg.png";
+import soyIcon from "@/assets/media/mise-en-place/icons/soy-sauce.png";
+import greenOnionIcon from "@/assets/media/mise-en-place/icons/green-onion.png";
 
 /*
- * =========================================================
- * DSA LAB
- * =========================================================
- *
- * Interactive presentation + DSA visualizer for SEFIRAH.
- *
- * Demonstrates:
- *
- * 1. Queue
- * 2. Set
- * 3. State-machine style transitions
- * 4. Actual project code
- * 5. Complexity
- * 6. Failure cases
- *
- * This component is intentionally self-contained.
- * =========================================================
- */
-
-
-/*
- * =========================================================
+ * ============================================================
  * TYPES
- * =========================================================
+ * ============================================================
  */
 
 interface WindowPosition {
-  left: number;
-  top: number;
-  zIndex: number;
-  centered: boolean;
+    left: number;
+    top: number;
+    zIndex: number;
+    centered: boolean;
 }
 
 interface DSALabProps {
-  onClose?: () => void;
-  onFocus?: () => void;
-
-  onMove?: (
-    left: number,
-    top: number
-  ) => void;
-
-  windowPosition: WindowPosition;
+    onClose: () => void;
+    onFocus: () => void;
+    onMove: (left: number, top: number) => void;
+    windowPosition: WindowPosition;
 }
 
+type Topic =
+    | "intro"
+    | "bubble"
+    | "quick"
+    | "stack"
+    | "hashmap"
+    | "tree"
+    | "search"
+    | "game";
 
-type Section =
-  | "overview"
-  | "why"
-  | "queue"
-  | "code"
-  | "set"
-  | "state"
-  | "failure"
-  | "complexity"
-  | "presentation"
-  | "summary";
-
-
-type CookingAction =
-  | "cooking_oil"
-  | "cut_garlic"
-  | "cut_carrot"
-  | "rice"
-  | "egg"
-  | "soy_sauce"
-  | "cut_green_onion"
-  | "stir";
-
-
-interface QueueItem {
-  id: number;
-  action: CookingAction;
-  label: string;
-  icon: string;
-}
-
+type AlgorithmMode =
+    | "bubble"
+    | "quick"
+    | "search"
+    | null;
 
 /*
- * =========================================================
- * RECIPE DATA
- * =========================================================
+ * ============================================================
+ * CONSTANTS
+ * ============================================================
  */
 
-const RECIPE: QueueItem[] = [
-  {
-    id: 1,
-    action: "cooking_oil",
-    label: "Cooking Oil",
-    icon: "🫗",
-  },
-
-  {
-    id: 2,
-    action: "cut_garlic",
-    label: "Cut Garlic",
-    icon: "🧄",
-  },
-
-  {
-    id: 3,
-    action: "cut_carrot",
-    label: "Cut Carrot",
-    icon: "🥕",
-  },
-
-  {
-    id: 4,
-    action: "rice",
-    label: "Cold Rice",
-    icon: "🍚",
-  },
-
-  {
-    id: 5,
-    action: "egg",
-    label: "Egg",
-    icon: "🥚",
-  },
-
-  {
-    id: 6,
-    action: "soy_sauce",
-    label: "Soy Sauce",
-    icon: "🥣",
-  },
-
-  {
-    id: 7,
-    action: "cut_green_onion",
-    label: "Green Onion",
-    icon: "🌱",
-  },
-
-  {
-    id: 8,
-    action: "stir",
-    label: "Stir",
-    icon: "🥄",
-  },
+const INITIAL_ARRAY = [
+    8,
+    3,
+    7,
+    4,
+    9,
+    2,
 ];
 
+const SEARCH_ARRAY = [
+    2,
+    4,
+    7,
+    9,
+    13,
+    18,
+];
+
+const recipeIngredients = [
+    {
+        name: "Cooking Oil",
+        short: "Oil",
+        image: oilIcon,
+    },
+    {
+        name: "Cut Garlic",
+        short: "Garlic",
+        image: garlicIcon,
+    },
+    {
+        name: "Cut Carrot",
+        short: "Carrot",
+        image: carrotIcon,
+    },
+    {
+        name: "Cold Rice",
+        short: "Rice",
+        image: riceIcon,
+    },
+    {
+        name: "Egg",
+        short: "Egg",
+        image: eggIcon,
+    },
+    {
+        name: "Soy Sauce",
+        short: "Soy",
+        image: soyIcon,
+    },
+    {
+        name: "Green Onion",
+        short: "Onion",
+        image: greenOnionIcon,
+    },
+];
 
 /*
- * =========================================================
- * HELPERS
- * =========================================================
+ * ============================================================
+ * HELPER
+ * ============================================================
  */
 
-const actionText: Record<
-  CookingAction,
-  string
-> = {
-  cooking_oil: "Add cooking oil",
-  cut_garlic: "Add cut garlic",
-  cut_carrot: "Add cut carrot",
-  rice: "Add cold rice",
-  egg: "Add egg",
-  soy_sauce: "Add soy sauce",
-  cut_green_onion:
-    "Add cut green onion",
-  stir: "Stir the fried rice",
-};
-
-
-const sectionLabels: Record<
-  Section,
-  string
-> = {
-  overview: "Overview",
-  why: "Why DSA?",
-  queue: "Queue",
-  code: "Source Code",
-  set: "Set",
-  state: "State Machine",
-  failure: "Failure Case",
-  complexity: "Complexity",
-  presentation: "How To Present",
-  summary: "Summary",
-};
-
+function imageSrc(image: any) {
+    return typeof image === "string"
+        ? image
+        : image?.src ?? "";
+}
 
 /*
- * =========================================================
- * COMPONENT
- * =========================================================
+ * ============================================================
+ * MAIN COMPONENT
+ * ============================================================
  */
 
 export default function DSALab({
-  onClose,
-  onFocus,
-  onMove,
-  windowPosition,
+    onClose,
+    onFocus,
+    onMove,
+    windowPosition,
 }: DSALabProps) {
 
+    /*
+     * ========================================================
+     * WINDOW DRAGGING
+     * ========================================================
+     */
 
-  /*
-   * =========================================================
-   * SECTION
-   * =========================================================
-   */
-
-  const [
-    section,
-    setSection,
-  ] = useState<Section>("overview");
-
-
-  /*
-   * =========================================================
-   * QUEUE DEMO
-   * =========================================================
-   */
-
-  const [
-    queue,
-    setQueue,
-  ] = useState<QueueItem[]>(RECIPE);
-
-
-  const [
-    queueMessage,
-    setQueueMessage,
-  ] = useState(
-    "Queue initialized with the Fried Rice recipe."
-  );
-
-
-  const [
-    highlightedId,
-    setHighlightedId,
-  ] = useState<number | null>(null);
-
-
-  const [
-    lastOperation,
-    setLastOperation,
-  ] = useState(
-    "Waiting for an operation..."
-  );
-
-
-  /*
-   * =========================================================
-   * SET DEMO
-   * =========================================================
-   */
-
-  const [
-    completedSet,
-    setCompletedSet,
-  ] = useState<CookingAction[]>([
-    "cooking_oil",
-    "cut_garlic",
-    "cut_carrot",
-  ]);
-
-
-  const [
-    setMessage,
-    setSetMessage,
-  ] = useState(
-    "These actions have already been completed."
-  );
-
-
-  /*
-   * =========================================================
-   * FAILURE DEMO
-   * =========================================================
-   */
-
-  const [
-    failureStep,
-    setFailureStep,
-  ] = useState(0);
-
-
-  /*
-   * =========================================================
-   * DRAGGING
-   * =========================================================
-   */
-
-  const [
-    isDragging,
-    setIsDragging,
-  ] = useState(false);
-
-
-  const dragOffset =
-    useRef({
-      x: 0,
-      y: 0,
+    const dragState = useRef<{
+        dragging: boolean;
+        offsetX: number;
+        offsetY: number;
+    }>({
+        dragging: false,
+        offsetX: 0,
+        offsetY: 0,
     });
 
-
-  /*
-   * =========================================================
-   * WINDOW DIMENSIONS
-   * =========================================================
-   */
-
-  const WINDOW_WIDTH = 1080;
-  const WINDOW_HEIGHT = 720;
-  const MENU_BAR_HEIGHT = 38;
-
-
-  /*
-   * =========================================================
-   * WINDOW DRAG START
-   * =========================================================
-   */
-
-  const handleWindowDragStart = (
-    event: ReactMouseEvent
-  ) => {
-
-    if (event.button !== 0) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    onFocus?.();
-
-    const windowElement =
-      event.currentTarget.closest(
-        "[data-dsa-window]"
-      ) as HTMLElement | null;
-
-    if (!windowElement) {
-      return;
-    }
-
-    const rect =
-      windowElement.getBoundingClientRect();
-
-    dragOffset.current = {
-      x:
-        event.clientX -
-        rect.left,
-
-      y:
-        event.clientY -
-        rect.top,
-    };
-
-    setIsDragging(true);
-  };
-
-
-  /*
-   * =========================================================
-   * WINDOW DRAGGING
-   * =========================================================
-   */
-
-  useEffect(() => {
-
-    if (!isDragging) {
-      return;
-    }
-
-    const handleMouseMove = (
-      event: MouseEvent
+    const handleTitleMouseDown = (
+        event: React.MouseEvent<HTMLDivElement>
     ) => {
 
-      const newLeft =
-        event.clientX -
-        dragOffset.current.x;
+        /*
+         * Do not start dragging when clicking buttons.
+         */
 
-      const newTop =
-        event.clientY -
-        dragOffset.current.y;
+        const target = event.target as HTMLElement;
 
+        if (
+            target.closest("button") ||
+            target.closest("input")
+        ) {
+            return;
+        }
 
-      const actualWidth =
-        Math.min(
-          WINDOW_WIDTH,
-          window.innerWidth * 0.94
-        );
+        onFocus();
 
+        const windowElement =
+            event.currentTarget.parentElement;
 
-      const actualHeight =
-        Math.min(
-          WINDOW_HEIGHT,
-          window.innerHeight * 0.88
-        );
+        if (!windowElement) {
+            return;
+        }
 
+        const rect =
+            windowElement.getBoundingClientRect();
 
-      const maxLeft =
-        Math.max(
-          0,
-          window.innerWidth -
-            actualWidth
-        );
+        dragState.current = {
+            dragging: true,
+            offsetX:
+                event.clientX - rect.left,
+            offsetY:
+                event.clientY - rect.top,
+        };
 
-
-      const maxTop =
-        Math.max(
-          MENU_BAR_HEIGHT,
-          window.innerHeight -
-            actualHeight
-        );
-
-
-      const clampedLeft =
-        Math.max(
-          0,
-          Math.min(
-            newLeft,
-            maxLeft
-          )
-        );
-
-
-      const clampedTop =
-        Math.max(
-          MENU_BAR_HEIGHT,
-          Math.min(
-            newTop,
-            maxTop
-          )
-        );
-
-
-      onMove?.(
-        clampedLeft,
-        clampedTop
-      );
+        document.body.style.userSelect = "none";
     };
 
+    useEffect(() => {
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
+        const handleMouseMove = (
+            event: MouseEvent
+        ) => {
 
+            if (
+                !dragState.current.dragging
+            ) {
+                return;
+            }
 
-    window.addEventListener(
-      "mousemove",
-      handleMouseMove
+            const nextLeft =
+                event.clientX -
+                dragState.current.offsetX;
+
+            const nextTop =
+                event.clientY -
+                dragState.current.offsetY;
+
+            onMove(
+                nextLeft,
+                nextTop
+            );
+        };
+
+        const handleMouseUp = () => {
+
+            if (
+                dragState.current.dragging
+            ) {
+
+                dragState.current.dragging =
+                    false;
+
+                document.body.style.userSelect =
+                    "";
+            }
+        };
+
+        window.addEventListener(
+            "mousemove",
+            handleMouseMove
+        );
+
+        window.addEventListener(
+            "mouseup",
+            handleMouseUp
+        );
+
+        return () => {
+
+            window.removeEventListener(
+                "mousemove",
+                handleMouseMove
+            );
+
+            window.removeEventListener(
+                "mouseup",
+                handleMouseUp
+            );
+        };
+
+    }, [onMove]);
+
+    /*
+     * ========================================================
+     * TOPIC
+     * ========================================================
+     */
+
+    const [topic, setTopic] =
+        useState<Topic>("intro");
+
+    /*
+     * ========================================================
+     * ALGORITHM STATE
+     * ========================================================
+     */
+
+    const [algorithmMode, setAlgorithmMode] =
+        useState<AlgorithmMode>(null);
+
+    const [array, setArray] =
+        useState<number[]>(INITIAL_ARRAY);
+
+    const [bubbleI, setBubbleI] =
+        useState(0);
+
+    const [bubbleJ, setBubbleJ] =
+        useState(0);
+
+    const [bubbleSorted, setBubbleSorted] =
+        useState<number[]>([]);
+
+    const [quickArray, setQuickArray] =
+        useState<number[]>(INITIAL_ARRAY);
+
+    const [quickLow, setQuickLow] =
+        useState(0);
+
+    const [quickHigh, setQuickHigh] =
+        useState(INITIAL_ARRAY.length - 1);
+
+    const [quickPivot, setQuickPivot] =
+        useState<number | null>(null);
+
+    const [quickI, setQuickI] =
+        useState(0);
+
+    const [quickJ, setQuickJ] =
+        useState(0);
+
+    const [quickDone, setQuickDone] =
+        useState(false);
+
+    const [searchTarget, setSearchTarget] =
+        useState(13);
+
+    const [searchIndex, setSearchIndex] =
+        useState(0);
+
+    const [searchFound, setSearchFound] =
+        useState(false);
+
+    const [searchFinished, setSearchFinished] =
+        useState(false);
+
+    /*
+     * ========================================================
+     * STACK
+     * ========================================================
+     */
+
+    const [stack, setStack] =
+        useState<string[]>([
+            "Rice",
+            "Carrot",
+        ]);
+
+    const [stackMessage, setStackMessage] =
+        useState(
+            "A stack follows LIFO: Last In, First Out."
+        );
+
+    /*
+     * ========================================================
+     * HASHMAP
+     * ========================================================
+     */
+
+    const hashmap = useMemo(
+        () => [
+            {
+                key: "oil",
+                value: "Cooking Oil",
+            },
+            {
+                key: "rice",
+                value: "Cold Rice",
+            },
+            {
+                key: "egg",
+                value: "Egg",
+            },
+            {
+                key: "soy",
+                value: "Soy Sauce",
+            },
+        ],
+        []
     );
 
-    window.addEventListener(
-      "mouseup",
-      handleMouseUp
-    );
-
-
-    return () => {
-
-      window.removeEventListener(
-        "mousemove",
-        handleMouseMove
-      );
-
-      window.removeEventListener(
-        "mouseup",
-        handleMouseUp
-      );
-    };
-
-  }, [
-    isDragging,
-    onMove,
-  ]);
-
-
-  /*
-   * =========================================================
-   * FOCUS
-   * =========================================================
-   */
-
-  const focusWindow = useCallback(() => {
-    onFocus?.();
-  }, [onFocus]);
-
-
-  /*
-   * =========================================================
-   * QUEUE RESET
-   * =========================================================
-   */
-
-  const resetQueue = () => {
-
-    setQueue(RECIPE);
-
-    setHighlightedId(null);
-
-    setQueueMessage(
-      "Queue reset. All 8 recipe actions are waiting."
-    );
-
-    setLastOperation(
-      "RESET"
-    );
-  };
-
-
-  /*
-   * =========================================================
-   * QUEUE PEEK
-   * =========================================================
-   */
-
-  const peekQueue = () => {
-
-    const first =
-      queue[0];
-
-    if (!first) {
-
-      setQueueMessage(
-        "Queue is empty."
-      );
-
-      setLastOperation(
-        "peek() → undefined"
-      );
-
-      return;
-    }
-
-
-    setHighlightedId(
-      first.id
-    );
-
-
-    setQueueMessage(
-      `PEEK → ${first.label}`
-    );
-
-
-    setLastOperation(
-      `peek() → ${first.action}`
-    );
-  };
-
-
-  /*
-   * =========================================================
-   * QUEUE DEQUEUE
-   * =========================================================
-   */
-
-  const dequeueQueue = () => {
-
-    if (queue.length === 0) {
-
-      setQueueMessage(
-        "Cannot dequeue. Queue is empty."
-      );
-
-      setLastOperation(
-        "dequeue() → undefined"
-      );
-
-      return;
-    }
-
-
-    const removed =
-      queue[0];
-
-
-    setHighlightedId(
-      removed.id
-    );
-
-
-    setLastOperation(
-      `dequeue() → ${removed.action}`
-    );
-
-
-    setQueueMessage(
-      `${removed.label} completed. The next action is now at FRONT.`
-    );
-
-
-    setTimeout(() => {
-
-      setQueue(
-        (previous) =>
-          previous.slice(1)
-      );
-
-      setHighlightedId(null);
-
-    }, 450);
-  };
-
-
-  /*
-   * =========================================================
-   * ENQUEUE
-   * =========================================================
-   */
-
-  const enqueueQueue = () => {
-
-    const nextId =
-      Math.max(
-        0,
-        ...queue.map(
-          (item) => item.id
-        )
-      ) + 1;
-
-
-    const newItem: QueueItem = {
-      id: nextId,
-
-      action:
-        "stir",
-
-      label:
-        "Extra Stir",
-
-      icon:
-        "🥄",
-    };
-
-
-    setQueue(
-      (previous) => [
-        ...previous,
-        newItem,
-      ]
-    );
-
-
-    setLastOperation(
-      "enqueue(stir)"
-    );
-
-
-    setQueueMessage(
-      "New action added at the REAR of the queue."
-    );
-
-
-    setHighlightedId(
-      nextId
-    );
-
-
-    setTimeout(() => {
-      setHighlightedId(null);
-    }, 600);
-  };
-
-
-  /*
-   * =========================================================
-   * SET TOGGLE
-   * =========================================================
-   */
-
-  const toggleSetAction = (
-    action: CookingAction
-  ) => {
-
-    const exists =
-      completedSet.includes(
-        action
-      );
-
-
-    if (exists) {
-
-      setCompletedSet(
-        (previous) =>
-          previous.filter(
-            (item) =>
-              item !== action
-          )
-      );
-
-
-      setSetMessage(
-        `"${action}" removed from completed Set.`
-      );
-
-      return;
-    }
-
-
-    setCompletedSet(
-      (previous) => [
-        ...previous,
-        action,
-      ]
-    );
-
-
-    setSetMessage(
-      `"${action}" added to completed Set.`
-    );
-  };
-
-
-  /*
-   * =========================================================
-   * FAILURE DEMO
-   * =========================================================
-   */
-
-  const failureData = [
-    {
-      title:
-        "Player tries to add rice first",
-
-      text:
-        "The queue says OIL is the next required action.",
-
-      result:
-        "❌ Action rejected",
-
-      explanation:
-        "The game checks queue.peek() before accepting the action.",
-    },
-
-    {
-      title:
-        "Player tries soy sauce before egg",
-
-      text:
-        "The queue still expects the egg.",
-
-      result:
-        "❌ Action rejected",
-
-      explanation:
-        "The player cannot skip forward in the recipe.",
-    },
-
-    {
-      title:
-        "Player follows the queue",
-
-      text:
-        "The next action matches queue.peek().",
-
-      result:
-        "✅ Action accepted",
-
-      explanation:
-        "The ingredient is consumed and the action is marked complete.",
-    },
-  ];
-
-
-  /*
-   * =========================================================
-   * CURRENT FAILURE
-   * =========================================================
-   */
-
-  const currentFailure =
-    failureData[
-      failureStep
+    const [hashLookup, setHashLookup] =
+        useState("rice");
+
+    const [hashMessage, setHashMessage] =
+        useState(
+            "Enter a key and look it up."
+        );
+
+    /*
+     * ========================================================
+     * TREE
+     * ========================================================
+     */
+
+    const treeNodes = [
+        {
+            value: 50,
+            x: 50,
+            y: 16,
+        },
+        {
+            value: 30,
+            x: 27,
+            y: 40,
+        },
+        {
+            value: 70,
+            x: 73,
+            y: 40,
+        },
+        {
+            value: 20,
+            x: 15,
+            y: 66,
+        },
+        {
+            value: 40,
+            x: 39,
+            y: 66,
+        },
+        {
+            value: 60,
+            x: 61,
+            y: 66,
+        },
+        {
+            value: 80,
+            x: 85,
+            y: 66,
+        },
     ];
 
-
-  /*
-   * =========================================================
-   * SECTION NAVIGATION
-   * =========================================================
-   */
-
-  const sections =
-    Object.keys(
-      sectionLabels
-    ) as Section[];
-
-
-  const currentSectionIndex =
-    sections.indexOf(
-      section
-    );
-
-
-  const goNext = () => {
-
-    if (
-      currentSectionIndex <
-      sections.length - 1
-    ) {
-
-      setSection(
-        sections[
-          currentSectionIndex + 1
-        ]
-      );
-
-    }
-  };
-
-
-  const goPrevious = () => {
-
-    if (
-      currentSectionIndex > 0
-    ) {
-
-      setSection(
-        sections[
-          currentSectionIndex - 1
-        ]
-      );
-
-    }
-  };
-
-
-  /*
-   * =========================================================
-   * QUEUE STATISTICS
-   * =========================================================
-   */
-
-  const queueProgress =
-    Math.round(
-      (
-        (
-          RECIPE.length -
-          queue.length
-        ) /
-        RECIPE.length
-      ) * 100
-    );
-
-
-  /*
-   * =========================================================
-   * SHARED STYLES
-   * =========================================================
-   */
-
-  const panelStyle:
-    CSSProperties = {
-
-    background:
-      "rgba(255,255,255,0.045)",
-
-    border:
-      "1px solid rgba(255,255,255,0.10)",
-
-    borderRadius:
-      "14px",
-
-    boxShadow:
-      "inset 0 1px 0 rgba(255,255,255,0.035)",
-  };
-
-
-  const buttonStyle:
-    CSSProperties = {
-
-    border:
-      "1px solid rgba(255,255,255,0.12)",
-
-    background:
-      "rgba(255,255,255,0.07)",
-
-    color:
-      "#f7f7f7",
-
-    borderRadius:
-      "9px",
-
-    padding:
-      "9px 14px",
-
-    fontFamily:
-      "Comfortaa, sans-serif",
-
-    fontSize:
-      "12px",
-
-    fontWeight:
-      700,
-
-    cursor:
-      "pointer",
-
-    transition:
-      "all 140ms ease",
-  };
-
-
-  /*
-   * =========================================================
-   * RENDER: OVERVIEW
-   * =========================================================
-   */
-
-  const renderOverview = () => (
-
-    <div style={contentStyle}>
-
-      <div
-        style={{
-          fontSize: "13px",
-          color: "#8e9aaa",
-          marginBottom: "8px",
-          letterSpacing: "0.08em",
-        }}
-      >
-        SEFIRAH • DATA STRUCTURES LAB
-      </div>
-
-
-      <h1 style={heroTitleStyle}>
-        Data Structures
-        <br />
-        inside a real project.
-      </h1>
-
-
-      <p style={heroTextStyle}>
-        DSA is not a separate academic exercise
-        inside Sefirah. It controls actual game
-        behaviour.
-      </p>
-
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(3, 1fr)",
-          gap: "12px",
-          marginTop: "28px",
-        }}
-      >
-
-        {[
-          {
-            icon: "📋",
-            title: "Queue",
-            text:
-              "Controls recipe order.",
-          },
-
-          {
-            icon: "⚡",
-            title: "Set",
-            text:
-              "Tracks completed actions.",
-          },
-
-          {
-            icon: "🔄",
-            title: "State",
-            text:
-              "Controls what the game displays.",
-          },
-        ].map(
-          (item) => (
-
-            <div
-              key={item.title}
-              style={{
-                ...panelStyle,
-                padding: "20px",
-              }}
-            >
-
-              <div
-                style={{
-                  fontSize: "30px",
-                  marginBottom: "10px",
-                }}
-              >
-                {item.icon}
-              </div>
-
-              <div
-                style={{
-                  fontSize: "17px",
-                  fontWeight: 800,
-                  color: "#fff",
-                  marginBottom: "7px",
-                }}
-              >
-                {item.title}
-              </div>
-
-              <div
-                style={{
-                  color: "#9aa5b4",
-                  fontSize: "12px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {item.text}
-              </div>
-
-            </div>
-          )
-        )}
-
-      </div>
-
-
-      <div
-        style={{
-          ...panelStyle,
-          marginTop: "18px",
-          padding: "18px",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#aab4c2",
-            fontSize: "11px",
-            letterSpacing: "0.08em",
-            marginBottom: "10px",
-          }}
-        >
-          THE CORE IDEA
-        </div>
-
-        <div
-          style={{
-            fontSize: "18px",
-            color: "#fff",
-            fontWeight: 700,
-            lineHeight: 1.5,
-          }}
-        >
-          Data structures turn complicated
-          game logic into predictable operations.
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: WHY DSA
-   * =========================================================
-   */
-
-  const renderWhy = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="01 • MOTIVATION"
-        title="Why did we need DSA?"
-        subtitle="The problem existed before the data structure."
-      />
-
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1fr 1fr",
-          gap: "16px",
-        }}
-      >
-
-        <div
-          style={{
-            ...panelStyle,
-            padding: "22px",
-          }}
-        >
-
-          <div
-            style={{
-              color: "#ff7676",
-              fontWeight: 800,
-              fontSize: "14px",
-              marginBottom: "14px",
-            }}
-          >
-            ❌ WITHOUT A STRUCTURE
-          </div>
-
-          <div
-            style={{
-              color: "#d4d9e0",
-              lineHeight: 1.8,
-              fontSize: "13px",
-            }}
-          >
-            The game would need to manually
-            remember which ingredient should
-            happen next.
-          </div>
-
-          <div
-            style={{
-              marginTop: "18px",
-              padding: "14px",
-              background:
-                "rgba(255,80,80,0.07)",
-              borderRadius: "10px",
-              fontFamily:
-                "monospace",
-              fontSize: "11px",
-              color: "#ffaaa9",
-              lineHeight: 1.8,
-            }}
-          >
-            if (step === 1) ...
-            <br />
-            if (step === 2) ...
-            <br />
-            if (step === 3) ...
-            <br />
-            if (ingredient === "...") ...
-            <br />
-            if (ingredient === "...") ...
-          </div>
-
-        </div>
-
-
-        <div
-          style={{
-            ...panelStyle,
-            padding: "22px",
-          }}
-        >
-
-          <div
-            style={{
-              color: "#69e3a3",
-              fontWeight: 800,
-              fontSize: "14px",
-              marginBottom: "14px",
-            }}
-          >
-            ✅ WITH A QUEUE
-          </div>
-
-          <div
-            style={{
-              color: "#d4d9e0",
-              lineHeight: 1.8,
-              fontSize: "13px",
-            }}
-          >
-            The queue naturally represents
-            the recipe's ordered sequence.
-          </div>
-
-          <div
-            style={{
-              marginTop: "18px",
-              padding: "14px",
-              background:
-                "rgba(70,220,150,0.07)",
-              borderRadius: "10px",
-              fontFamily:
-                "monospace",
-              fontSize: "11px",
-              color: "#9ff0c5",
-              lineHeight: 1.8,
-            }}
-          >
-            queue.peek()
-            <br />
-            ↓
-            <br />
-            "cooking_oil"
-            <br />
-            ↓
-            <br />
-            validate action
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          ...panelStyle,
-          marginTop: "16px",
-          padding: "20px",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#fff",
-            fontWeight: 800,
-            marginBottom: "8px",
-          }}
-        >
-          The important part
-        </div>
-
-        <div
-          style={{
-            color: "#aab4c2",
-            fontSize: "13px",
-            lineHeight: 1.7,
-          }}
-        >
-          The data structure isn't there just
-          because the assignment requires one.
-          It solves an actual problem in the
-          cooking game:{" "}
-          <strong
-            style={{ color: "#fff" }}
-          >
-            enforcing order.
-          </strong>
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: QUEUE
-   * =========================================================
-   */
-
-  const renderQueue = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="02 • LIVE VISUALIZER"
-        title="Recipe Queue"
-        subtitle="Operate the same concept used by the cooking game."
-      />
-
-
-      <div
-        style={{
-          ...panelStyle,
-          padding: "16px",
-          marginBottom: "14px",
-        }}
-      >
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            marginBottom: "12px",
-          }}
-        >
-
-          <div>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "#7f8998",
-                marginBottom: "4px",
-              }}
-            >
-              RECIPE PROGRESS
-            </div>
-
-            <div
-              style={{
-                fontSize: "18px",
-                fontWeight: 800,
-                color: "#fff",
-              }}
-            >
-              {queueProgress}%
-            </div>
-          </div>
-
-
-          <div
-            style={{
-              fontSize: "12px",
-              color: "#aeb7c4",
-            }}
-          >
-            {queue.length} actions remaining
-          </div>
-
-        </div>
-
-
-        <div
-          style={{
-            height: "6px",
-            background:
-              "rgba(255,255,255,0.08)",
-            borderRadius: "999px",
-            overflow: "hidden",
-          }}
-        >
-
-          <div
-            style={{
-              width:
-                `${queueProgress}%`,
-              height: "100%",
-              background:
-                "linear-gradient(90deg,#62d89b,#66aaff)",
-              transition:
-                "width 350ms ease",
-            }}
-          />
-
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          ...panelStyle,
-          padding: "22px 18px",
-          minHeight: "235px",
-        }}
-      >
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            marginBottom: "18px",
-          }}
-        >
-
-          <span
-            style={{
-              color: "#69e3a3",
-              fontSize: "11px",
-              fontWeight: 800,
-              letterSpacing:
-                "0.08em",
-            }}
-          >
-            FRONT
-          </span>
-
-          <div
-            style={{
-              height: "1px",
-              flex: 1,
-              background:
-                "rgba(255,255,255,0.08)",
-            }}
-          />
-
-          <span
-            style={{
-              color: "#778191",
-              fontSize: "11px",
-              fontWeight: 700,
-            }}
-          >
-            REAR
-          </span>
-
-        </div>
-
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            overflowX: "auto",
-            paddingBottom: "8px",
-          }}
-        >
-
-          {queue.length === 0 ? (
-
-            <div
-              style={{
-                width: "100%",
-                textAlign: "center",
-                padding: "50px",
-                color: "#657080",
-                fontFamily:
-                  "monospace",
-                fontSize: "13px",
-              }}
-            >
-              QUEUE EMPTY
-            </div>
-
-          ) : (
-
-            queue.map(
-              (item, index) => {
-
-                const isFront =
-                  index === 0;
-
-                const isHighlighted =
-                  highlightedId ===
-                  item.id;
-
-                return (
-
-                  <div
-                    key={item.id}
-                    style={{
-                      minWidth: "105px",
-
-                      padding:
-                        "16px 10px",
-
-                      borderRadius:
-                        "12px",
-
-                      border:
-                        isHighlighted
-                          ? "1px solid #69e3a3"
-                          : isFront
-                            ? "1px solid rgba(105,227,163,0.4)"
-                            : "1px solid rgba(255,255,255,0.09)",
-
-                      background:
-                        isHighlighted
-                          ? "rgba(105,227,163,0.13)"
-                          : isFront
-                            ? "rgba(105,227,163,0.07)"
-                            : "rgba(255,255,255,0.035)",
-
-                      textAlign: "center",
-
-                      transform:
-                        isHighlighted
-                          ? "translateY(-6px)"
-                          : "translateY(0)",
-
-                      transition:
-                        "all 280ms ease",
-
-                      boxShadow:
-                        isHighlighted
-                          ? "0 8px 25px rgba(105,227,163,0.12)"
-                          : "none",
-                    }}
-                  >
-
-                    <div
-                      style={{
-                        fontSize: "30px",
-                        marginBottom: "7px",
-                      }}
-                    >
-                      {item.icon}
-                    </div>
-
-                    <div
-                      style={{
-                        color: "#fff",
-                        fontSize: "10px",
-                        fontWeight: 800,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {item.label}
-                    </div>
-
-                    <div
-                      style={{
-                        color:
-                          isFront
-                            ? "#69e3a3"
-                            : "#697384",
-                        fontSize: "9px",
-                        marginTop: "6px",
-                        fontFamily:
-                          "monospace",
-                      }}
-                    >
-                      {isFront
-                        ? "PEEK"
-                        : `#${index + 1}`}
-                    </div>
-
-                  </div>
-
-                );
-              }
-            )
-
-          )}
-
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          marginTop: "14px",
-          flexWrap: "wrap",
-        }}
-      >
-
-        <DemoButton
-          label="PEEK()"
-          onClick={peekQueue}
-        />
-
-        <DemoButton
-          label="DEQUEUE()"
-          onClick={dequeueQueue}
-        />
-
-        <DemoButton
-          label="ENQUEUE()"
-          onClick={enqueueQueue}
-        />
-
-        <DemoButton
-          label="RESET"
-          onClick={resetQueue}
-        />
-
-      </div>
-
-
-      <div
-        style={{
-          ...panelStyle,
-          marginTop: "14px",
-          padding: "14px 16px",
-          display: "flex",
-          gap: "12px",
-          alignItems: "center",
-        }}
-      >
-
-        <div
-          style={{
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            background:
-              "#69e3a3",
-            boxShadow:
-              "0 0 12px rgba(105,227,163,0.7)",
-          }}
-        />
-
-        <div
-          style={{
-            color: "#d5dbe3",
-            fontSize: "12px",
-          }}
-        >
-          {queueMessage}
-        </div>
-
-        <div
-          style={{
-            marginLeft: "auto",
-            color: "#697384",
-            fontFamily:
-              "monospace",
-            fontSize: "10px",
-          }}
-        >
-          {lastOperation}
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: CODE
-   * =========================================================
-   */
-
-  const renderCode = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="03 • IMPLEMENTATION"
-        title="The actual Queue"
-        subtitle="This is the core structure behind the recipe ordering."
-      />
-
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1.15fr 0.85fr",
-          gap: "16px",
-        }}
-      >
-
-        <CodeBlock
-          title="CookingQueue<T>"
-          code={`class CookingQueue<T> {
-
-  private items: T[] = [];
-
-  enqueue(item: T) {
-    this.items.push(item);
-  }
-
-  peek(): T | undefined {
-    return this.items[0];
-  }
-
-  dequeue(): T | undefined {
-    return this.items.shift();
-  }
-
-  get size(): number {
-    return this.items.length;
-  }
-}`}
-        />
-
-
-        <div
-          style={{
-            ...panelStyle,
-            padding: "20px",
-          }}
-        >
-
-          <div
-            style={{
-              color: "#69e3a3",
-              fontSize: "11px",
-              fontWeight: 800,
-              letterSpacing:
-                "0.08em",
-              marginBottom: "16px",
-            }}
-          >
-            WHAT EACH OPERATION DOES
-          </div>
-
-
-          {[
-            [
-              "enqueue()",
-              "Adds an action to the rear.",
-            ],
-
-            [
-              "peek()",
-              "Looks at the next action without removing it.",
-            ],
-
-            [
-              "dequeue()",
-              "Removes the action at the front.",
-            ],
-
-            [
-              "size",
-              "Tells us how many actions remain.",
-            ],
-          ].map(
-            ([name, explanation]) => (
-
-              <div
-                key={name}
-                style={{
-                  padding:
-                    "12px 0",
-                  borderBottom:
-                    "1px solid rgba(255,255,255,0.07)",
-                }}
-              >
-
-                <div
-                  style={{
-                    color: "#fff",
-                    fontFamily:
-                      "monospace",
-                    fontSize: "12px",
-                    marginBottom: "5px",
-                  }}
-                >
-                  {name}
-                </div>
-
-                <div
-                  style={{
-                    color: "#8e99a9",
-                    fontSize: "11px",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {explanation}
-                </div>
-
-              </div>
-
-            )
-          )}
-
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          ...panelStyle,
-          marginTop: "16px",
-          padding: "18px",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#7e8999",
-            fontSize: "10px",
-            letterSpacing:
-              "0.08em",
-            marginBottom: "10px",
-          }}
-        >
-          RECIPE ORDER
-        </div>
-
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
-        >
-
-          {RECIPE.map(
-            (item, index) => (
-
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-
-                <span
-                  style={{
-                    padding:
-                      "7px 10px",
-                    background:
-                      "rgba(255,255,255,0.06)",
-                    border:
-                      "1px solid rgba(255,255,255,0.09)",
-                    borderRadius:
-                      "8px",
-                    color: "#dce2e9",
-                    fontSize: "10px",
-                  }}
-                >
-                  {item.icon}{" "}
-                  {item.label}
-                </span>
-
-                {index <
-                  RECIPE.length - 1 && (
-                    <span
-                      style={{
-                        color: "#586272",
-                      }}
-                    >
-                      →
-                    </span>
-                  )}
-
-              </div>
-
-            )
-          )}
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: SET
-   * =========================================================
-   */
-
-  const renderSet = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="04 • MEMBERSHIP"
-        title="Set — Have we done this already?"
-        subtitle="The Queue controls order. The Set remembers completion."
-      />
-
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1fr 1fr",
-          gap: "16px",
-        }}
-      >
-
-        <div
-          style={{
-            ...panelStyle,
-            padding: "20px",
-          }}
-        >
-
-          <div
-            style={{
-              color: "#69aaff",
-              fontSize: "11px",
-              fontWeight: 800,
-              letterSpacing:
-                "0.08em",
-              marginBottom: "15px",
-            }}
-          >
-            COMPLETED ACTIONS
-          </div>
-
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px",
-            }}
-          >
-
-            {RECIPE.map(
-              (item) => {
-
-                const completed =
-                  completedSet.includes(
-                    item.action
-                  );
-
-                return (
-
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() =>
-                      toggleSetAction(
-                        item.action
-                      )
-                    }
-                    style={{
-                      border:
-                        completed
-                          ? "1px solid rgba(105,170,255,0.55)"
-                          : "1px solid rgba(255,255,255,0.09)",
-
-                      background:
-                        completed
-                          ? "rgba(105,170,255,0.13)"
-                          : "rgba(255,255,255,0.035)",
-
-                      color:
-                        completed
-                          ? "#a9d0ff"
-                          : "#737d8c",
-
-                      borderRadius:
-                        "9px",
-
-                      padding:
-                        "9px 10px",
-
-                      cursor:
-                        "pointer",
-
-                      fontFamily:
-                        "Comfortaa, sans-serif",
-
-                      fontSize:
-                        "10px",
-
-                      transition:
-                        "all 160ms ease",
-                    }}
-                  >
-                    {completed
-                      ? "✓ "
-                      : ""}
-                    {item.label}
-                  </button>
-
-                );
-              }
-            )}
-
-          </div>
-
-
-          <div
-            style={{
-              marginTop: "18px",
-              color: "#8994a3",
-              fontSize: "11px",
-              lineHeight: 1.6,
-            }}
-          >
-            Click actions to add/remove them
-            from the simulated completed Set.
-          </div>
-
-        </div>
-
-
-        <div
-          style={{
-            ...panelStyle,
-            padding: "20px",
-          }}
-        >
-
-          <div
-            style={{
-              color: "#69aaff",
-              fontSize: "11px",
-              fontWeight: 800,
-              letterSpacing:
-                "0.08em",
-              marginBottom: "15px",
-            }}
-          >
-            WHY A SET?
-          </div>
-
-
-          <div
-            style={{
-              fontSize: "17px",
-              color: "#fff",
-              fontWeight: 800,
-              marginBottom: "12px",
-            }}
-          >
-            Fast membership checking.
-          </div>
-
-
-          <div
-            style={{
-              color: "#9ba5b4",
-              fontSize: "12px",
-              lineHeight: 1.7,
-            }}
-          >
-            Before performing an operation,
-            the game can determine whether
-            an action has already been completed.
-          </div>
-
-
-          <div
-            style={{
-              marginTop: "18px",
-              background:
-                "rgba(0,0,0,0.28)",
-              borderRadius: "10px",
-              padding: "15px",
-              fontFamily:
-                "monospace",
-              color: "#bcd7ff",
-              fontSize: "11px",
-              lineHeight: 1.7,
-            }}
-          >
-            completedActions.has(action)
-            <br />
-            <br />
-            → true
-            <br />
-            <span
-              style={{
-                color: "#758193",
-              }}
-            >
-              Action already completed.
-            </span>
-          </div>
-
-
-          <div
-            style={{
-              marginTop: "14px",
-              color: "#697384",
-              fontSize: "10px",
-            }}
-          >
-            {setMessage}
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: STATE MACHINE
-   * =========================================================
-   */
-
-  const renderState = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="05 • STATE"
-        title="State controls the screen"
-        subtitle="Completing an action changes the cooking state."
-      />
-
-
-      <div
-        style={{
-          ...panelStyle,
-          padding: "20px",
-          marginBottom: "16px",
-        }}
-      >
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "center",
-            alignItems: "center",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
-        >
-
-          {[
-            "IDLE",
-            "OIL",
-            "GARLIC",
-            "CARROT",
-            "RICE",
-            "EGG",
-            "SOY",
-            "GREEN ONION",
-            "STIRRING",
-            "READY",
-          ].map(
-            (stateName, index, array) => (
-
-              <div
-                key={stateName}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-
-                <div
-                  style={{
-                    padding:
-                      "11px 13px",
-                    borderRadius:
-                      "9px",
-                    background:
-                      index === 0
-                        ? "rgba(105,227,163,0.12)"
-                        : "rgba(255,255,255,0.04)",
-                    border:
-                      index === 0
-                        ? "1px solid rgba(105,227,163,0.45)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                    color:
-                      index === 0
-                        ? "#7deab0"
-                        : "#8c96a4",
-                    fontFamily:
-                      "monospace",
-                    fontSize:
-                      "9px",
-                    fontWeight:
-                      800,
-                  }}
-                >
-                  {stateName}
-                </div>
-
-                {index <
-                  array.length - 1 && (
-                    <span
-                      style={{
-                        color: "#515b69",
-                      }}
-                    >
-                      →
-                    </span>
-                  )}
-
-              </div>
-
-            )
-          )}
-
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1fr 1fr",
-          gap: "16px",
-        }}
-      >
-
-        <CodeBlock
-          title="State transition"
-          code={`switch (action) {
-
-  case "cooking_oil":
-    nextStage = "oil";
-    break;
-
-  case "cut_garlic":
-    nextStage = "garlic";
-    break;
-
-  case "rice":
-    nextStage = "rice";
-    break;
-
-  case "egg":
-    nextStage = "egg";
-    break;
-}`}
-        />
-
-
-        <div
-          style={{
-            ...panelStyle,
-            padding: "20px",
-          }}
-        >
-
-          <div
-            style={{
-              color: "#fff",
-              fontWeight: 800,
-              fontSize: "14px",
-              marginBottom: "12px",
-            }}
-          >
-            What does this achieve?
-          </div>
-
-
-          <div
-            style={{
-              color: "#98a2b0",
-              fontSize: "12px",
-              lineHeight: 1.75,
-            }}
-          >
-            The game doesn't have to manually
-            redraw the entire cooking scene.
-            The current state determines which
-            visual stage and behaviour should
-            appear.
-          </div>
-
-
-          <div
-            style={{
-              marginTop: "18px",
-              padding: "15px",
-              background:
-                "rgba(255,255,255,0.035)",
-              borderRadius: "10px",
-              color: "#dce1e8",
-              fontSize: "11px",
-              lineHeight: 1.7,
-            }}
-          >
-            Action completed
-            <br />
-            ↓
-            <br />
-            State changes
-            <br />
-            ↓
-            <br />
-            Image changes
-            <br />
-            ↓
-            <br />
-            Audio / controls change
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: FAILURE
-   * =========================================================
-   */
-
-  const renderFailure = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="06 • FAILURE ANALYSIS"
-        title="What breaks without DSA?"
-        subtitle="Let's deliberately give the player the wrong action."
-      />
-
-
-      <div
-        style={{
-          ...panelStyle,
-          padding: "24px",
-          minHeight: "280px",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#ffcb70",
-            fontSize: "12px",
-            fontWeight: 800,
-            letterSpacing:
-              "0.08em",
-            marginBottom: "18px",
-          }}
-        >
-          SCENARIO {failureStep + 1}
-        </div>
-
-
-        <div
-          style={{
-            fontSize: "23px",
-            color: "#fff",
-            fontWeight: 800,
-            marginBottom: "12px",
-          }}
-        >
-          {currentFailure.title}
-        </div>
-
-
-        <div
-          style={{
-            color: "#9da7b5",
-            fontSize: "13px",
-            marginBottom: "22px",
-          }}
-        >
-          {currentFailure.text}
-        </div>
-
-
-        <div
-          style={{
-            display: "inline-block",
-            padding:
-              "11px 16px",
-            borderRadius:
-              "9px",
-            background:
-              currentFailure.result.startsWith(
-                "❌"
-              )
-                ? "rgba(255,80,80,0.10)"
-                : "rgba(80,220,150,0.10)",
-            border:
-              currentFailure.result.startsWith(
-                "❌"
-              )
-                ? "1px solid rgba(255,100,100,0.25)"
-                : "1px solid rgba(100,220,160,0.25)",
-            color:
-              currentFailure.result.startsWith(
-                "❌"
-              )
-                ? "#ff9e9e"
-                : "#83eab1",
-            fontWeight: 800,
-            fontSize: "13px",
-          }}
-        >
-          {currentFailure.result}
-        </div>
-
-
-        <div
-          style={{
-            marginTop: "20px",
-            color: "#a3adbb",
-            fontSize: "12px",
-            lineHeight: 1.7,
-          }}
-        >
-          {currentFailure.explanation}
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          marginTop: "14px",
-        }}
-      >
-
-        <DemoButton
-          label="← PREVIOUS CASE"
-          onClick={() =>
-            setFailureStep(
-              (previous) =>
-                Math.max(
-                  0,
-                  previous - 1
-                )
-            )
-          }
-        />
-
-        <DemoButton
-          label="NEXT CASE →"
-          onClick={() =>
-            setFailureStep(
-              (previous) =>
-                Math.min(
-                  failureData.length - 1,
-                  previous + 1
-                )
-            )
-          }
-        />
-
-      </div>
-
-
-      <div
-        style={{
-          marginTop: "16px",
-          padding: "17px",
-          background:
-            "rgba(255,255,255,0.035)",
-          borderRadius: "10px",
-          color: "#d8dee6",
-          fontSize: "12px",
-          lineHeight: 1.7,
-        }}
-      >
-        <strong>
-          The important question:
-        </strong>{" "}
-        how does the game know whether an
-        ingredient is allowed?
-        <br />
-        <br />
-        It checks the current required action
-        before accepting the drop.
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: COMPLEXITY
-   * =========================================================
-   */
-
-  const renderComplexity = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="07 • PERFORMANCE"
-        title="Complexity & implementation"
-        subtitle="The data structure matters — but so does how we implement it."
-      />
-
-
-      <div
-        style={{
-          ...panelStyle,
-          overflow: "hidden",
-        }}
-      >
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "1fr 1fr 1fr",
-            background:
-              "rgba(255,255,255,0.035)",
-            padding:
-              "13px 16px",
-            color: "#7f8997",
-            fontSize: "10px",
-            fontWeight: 800,
-          }}
-        >
-
-          <div>
-            OPERATION
-          </div>
-
-          <div>
-            PURPOSE
-          </div>
-
-          <div>
-            CURRENT ARRAY COST
-          </div>
-
-        </div>
-
-
-        {[
-          [
-            "enqueue()",
-            "Add to rear",
-            "O(1) amortized",
-          ],
-
-          [
-            "peek()",
-            "Inspect front",
-            "O(1)",
-          ],
-
-          [
-            "dequeue()",
-            "Remove front",
-            "O(n) with shift()",
-          ],
-
-          [
-            "Set membership",
-            "Check completion",
-            "O(1) average",
-          ],
-        ].map(
-          ([operation, purpose, complexity]) => (
-
-            <div
-              key={operation}
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "1fr 1fr 1fr",
-                padding:
-                  "15px 16px",
-                borderTop:
-                  "1px solid rgba(255,255,255,0.06)",
-                color: "#c8ced7",
-                fontSize: "11px",
-              }}
-            >
-
-              <div
-                style={{
-                  fontFamily:
-                    "monospace",
-                  color: "#fff",
-                }}
-              >
-                {operation}
-              </div>
-
-              <div
-                style={{
-                  color: "#929dac",
-                }}
-              >
-                {purpose}
-              </div>
-
-              <div
-                style={{
-                  color:
-                    complexity.includes(
-                      "O(1)"
-                    )
-                      ? "#72dca3"
-                      : "#ffcb70",
-                  fontFamily:
-                    "monospace",
-                }}
-              >
-                {complexity}
-              </div>
-
-            </div>
-
-          )
-        )}
-
-      </div>
-
-
-      <div
-        style={{
-          ...panelStyle,
-          marginTop: "16px",
-          padding: "20px",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#ffcb70",
-            fontSize: "11px",
-            fontWeight: 800,
-            letterSpacing:
-              "0.08em",
-            marginBottom: "12px",
-          }}
-        >
-          IMPORTANT TECHNICAL DETAIL
-        </div>
-
-
-        <div
-          style={{
-            color: "#d7dce3",
-            fontSize: "13px",
-            lineHeight: 1.75,
-          }}
-        >
-          Our current queue uses a JavaScript
-          array and{" "}
-          <code
-            style={{
-              color: "#fff",
-              background:
-                "rgba(255,255,255,0.08)",
-              padding:
-                "2px 5px",
-              borderRadius:
-                "4px",
-            }}
-          >
-            shift()
-          </code>
-          .
-          <br />
-          <br />
-          That means removing the first item
-          can require the remaining elements
-          to be shifted.
-          <br />
-          <br />
-          A production queue could instead use
-          a front index or a linked structure
-          to avoid that repeated shifting.
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: PRESENTATION
-   * =========================================================
-   */
-
-  const renderPresentation = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="08 • DEMONSTRATION GUIDE"
-        title="How to present this"
-        subtitle="A short sequence that turns the lab into a live explanation."
-      />
-
-
-      {[
-        [
-          "01",
-          "Start with the problem",
-          "“Our cooking game has a fixed sequence of actions. We needed a way to enforce that order.”",
-        ],
-
-        [
-          "02",
-          "Show the Queue",
-          "Open the Queue visualizer and explain FRONT, REAR, PEEK and DEQUEUE.",
-        ],
-
-        [
-          "03",
-          "Run it",
-          "Click PEEK(), then DEQUEUE(). Let the teacher watch the FRONT move.",
-        ],
-
-        [
-          "04",
-          "Show the source",
-          "Open the Source Code section and point to enqueue(), peek() and dequeue().",
-        ],
-
-        [
-          "05",
-          "Break it",
-          "Go to Failure Case and show what happens when the player attempts to skip an action.",
-        ],
-
-        [
-          "06",
-          "Discuss complexity",
-          "Mention the current array implementation and honestly explain why shift() makes dequeue O(n).",
-        ],
-      ].map(
-        ([number, title, text]) => (
-
-          <div
-            key={number}
-            style={{
-              ...panelStyle,
-              padding:
-                "16px 18px",
-              marginBottom:
-                "9px",
-              display:
-                "flex",
-              gap:
-                "16px",
-              alignItems:
-                "flex-start",
-            }}
-          >
-
-            <div
-              style={{
-                color: "#69e3a3",
-                fontFamily:
-                  "monospace",
-                fontSize: "12px",
-                fontWeight: 800,
-                paddingTop: "2px",
-              }}
-            >
-              {number}
-            </div>
-
-
-            <div>
-
-              <div
-                style={{
-                  color: "#fff",
-                  fontSize: "13px",
-                  fontWeight: 800,
-                  marginBottom:
-                    "5px",
-                }}
-              >
-                {title}
-              </div>
-
-              <div
-                style={{
-                  color: "#929dab",
-                  fontSize: "11px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {text}
-              </div>
-
-            </div>
-
-          </div>
-
-        )
-      )}
-
-
-      <div
-        style={{
-          marginTop: "15px",
-          padding: "18px",
-          borderRadius: "12px",
-          background:
-            "linear-gradient(135deg, rgba(105,227,163,0.10), rgba(100,160,255,0.08))",
-          border:
-            "1px solid rgba(105,227,163,0.18)",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#fff",
-            fontWeight: 800,
-            fontSize: "13px",
-            marginBottom: "8px",
-          }}
-        >
-          The line to remember
-        </div>
-
-        <div
-          style={{
-            color: "#cbd3dc",
-            fontSize: "13px",
-            lineHeight: 1.7,
-          }}
-        >
-          “We didn't implement a Queue just to
-          demonstrate a Queue. We used it because
-          the recipe itself is a FIFO problem.”
-        </div>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * RENDER: SUMMARY
-   * =========================================================
-   */
-
-  const renderSummary = () => (
-
-    <div style={contentStyle}>
-
-      <SectionHeading
-        eyebrow="09 • FINAL"
-        title="DSA in Sefirah"
-        subtitle="Three structures. Three responsibilities."
-      />
-
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(3, 1fr)",
-          gap: "12px",
-        }}
-      >
-
-        {[
-          {
-            icon: "📋",
-            name: "QUEUE",
-            role:
-              "Controls the order of recipe actions.",
-          },
-
-          {
-            icon: "⚡",
-            name: "SET",
-            role:
-              "Tracks whether actions have already been completed.",
-          },
-
-          {
-            icon: "🔄",
-            name: "STATE",
-            role:
-              "Controls the current cooking stage and UI.",
-          },
-        ].map(
-          (item) => (
-
-            <div
-              key={item.name}
-              style={{
-                ...panelStyle,
-                padding: "22px",
-              }}
-            >
-
-              <div
-                style={{
-                  fontSize: "30px",
-                  marginBottom:
-                    "12px",
-                }}
-              >
-                {item.icon}
-              </div>
-
-              <div
-                style={{
-                  color: "#69e3a3",
-                  fontFamily:
-                    "monospace",
-                  fontSize: "11px",
-                  fontWeight: 800,
-                  marginBottom:
-                    "10px",
-                }}
-              >
-                {item.name}
-              </div>
-
-              <div
-                style={{
-                  color: "#a3adbb",
-                  fontSize: "11px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {item.role}
-              </div>
-
-            </div>
-
-          )
-        )}
-
-      </div>
-
-
-      <div
-        style={{
-          marginTop: "18px",
-          ...panelStyle,
-          padding: "25px",
-          textAlign: "center",
-        }}
-      >
-
-        <div
-          style={{
-            color: "#fff",
-            fontSize: "22px",
-            fontWeight: 800,
-            lineHeight: 1.4,
-          }}
-        >
-          Theory became
-          <br />
-          working software.
-        </div>
-
-
-        <div
-          style={{
-            color: "#8994a3",
-            fontSize: "12px",
-            marginTop: "12px",
-          }}
-        >
-          That is the point of DSA in Sefirah.
-        </div>
-
-      </div>
-
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent:
-            "center",
-          marginTop: "20px",
-        }}
-      >
-
-        <button
-          type="button"
-          onClick={() =>
-            setSection(
-              "queue"
-            )
-          }
-          style={{
-            ...buttonStyle,
-            background:
-              "rgba(105,227,163,0.13)",
-            border:
-              "1px solid rgba(105,227,163,0.35)",
-            color:
-              "#83eab1",
-            padding:
-              "12px 22px",
-          }}
-        >
-          RUN QUEUE DEMO AGAIN
-        </button>
-
-      </div>
-
-    </div>
-  );
-
-
-  /*
-   * =========================================================
-   * CONTENT SELECTOR
-   * =========================================================
-   */
-
-  const renderContent = () => {
-
-    switch (section) {
-
-      case "overview":
-        return renderOverview();
-
-      case "why":
-        return renderWhy();
-
-      case "queue":
-        return renderQueue();
-
-      case "code":
-        return renderCode();
-
-      case "set":
-        return renderSet();
-
-      case "state":
-        return renderState();
-
-      case "failure":
-        return renderFailure();
-
-      case "complexity":
-        return renderComplexity();
-
-      case "presentation":
-        return renderPresentation();
-
-      case "summary":
-        return renderSummary();
-
-      default:
-        return renderOverview();
-    }
-  };
-
-
-  /*
-   * =========================================================
-   * WINDOW STYLE
-   * =========================================================
-   */
-
-  const windowStyle:
-    CSSProperties = {
-
-    position:
-      "fixed",
-
-    left:
-      windowPosition.centered
-        ? "50%"
-        : `${windowPosition.left}px`,
-
-    top:
-      windowPosition.centered
-        ? "50%"
-        : `${windowPosition.top}px`,
-
-    width:
-      `min(${WINDOW_WIDTH}px, 94vw)`,
-
-    height:
-      `min(${WINDOW_HEIGHT}px, 88vh)`,
-
-    transform:
-      windowPosition.centered
-        ? "translate(-50%, -50%)"
-        : "none",
-
-    zIndex:
-      windowPosition.zIndex,
-
-    display:
-      "flex",
-
-    flexDirection:
-      "column",
-
-    overflow:
-      "hidden",
-
-    background:
-      "rgba(16,18,22,0.94)",
-
-    border:
-      "1px solid rgba(255,255,255,0.13)",
-
-    borderRadius:
-      "14px",
-
-    boxShadow:
-      "0 30px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
-
-    backdropFilter:
-      "blur(30px) saturate(140%)",
-
-    WebkitBackdropFilter:
-      "blur(30px) saturate(140%)",
-
-    fontFamily:
-      "Comfortaa, sans-serif",
-  };
-
-
-  /*
-   * =========================================================
-   * RENDER
-   * =========================================================
-   */
-
-  return (
-
-    <div
-      data-dsa-window
-      style={windowStyle}
-      onMouseDown={focusWindow}
-    >
-
-      {/* =====================================================
-          TITLE BAR
-      ===================================================== */}
-
-      <div
-        onMouseDown={
-          handleWindowDragStart
+    const [treeSearch, setTreeSearch] =
+        useState(60);
+
+    const [treeVisited, setTreeVisited] =
+        useState<number[]>([]);
+
+    /*
+     * ========================================================
+     * RESET ALGORITHM
+     * ========================================================
+     */
+
+    const resetAlgorithm = useCallback(() => {
+
+        setArray(INITIAL_ARRAY);
+
+        setBubbleI(0);
+        setBubbleJ(0);
+        setBubbleSorted([]);
+
+        setQuickArray(INITIAL_ARRAY);
+        setQuickLow(0);
+        setQuickHigh(
+            INITIAL_ARRAY.length - 1
+        );
+        setQuickPivot(null);
+        setQuickI(0);
+        setQuickJ(0);
+        setQuickDone(false);
+
+        setSearchIndex(0);
+        setSearchFound(false);
+        setSearchFinished(false);
+
+    }, []);
+
+    /*
+     * ========================================================
+     * BUBBLE SORT
+     * ========================================================
+     */
+
+    const runBubbleStep = () => {
+
+        const current =
+            [...array];
+
+        if (
+            bubbleI >=
+            current.length - 1
+        ) {
+
+            return;
         }
-        style={{
-          height: "42px",
-          flexShrink: 0,
 
-          display: "flex",
-          alignItems: "center",
+        if (
+            bubbleJ >=
+            current.length - 1 - bubbleI
+        ) {
 
-          padding:
-            "0 12px",
+            setBubbleI(
+                (value) => value + 1
+            );
 
-          background:
-            "rgba(255,255,255,0.045)",
+            setBubbleJ(0);
 
-          borderBottom:
-            "1px solid rgba(255,255,255,0.08)",
+            return;
+        }
 
-          cursor:
-            isDragging
-              ? "grabbing"
-              : "grab",
+        const a =
+            bubbleJ;
 
-          userSelect:
-            "none",
-        }}
-      >
+        const b =
+            bubbleJ + 1;
 
+        if (
+            current[a] >
+            current[b]
+        ) {
+
+            [
+                current[a],
+                current[b],
+            ] = [
+                current[b],
+                current[a],
+            ];
+        }
+
+        setArray(current);
+
+        setBubbleJ(
+            (value) => value + 1
+        );
+
+        if (
+            bubbleJ ===
+            current.length - 2 - bubbleI
+        ) {
+
+            setBubbleSorted(
+                (previous) => [
+                    ...previous,
+                    current.length -
+                    1 -
+                    bubbleI,
+                ]
+            );
+        }
+    };
+
+    /*
+     * ========================================================
+     * QUICK SORT
+     * ========================================================
+     */
+
+    const runQuickStep = () => {
+
+        if (quickDone) {
+            return;
+        }
+
+        const current =
+            [...quickArray];
+
+        if (
+            quickPivot === null
+        ) {
+
+            const pivot =
+                current[quickHigh];
+
+            setQuickPivot(pivot);
+
+            setQuickI(
+                quickLow
+            );
+
+            setQuickJ(
+                quickLow
+            );
+
+            return;
+        }
+
+        if (
+            quickJ >=
+            quickHigh
+        ) {
+
+            const pivotIndex =
+                quickI;
+
+            [
+                current[pivotIndex],
+                current[quickHigh],
+            ] = [
+                current[quickHigh],
+                current[pivotIndex],
+            ];
+
+            setQuickArray(
+                current
+            );
+
+            setQuickPivot(null);
+
+            if (
+                pivotIndex - 1 >
+                quickLow
+            ) {
+
+                setQuickLow(
+                    quickLow
+                );
+
+                setQuickHigh(
+                    pivotIndex - 1
+                );
+
+            } else if (
+                pivotIndex + 1 <
+                quickHigh
+            ) {
+
+                setQuickLow(
+                    pivotIndex + 1
+                );
+
+                setQuickHigh(
+                    quickHigh
+                );
+
+            } else {
+
+                setQuickDone(
+                    true
+                );
+            }
+
+            setQuickJ(
+                quickLow
+            );
+
+            return;
+        }
+
+        if (
+            current[quickJ] <
+            (quickPivot ?? Infinity)
+        ) {
+
+            [
+                current[quickI],
+                current[quickJ],
+            ] = [
+                current[quickJ],
+                current[quickI],
+            ];
+
+            setQuickI(
+                (value) => value + 1
+            );
+        }
+
+        setQuickJ(
+            (value) => value + 1
+        );
+
+        setQuickArray(
+            current
+        );
+    };
+
+    /*
+     * ========================================================
+     * SEARCH
+     * ========================================================
+     */
+
+    const runSearchStep = () => {
+
+        if (
+            searchFinished ||
+            searchFound
+        ) {
+            return;
+        }
+
+        const value =
+            SEARCH_ARRAY[searchIndex];
+
+        if (
+            value ===
+            searchTarget
+        ) {
+
+            setSearchFound(
+                true
+            );
+
+            return;
+        }
+
+        if (
+            searchIndex >=
+            SEARCH_ARRAY.length - 1
+        ) {
+
+            setSearchFinished(
+                true
+            );
+
+            return;
+        }
+
+        setSearchIndex(
+            (value) =>
+                value + 1
+        );
+    };
+
+    /*
+     * ========================================================
+     * STACK
+     * ========================================================
+     */
+
+    const pushStack = () => {
+
+        const items = [
+            ...stack,
+            "Egg",
+        ];
+
+        setStack(items);
+
+        setStackMessage(
+            "push(\"Egg\") → Egg is placed on top."
+        );
+    };
+
+    const popStack = () => {
+
+        if (
+            stack.length === 0
+        ) {
+
+            setStackMessage(
+                "Stack is empty."
+            );
+
+            return;
+        }
+
+        const removed =
+            stack[stack.length - 1];
+
+        setStack(
+            stack.slice(
+                0,
+                -1
+            )
+        );
+
+        setStackMessage(
+            `pop() → ${removed} was removed from the top.`
+        );
+    };
+
+    /*
+     * ========================================================
+     * HASHMAP LOOKUP
+     * ========================================================
+     */
+
+    const lookupHash = () => {
+
+        const result =
+            hashmap.find(
+                (item) =>
+                    item.key ===
+                    hashLookup
+                        .trim()
+                        .toLowerCase()
+            );
+
+        if (result) {
+
+            setHashMessage(
+                `Found "${hashLookup}" → ${result.value}`
+            );
+
+        } else {
+
+            setHashMessage(
+                `"${hashLookup}" is not present in the map.`
+            );
+        }
+    };
+
+    /*
+     * ========================================================
+     * TREE SEARCH
+     * ========================================================
+     */
+
+    const runTreeSearch = () => {
+
+        const path: number[] = [];
+
+        let current =
+            50;
+
+        while (true) {
+
+            path.push(
+                current
+            );
+
+            if (
+                current ===
+                treeSearch
+            ) {
+                break;
+            }
+
+            if (
+                treeSearch <
+                current
+            ) {
+
+                current =
+                    current === 50
+                        ? 30
+                        : current === 30
+                            ? 20
+                            : 40;
+
+            } else {
+
+                current =
+                    current === 50
+                        ? 70
+                        : current === 70
+                            ? 60
+                            : 80;
+            }
+
+            if (
+                path.length > 4
+            ) {
+                break;
+            }
+        }
+
+        setTreeVisited(
+            path
+        );
+    };
+
+    /*
+     * ========================================================
+     * TOPIC DATA
+     * ========================================================
+     */
+
+    const topicData: Record<
+        Topic,
+        {
+            label: string;
+            title: string;
+            description: string;
+        }
+    > = {
+
+        intro: {
+            label: "Overview",
+            title: "Data Structures & Algorithms",
+            description:
+                "A visual tour of the structures and algorithms used to organise data, solve problems and make software efficient.",
+        },
+
+        bubble: {
+            label: "Sorting",
+            title: "Bubble Sort",
+            description:
+                "Bubble Sort repeatedly compares neighbouring values and swaps them when they are in the wrong order.",
+        },
+
+        quick: {
+            label: "Sorting",
+            title: "Quick Sort",
+            description:
+                "Quick Sort chooses a pivot and partitions the data into values smaller and larger than that pivot.",
+        },
+
+        stack: {
+            label: "Linear Structure",
+            title: "Stack",
+            description:
+                "A Stack stores items using the LIFO rule: the last item inserted is the first item removed.",
+        },
+
+        hashmap: {
+            label: "Key / Value",
+            title: "HashMap",
+            description:
+                "A HashMap associates a key with a value, allowing fast lookup when the key is known.",
+        },
+
+        tree: {
+            label: "Non-Linear Structure",
+            title: "Binary Search Tree",
+            description:
+                "A Binary Search Tree organises values so smaller values go left and larger values go right.",
+        },
+
+        search: {
+            label: "Searching",
+            title: "Searching",
+            description:
+                "Searching algorithms determine whether a value exists and where it can be found.",
+        },
+
+        game: {
+            label: "Sefirah",
+            title: "DSA Inside Sefirah",
+            description:
+                "The cooking game uses DSA concepts to control the order of actions and keep gameplay predictable.",
+        },
+    };
+
+    const currentTopic =
+        topicData[topic];
+
+    /*
+     * ========================================================
+     * NAVIGATION
+     * ========================================================
+     */
+
+    const topics: Topic[] = [
+        "intro",
+        "bubble",
+        "quick",
+        "stack",
+        "hashmap",
+        "tree",
+        "search",
+        "game",
+    ];
+
+    const currentTopicIndex =
+        topics.indexOf(topic);
+
+    const nextTopic = () => {
+
+        const next =
+            topics[
+                Math.min(
+                    topics.length - 1,
+                    currentTopicIndex + 1
+                )
+            ];
+
+        setTopic(next);
+
+        resetAlgorithm();
+    };
+
+    const previousTopic = () => {
+
+        const previous =
+            topics[
+                Math.max(
+                    0,
+                    currentTopicIndex - 1
+                )
+            ];
+
+        setTopic(previous);
+
+        resetAlgorithm();
+    };
+
+    /*
+     * ========================================================
+     * CODE BLOCK
+     * ========================================================
+     */
+
+    const codeLines: Record<
+        Topic,
+        string[]
+    > = {
+
+        intro: [
+            "// DSA is about choosing the right",
+            "// structure and algorithm for a problem.",
+            "",
+            "data = organizeData();",
+            "result = solveProblem(data);",
+        ],
+
+        bubble: [
+            "for (let i = 0; i < n - 1; i++) {",
+            "  for (let j = 0; j < n - 1 - i; j++) {",
+            "    if (arr[j] > arr[j + 1]) {",
+            "      swap(arr[j], arr[j + 1]);",
+            "    }",
+            "  }",
+            "}",
+        ],
+
+        quick: [
+            "function quickSort(arr, low, high) {",
+            "  if (low >= high) return;",
+            "",
+            "  const pivot = arr[high];",
+            "  const index = partition(arr, pivot);",
+            "",
+            "  quickSort(arr, low, index - 1);",
+            "  quickSort(arr, index + 1, high);",
+            "}",
+        ],
+
+        stack: [
+            "const stack = [];",
+            "",
+            "stack.push(item);",
+            "",
+            "const top = stack[",
+            "  stack.length - 1",
+            "];",
+            "",
+            "stack.pop();",
+        ],
+
+        hashmap: [
+            "const ingredients = new Map();",
+            "",
+            "ingredients.set(",
+            '  "rice",',
+            '  "Cold Rice"',
+            ");",
+            "",
+            'ingredients.get("rice");',
+        ],
+
+        tree: [
+            "function search(node, value) {",
+            "  if (!node) return false;",
+            "",
+            "  if (value === node.value)",
+            "    return true;",
+            "",
+            "  if (value < node.value)",
+            "    return search(node.left, value);",
+            "",
+            "  return search(node.right, value);",
+            "}",
+        ],
+
+        search: [
+            "for (let i = 0; i < arr.length; i++) {",
+            "",
+            "  if (arr[i] === target) {",
+            "    return i;",
+            "  }",
+            "",
+            "}",
+            "",
+            "return -1;",
+        ],
+
+        game: [
+            "const recipe = [",
+            '  "cooking_oil",',
+            '  "cut_garlic",',
+            '  "cut_carrot",',
+            '  "rice",',
+            '  "egg",',
+            '  "soy_sauce",',
+            '  "cut_green_onion",',
+            '  "stir"',
+            "];",
+            "",
+            "queue.enqueue(action);",
+            "",
+            "const next = queue.peek();",
+        ],
+    };
+
+    /*
+     * ========================================================
+     * ACTIVE CODE LINE
+     * ========================================================
+     */
+
+    const activeCodeLine = useMemo(() => {
+
+        switch (topic) {
+
+            case "bubble":
+                return Math.min(
+                    3 + bubbleJ,
+                    5
+                );
+
+            case "quick":
+                if (
+                    quickDone
+                ) {
+                    return 9;
+                }
+
+                if (
+                    quickPivot === null
+                ) {
+                    return 4;
+                }
+
+                return quickJ < quickHigh
+                    ? 5
+                    : 6;
+
+            case "search":
+                return searchFound
+                    ? 3
+                    : searchFinished
+                        ? 9
+                        : 2;
+
+            case "stack":
+                return 3;
+
+            case "hashmap":
+                return 8;
+
+            case "tree":
+                return 8;
+
+            case "game":
+                return 15;
+
+            default:
+                return 1;
+        }
+
+    }, [
+        topic,
+        bubbleJ,
+        quickDone,
+        quickPivot,
+        quickJ,
+        quickHigh,
+        searchFound,
+        searchFinished,
+    ]);
+
+    /*
+     * ========================================================
+     * RENDER
+     * ========================================================
+     */
+
+    return (
         <div
-          style={{
-            display: "flex",
-            gap: "7px",
-            marginRight: "14px",
-          }}
-        >
-
-          <WindowDot
-            color="#ff5f57"
-            onClick={onClose}
-          />
-
-          <WindowDot
-            color="#febc2e"
-          />
-
-          <WindowDot
-            color="#28c840"
-          />
-
-        </div>
-
-
-        <div
-          style={{
-            fontSize: "11px",
-            color: "#dbe1e8",
-            fontWeight: 800,
-          }}
-        >
-          Data Structures Lab
-        </div>
-
-
-        <div
-          style={{
-            marginLeft: "auto",
-            fontSize: "9px",
-            color: "#657080",
-            fontFamily:
-              "monospace",
-          }}
-        >
-          SEFIRAH • DSA
-        </div>
-
-      </div>
-
-
-      {/* =====================================================
-          BODY
-      ===================================================== */}
-
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-        }}
-      >
-
-        {/* ===================================================
-            SIDEBAR
-        =================================================== */}
-
-        <aside
-          style={{
-            width: "190px",
-            flexShrink: 0,
-
-            borderRight:
-              "1px solid rgba(255,255,255,0.08)",
-
-            background:
-              "rgba(0,0,0,0.16)",
-
-            padding:
-              "14px 10px",
-
-            overflowY:
-              "auto",
-          }}
-        >
-
-          <div
+            onMouseDown={onFocus}
             style={{
-              padding:
-                "7px 9px",
-              color:
-                "#687384",
-              fontSize:
-                "9px",
-              fontWeight:
-                800,
-              letterSpacing:
-                "0.08em",
+                position: "fixed",
+
+                left:
+                    windowPosition.centered
+                        ? "50%"
+                        : `${windowPosition.left}px`,
+
+                top:
+                    windowPosition.centered
+                        ? "50%"
+                        : `${windowPosition.top}px`,
+
+                transform:
+                    windowPosition.centered
+                        ? "translate(-50%, -50%)"
+                        : "none",
+
+                width:
+                    "min(1180px, 88vw)",
+
+                height:
+                    "min(760px, 82vh)",
+
+                minWidth:
+                    "900px",
+
+                minHeight:
+                    "600px",
+
+                zIndex:
+                    windowPosition.zIndex,
+
+                display:
+                    "flex",
+
+                flexDirection:
+                    "column",
+
+                overflow:
+                    "hidden",
+
+                borderRadius:
+                    "2px",
+
+                border:
+                    "1px solid rgba(0,0,0,0.18)",
+
+                background:
+                    "#ffffff",
+
+                boxShadow:
+                    "0 30px 80px rgba(0,0,0,0.40)",
+
+                fontFamily:
+                    "Arial, Helvetica, sans-serif",
             }}
-          >
-            LAB SECTIONS
-          </div>
+        >
 
+            {/* =================================================
+                TRANSLUCENT TITLE BAR
+            ================================================= */}
 
-          {sections.map(
-            (item, index) => {
+            <div
+                onMouseDown={
+                    handleTitleMouseDown
+                }
+                style={{
+                    height:
+                        "44px",
 
-              const active =
-                section === item;
+                    flexShrink:
+                        0,
 
-              return (
+                    display:
+                        "flex",
+
+                    alignItems:
+                        "center",
+
+                    justifyContent:
+                        "space-between",
+
+                    padding:
+                        "0 12px 0 16px",
+
+                    background:
+                        "rgba(255,255,255,0.76)",
+
+                    backdropFilter:
+                        "blur(22px)",
+
+                    WebkitBackdropFilter:
+                        "blur(22px)",
+
+                    borderBottom:
+                        "1px solid rgba(0,0,0,0.10)",
+
+                    cursor:
+                        "grab",
+
+                    userSelect:
+                        "none",
+                }}
+            >
+
+                <div
+                    style={{
+                        display:
+                            "flex",
+
+                        alignItems:
+                            "center",
+
+                        gap:
+                            "10px",
+                    }}
+                >
+
+                    <div
+                        style={{
+                            width:
+                                "22px",
+
+                            height:
+                                "22px",
+
+                            borderRadius:
+                                "5px",
+
+                            display:
+                                "flex",
+
+                            alignItems:
+                                "center",
+
+                            justifyContent:
+                                "center",
+
+                            background:
+                                "#2f8d46",
+
+                            color:
+                                "#ffffff",
+
+                            fontSize:
+                                "12px",
+
+                            fontWeight:
+                                800,
+                        }}
+                    >
+                        G
+                    </div>
+
+                    <span
+                        style={{
+                            color:
+                                "#222",
+
+                            fontSize:
+                                "13px",
+
+                            fontWeight:
+                                700,
+                        }}
+                    >
+                        Data Structures Lab
+                    </span>
+
+                    <span
+                        style={{
+                            color:
+                                "#777",
+
+                            fontSize:
+                                "11px",
+                        }}
+                    >
+                        Sefirah
+                    </span>
+
+                </div>
 
                 <button
-                  key={item}
-                  type="button"
-                  onClick={() =>
-                    setSection(item)
-                  }
-                  style={{
-                    width: "100%",
-                    border: "none",
-                    background:
-                      active
-                        ? "rgba(105,227,163,0.10)"
-                        : "transparent",
-                    color:
-                      active
-                        ? "#82eab0"
-                        : "#8994a3",
-                    borderRadius:
-                      "8px",
-                    padding:
-                      "9px 10px",
-                    marginBottom:
-                      "2px",
-                    textAlign:
-                      "left",
-                    cursor:
-                      "pointer",
-                    fontFamily:
-                      "Comfortaa, sans-serif",
-                    fontSize:
-                      "10px",
-                    fontWeight:
-                      active
-                        ? 800
-                        : 600,
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap:
-                      "9px",
-                  }}
-                >
-
-                  <span
-                    style={{
-                      width: "18px",
-                      color:
-                        active
-                          ? "#69e3a3"
-                          : "#596373",
-                      fontFamily:
-                        "monospace",
-                      fontSize:
-                        "9px",
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onClose();
                     }}
-                  >
-                    {String(
-                      index + 1
-                    ).padStart(
-                      2,
-                      "0"
-                    )}
-                  </span>
+                    style={{
+                        width:
+                            "30px",
 
-                  {sectionLabels[item]}
+                        height:
+                            "30px",
 
+                        border:
+                            "none",
+
+                        borderRadius:
+                            "6px",
+
+                        background:
+                            "transparent",
+
+                        color:
+                            "#333",
+
+                        fontSize:
+                            "20px",
+
+                        lineHeight:
+                            1,
+
+                        cursor:
+                            "pointer",
+
+                        display:
+                            "flex",
+
+                        alignItems:
+                            "center",
+
+                        justifyContent:
+                            "center",
+                    }}
+                    onMouseEnter={(event) => {
+                        event.currentTarget.style.background =
+                            "#e81123";
+                        event.currentTarget.style.color =
+                            "#ffffff";
+                    }}
+                    onMouseLeave={(event) => {
+                        event.currentTarget.style.background =
+                            "transparent";
+                        event.currentTarget.style.color =
+                            "#333";
+                    }}
+                >
+                    ×
                 </button>
 
-              );
-            }
-          )}
+            </div>
 
+            {/* =================================================
+                APP BODY
+            ================================================= */}
 
-          <div
-            style={{
-              marginTop:
-                "18px",
-              padding:
-                "12px 9px",
-              borderTop:
-                "1px solid rgba(255,255,255,0.07)",
-              color:
-                "#596373",
-              fontSize:
-                "9px",
-              lineHeight:
-                1.6,
-            }}
-          >
-            TIP
-            <br />
-            Use Queue → Source Code →
-            Failure Case when presenting
-            this lab live.
-          </div>
+            <div
+                style={{
+                    flex:
+                        1,
 
-        </aside>
+                    minHeight:
+                        0,
 
+                    display:
+                        "flex",
 
-        {/* ===================================================
-            MAIN CONTENT
-        =================================================== */}
+                    overflow:
+                        "hidden",
 
-        <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-            overflowY: "auto",
-            background:
-              "radial-gradient(circle at 80% 0%, rgba(80,120,180,0.06), transparent 40%)",
-          }}
-        >
+                    background:
+                        "#f7f7f7",
+                }}
+            >
 
-          {renderContent()}
+                {/* =================================================
+                    SIDEBAR
+                ================================================= */}
 
-        </main>
+                <aside
+                    style={{
+                        width:
+                            "205px",
 
-      </div>
+                        flexShrink:
+                            0,
 
+                        overflowY:
+                            "auto",
 
-      {/* =====================================================
-          FOOTER / PRESENTATION CONTROLS
-      ===================================================== */}
+                        background:
+                            "#ffffff",
 
-      <div
-        style={{
-          height: "45px",
-          flexShrink: 0,
+                        borderRight:
+                            "1px solid #dddddd",
 
-          borderTop:
-            "1px solid rgba(255,255,255,0.08)",
+                        padding:
+                            "18px 10px",
+                    }}
+                >
 
-          display:
-            "flex",
+                    <div
+                        style={{
+                            padding:
+                                "4px 10px 12px",
 
-          alignItems:
-            "center",
+                            color:
+                                "#222",
 
-          padding:
-            "0 12px",
+                            fontSize:
+                                "12px",
 
-          background:
-            "rgba(0,0,0,0.12)",
-        }}
-      >
+                            fontWeight:
+                                800,
 
-        <div
-          style={{
-            color: "#626d7c",
-            fontFamily:
-              "monospace",
-            fontSize: "9px",
-          }}
-        >
-          {String(
-            currentSectionIndex + 1
-          ).padStart(2, "0")}
-          {" / "}
-          {String(
-            sections.length
-          ).padStart(2, "0")}
+                            textTransform:
+                                "uppercase",
+
+                            letterSpacing:
+                                "0.05em",
+                        }}
+                    >
+                        DSA Topics
+                    </div>
+
+                    {topics.map(
+                        (item) => {
+
+                            const data =
+                                topicData[item];
+
+                            const active =
+                                topic === item;
+
+                            return (
+                                <button
+                                    key={item}
+                                    type="button"
+                                    onClick={() => {
+                                        setTopic(item);
+                                        resetAlgorithm();
+                                    }}
+                                    style={{
+                                        width:
+                                            "100%",
+
+                                        border:
+                                            "none",
+
+                                        borderRadius:
+                                            "5px",
+
+                                        padding:
+                                            "10px",
+
+                                        marginBottom:
+                                            "3px",
+
+                                        textAlign:
+                                            "left",
+
+                                        cursor:
+                                            "pointer",
+
+                                        background:
+                                            active
+                                                ? "#e8f5e9"
+                                                : "transparent",
+
+                                        color:
+                                            active
+                                                ? "#218739"
+                                                : "#333",
+
+                                        fontSize:
+                                            "13px",
+
+                                        fontWeight:
+                                            active
+                                                ? 700
+                                                : 500,
+                                    }}
+                                >
+                                    {data.title}
+                                </button>
+                            );
+                        }
+                    )}
+
+                    <div
+                        style={{
+                            margin:
+                                "18px 10px 10px",
+
+                            height:
+                                "1px",
+
+                            background:
+                                "#e3e3e3",
+                        }}
+                    />
+
+                    <div
+                        style={{
+                            padding:
+                                "0 10px",
+
+                            color:
+                                "#777",
+
+                            fontSize:
+                                "11px",
+
+                            lineHeight:
+                                1.5,
+                        }}
+                    >
+                        Interactive examples demonstrate
+                        how the algorithm changes data
+                        step by step.
+                    </div>
+
+                </aside>
+
+                {/* =================================================
+                    MAIN CONTENT
+                ================================================= */}
+
+                <section
+                    style={{
+                        flex:
+                            1,
+
+                        minWidth:
+                            0,
+
+                        overflowY:
+                            "auto",
+
+                        padding:
+                            "30px 34px 80px",
+
+                        background:
+                            "#ffffff",
+                    }}
+                >
+
+                    {/* =================================================
+                        HEADER
+                    ================================================= */}
+
+                    <div
+                        style={{
+                            maxWidth:
+                                "980px",
+
+                            margin:
+                                "0 auto",
+                        }}
+                    >
+
+                        <div
+                            style={{
+                                color:
+                                    "#2f8d46",
+
+                                fontSize:
+                                    "12px",
+
+                                fontWeight:
+                                    800,
+
+                                textTransform:
+                                    "uppercase",
+
+                                letterSpacing:
+                                    "0.06em",
+
+                                marginBottom:
+                                    "7px",
+                            }}
+                        >
+                            {currentTopic.label}
+                        </div>
+
+                        <h1
+                            style={{
+                                margin:
+                                    0,
+
+                                color:
+                                    "#1d1d1d",
+
+                                fontSize:
+                                    "31px",
+
+                                lineHeight:
+                                    1.2,
+
+                                fontWeight:
+                                    700,
+                            }}
+                        >
+                            {currentTopic.title}
+                        </h1>
+
+                        <p
+                            style={{
+                                maxWidth:
+                                    "850px",
+
+                                margin:
+                                    "12px 0 0",
+
+                                color:
+                                    "#555",
+
+                                fontSize:
+                                    "15px",
+
+                                lineHeight:
+                                    1.7,
+                            }}
+                        >
+                            {currentTopic.description}
+                        </p>
+
+                        {/* =================================================
+                            INTRO
+                        ================================================= */}
+
+                        {topic === "intro" && (
+                            <div
+                                style={{
+                                    marginTop:
+                                        "32px",
+                                }}
+                            >
+
+                                <InfoCard
+                                    title="Why DSA matters"
+                                    text="Data Structures determine how information is stored. Algorithms determine how we operate on that information. A good combination can make a program faster, cleaner and easier to maintain."
+                                />
+
+                                <div
+                                    style={{
+                                        display:
+                                            "grid",
+
+                                        gridTemplateColumns:
+                                            "repeat(3, 1fr)",
+
+                                        gap:
+                                            "16px",
+
+                                        marginTop:
+                                            "20px",
+                                    }}
+                                >
+
+                                    <ConceptCard
+                                        title="Data Structure"
+                                        text="How data is organised."
+                                    />
+
+                                    <ConceptCard
+                                        title="Algorithm"
+                                        text="How a problem is solved."
+                                    />
+
+                                    <ConceptCard
+                                        title="Complexity"
+                                        text="How the solution behaves as data grows."
+                                    />
+
+                                </div>
+
+                                <div
+                                    style={{
+                                        marginTop:
+                                            "26px",
+
+                                        padding:
+                                            "20px",
+
+                                        background:
+                                            "#f6f8f6",
+
+                                        borderLeft:
+                                            "4px solid #2f8d46",
+                                    }}
+                                >
+
+                                    <strong>
+                                        Simple example:
+                                    </strong>
+
+                                    <p
+                                        style={{
+                                            margin:
+                                                "8px 0 0",
+
+                                            color:
+                                                "#555",
+
+                                            lineHeight:
+                                                1.7,
+                                        }}
+                                    >
+                                        Imagine looking for one ingredient
+                                        inside a box. You could inspect every
+                                        item one by one, or use a structure
+                                        designed for quick lookup. DSA is about
+                                        making that choice deliberately.
+                                    </p>
+
+                                </div>
+
+                            </div>
+                        )}
+
+                        {/* =================================================
+                            BUBBLE SORT
+                        ================================================= */}
+
+                        {topic === "bubble" && (
+                            <AlgorithmSection
+                                explanation="Bubble Sort is easy to understand because every step is visible: compare two neighbours, swap them if necessary, then continue through the array."
+                                complexity="Worst case: O(n²)"
+                                onRun={() => {
+                                    setAlgorithmMode("bubble");
+                                    runBubbleStep();
+                                }}
+                                onReset={() => {
+                                    resetAlgorithm();
+                                    setAlgorithmMode(null);
+                                }}
+                                running={algorithmMode === "bubble"}
+                                code={codeLines.bubble}
+                                activeLine={activeCodeLine}
+                            >
+                                <BubbleVisualizer
+                                    array={array}
+                                    activeA={
+                                        bubbleJ
+                                    }
+                                    activeB={
+                                        bubbleJ + 1
+                                    }
+                                    sorted={
+                                        bubbleSorted
+                                    }
+                                />
+                            </AlgorithmSection>
+                        )}
+
+                        {/* =================================================
+                            QUICK SORT
+                        ================================================= */}
+
+                        {topic === "quick" && (
+                            <AlgorithmSection
+                                explanation="Quick Sort does not compare every pair. Instead, it selects a pivot and rearranges values around it. This allows large datasets to be divided into smaller problems."
+                                complexity="Average: O(n log n) • Worst: O(n²)"
+                                onRun={() => {
+                                    setAlgorithmMode("quick");
+                                    runQuickStep();
+                                }}
+                                onReset={() => {
+                                    resetAlgorithm();
+                                    setAlgorithmMode(null);
+                                }}
+                                running={algorithmMode === "quick"}
+                                code={codeLines.quick}
+                                activeLine={activeCodeLine}
+                            >
+                                <QuickVisualizer
+                                    array={
+                                        quickArray
+                                    }
+                                    pivot={
+                                        quickPivot
+                                    }
+                                    i={
+                                        quickI
+                                    }
+                                    j={
+                                        quickJ
+                                    }
+                                    low={
+                                        quickLow
+                                    }
+                                    high={
+                                        quickHigh
+                                    }
+                                    done={
+                                        quickDone
+                                    }
+                                />
+                            </AlgorithmSection>
+                        )}
+
+                        {/* =================================================
+                            STACK
+                        ================================================= */}
+
+                        {topic === "stack" && (
+                            <>
+                                <InfoCard
+                                    title="LIFO — Last In, First Out"
+                                    text="A stack behaves like a pile of plates. You add to the top and you remove from the top."
+                                />
+
+                                <div
+                                    style={{
+                                        display:
+                                            "grid",
+
+                                        gridTemplateColumns:
+                                            "1fr 1fr",
+
+                                        gap:
+                                            "24px",
+
+                                        marginTop:
+                                            "25px",
+                                    }}
+                                >
+
+                                    <CodePanel
+                                        code={
+                                            codeLines.stack
+                                        }
+                                        activeLine={
+                                            3
+                                        }
+                                    />
+
+                                    <div>
+                                        <h3>
+                                            Interactive Stack
+                                        </h3>
+
+                                        <p
+                                            style={{
+                                                color:
+                                                    "#666",
+
+                                                lineHeight:
+                                                    1.6,
+                                            }}
+                                        >
+                                            Push an ingredient
+                                            onto the stack or
+                                            pop the top one.
+                                        </p>
+
+                                        <div
+                                            style={{
+                                                display:
+                                                    "flex",
+
+                                                alignItems:
+                                                    "flex-end",
+
+                                                justifyContent:
+                                                    "center",
+
+                                                minHeight:
+                                                    "310px",
+
+                                                border:
+                                                    "1px solid #ddd",
+
+                                                background:
+                                                    "#fafafa",
+
+                                                padding:
+                                                    "20px",
+                                            }}
+                                        >
+
+                                            <div
+                                                style={{
+                                                    width:
+                                                        "180px",
+
+                                                    minHeight:
+                                                        "230px",
+
+                                                    border:
+                                                        "3px solid #222",
+
+                                                    borderTop:
+                                                        "none",
+
+                                                    display:
+                                                        "flex",
+
+                                                    flexDirection:
+                                                        "column-reverse",
+
+                                                    justifyContent:
+                                                        "flex-start",
+
+                                                    padding:
+                                                        "8px",
+                                                }}
+                                            >
+
+                                                {stack.map(
+                                                    (
+                                                        item,
+                                                        index
+                                                    ) => (
+                                                        <div
+                                                            key={`${item}-${index}`}
+                                                            style={{
+                                                                padding:
+                                                                    "12px",
+
+                                                                marginTop:
+                                                                    "5px",
+
+                                                                background:
+                                                                    "#e8f5e9",
+
+                                                                border:
+                                                                    "1px solid #2f8d46",
+
+                                                                textAlign:
+                                                                    "center",
+
+                                                                fontWeight:
+                                                                    700,
+
+                                                                color:
+                                                                    "#267a39",
+                                                            }}
+                                                        >
+                                                            {item}
+                                                        </div>
+                                                    )
+                                                )}
+
+                                            </div>
+
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                display:
+                                                    "flex",
+
+                                                gap:
+                                                    "8px",
+
+                                                marginTop:
+                                                    "12px",
+                                            }}
+                                        >
+
+                                            <GreenButton
+                                                onClick={
+                                                    pushStack
+                                                }
+                                            >
+                                                push("Egg")
+                                            </GreenButton>
+
+                                            <button
+                                                onClick={
+                                                    popStack
+                                                }
+                                                style={
+                                                    secondaryButton
+                                                }
+                                            >
+                                                pop()
+                                            </button>
+
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                marginTop:
+                                                    "12px",
+
+                                                padding:
+                                                    "12px",
+
+                                                background:
+                                                    "#f5f5f5",
+
+                                                fontFamily:
+                                                    "monospace",
+
+                                                fontSize:
+                                                    "12px",
+                                            }}
+                                        >
+                                            {stackMessage}
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </>
+                        )}
+
+                        {/* =================================================
+                            HASHMAP
+                        ================================================= */}
+
+                        {topic === "hashmap" && (
+                            <>
+                                <InfoCard
+                                    title="Key → Value"
+                                    text="A HashMap stores information as key/value pairs. Instead of scanning every ingredient, we can ask directly for the value associated with a key."
+                                />
+
+                                <div
+                                    style={{
+                                        display:
+                                            "grid",
+
+                                        gridTemplateColumns:
+                                            "1fr 1fr",
+
+                                        gap:
+                                            "24px",
+
+                                        marginTop:
+                                            "25px",
+                                    }}
+                                >
+
+                                    <CodePanel
+                                        code={
+                                            codeLines.hashmap
+                                        }
+                                        activeLine={
+                                            8
+                                        }
+                                    />
+
+                                    <div>
+
+                                        <h3>
+                                            HashMap Visualizer
+                                        </h3>
+
+                                        <div
+                                            style={{
+                                                border:
+                                                    "1px solid #ddd",
+                                            }}
+                                        >
+
+                                            {hashmap.map(
+                                                (item) => (
+                                                    <div
+                                                        key={
+                                                            item.key
+                                                        }
+                                                        style={{
+                                                            display:
+                                                                "grid",
+
+                                                            gridTemplateColumns:
+                                                                "110px 1fr",
+
+                                                            borderBottom:
+                                                                "1px solid #eee",
+
+                                                            padding:
+                                                                "13px 15px",
+                                                        }}
+                                                    >
+                                                        <strong>
+                                                            {item.key}
+                                                        </strong>
+
+                                                        <span>
+                                                            {item.value}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            )}
+
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                marginTop:
+                                                    "15px",
+
+                                                display:
+                                                    "flex",
+
+                                                gap:
+                                                    "8px",
+                                            }}
+                                        >
+
+                                            <input
+                                                value={
+                                                    hashLookup
+                                                }
+                                                onChange={(event) =>
+                                                    setHashLookup(
+                                                        event.target.value
+                                                    )
+                                                }
+                                                placeholder="rice"
+                                                style={{
+                                                    flex:
+                                                        1,
+
+                                                    padding:
+                                                        "10px",
+
+                                                    border:
+                                                        "1px solid #ccc",
+
+                                                    fontSize:
+                                                        "14px",
+                                                }}
+                                            />
+
+                                            <GreenButton
+                                                onClick={
+                                                    lookupHash
+                                                }
+                                            >
+                                                Lookup
+                                            </GreenButton>
+
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                marginTop:
+                                                    "10px",
+
+                                                color:
+                                                    "#2f8d46",
+
+                                                fontWeight:
+                                                    700,
+
+                                                fontSize:
+                                                    "13px",
+                                            }}
+                                        >
+                                            {hashMessage}
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </>
+                        )}
+
+                        {/* =================================================
+                            TREE
+                        ================================================= */}
+
+                        {topic === "tree" && (
+                            <>
+                                <InfoCard
+                                    title="Binary Search Tree"
+                                    text="Every node has at most two children. Values smaller than a node move left; larger values move right. This lets us eliminate large portions of the tree while searching."
+                                />
+
+                                <div
+                                    style={{
+                                        display:
+                                            "grid",
+
+                                        gridTemplateColumns:
+                                            "1fr 1fr",
+
+                                        gap:
+                                            "24px",
+
+                                        marginTop:
+                                            "25px",
+                                    }}
+                                >
+
+                                    <CodePanel
+                                        code={
+                                            codeLines.tree
+                                        }
+                                        activeLine={
+                                            8
+                                        }
+                                    />
+
+                                    <div>
+
+                                        <h3>
+                                            Search the Tree
+                                        </h3>
+
+                                        <div
+                                            style={{
+                                                position:
+                                                    "relative",
+
+                                                height:
+                                                    "340px",
+
+                                                border:
+                                                    "1px solid #ddd",
+
+                                                background:
+                                                    "#fafafa",
+                                            }}
+                                        >
+
+                                            <svg
+                                                viewBox="0 0 100 100"
+                                                preserveAspectRatio="none"
+                                                style={{
+                                                    position:
+                                                        "absolute",
+
+                                                    inset:
+                                                        "0",
+
+                                                    width:
+                                                        "100%",
+
+                                                    height:
+                                                        "100%",
+                                                }}
+                                            >
+
+                                                <line
+                                                    x1="50"
+                                                    y1="19"
+                                                    x2="27"
+                                                    y2="40"
+                                                    stroke="#999"
+                                                    strokeWidth="0.7"
+                                                />
+
+                                                <line
+                                                    x1="50"
+                                                    y1="19"
+                                                    x2="73"
+                                                    y2="40"
+                                                    stroke="#999"
+                                                    strokeWidth="0.7"
+                                                />
+
+                                                <line
+                                                    x1="27"
+                                                    y1="43"
+                                                    x2="15"
+                                                    y2="66"
+                                                    stroke="#999"
+                                                    strokeWidth="0.7"
+                                                />
+
+                                                <line
+                                                    x1="27"
+                                                    y1="43"
+                                                    x2="39"
+                                                    y2="66"
+                                                    stroke="#999"
+                                                    strokeWidth="0.7"
+                                                />
+
+                                                <line
+                                                    x1="73"
+                                                    y1="43"
+                                                    x2="61"
+                                                    y2="66"
+                                                    stroke="#999"
+                                                    strokeWidth="0.7"
+                                                />
+
+                                                <line
+                                                    x1="73"
+                                                    y1="43"
+                                                    x2="85"
+                                                    y2="66"
+                                                    stroke="#999"
+                                                    strokeWidth="0.7"
+                                                />
+
+                                            </svg>
+
+                                            {treeNodes.map(
+                                                (node) => {
+
+                                                    const active =
+                                                        treeVisited.includes(
+                                                            node.value
+                                                        );
+
+                                                    return (
+                                                        <div
+                                                            key={
+                                                                node.value
+                                                            }
+                                                            style={{
+                                                                position:
+                                                                    "absolute",
+
+                                                                left:
+                                                                    `${node.x}%`,
+
+                                                                top:
+                                                                    `${node.y}%`,
+
+                                                                transform:
+                                                                    "translate(-50%, -50%)",
+
+                                                                width:
+                                                                    "44px",
+
+                                                                height:
+                                                                    "44px",
+
+                                                                borderRadius:
+                                                                    "50%",
+
+                                                                display:
+                                                                    "flex",
+
+                                                                alignItems:
+                                                                    "center",
+
+                                                                justifyContent:
+                                                                    "center",
+
+                                                                background:
+                                                                    active
+                                                                        ? "#2f8d46"
+                                                                        : "#ffffff",
+
+                                                                color:
+                                                                    active
+                                                                        ? "#ffffff"
+                                                                        : "#222",
+
+                                                                border:
+                                                                    "2px solid #2f8d46",
+
+                                                                fontWeight:
+                                                                    800,
+
+                                                                zIndex:
+                                                                    2,
+
+                                                                transition:
+                                                                    "all 250ms ease",
+                                                            }}
+                                                        >
+                                                            {node.value}
+                                                        </div>
+                                                    );
+                                                }
+                                            )}
+
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                display:
+                                                    "flex",
+
+                                                gap:
+                                                    "8px",
+
+                                                marginTop:
+                                                    "12px",
+                                            }}
+                                        >
+
+                                            <input
+                                                type="number"
+                                                value={
+                                                    treeSearch
+                                                }
+                                                onChange={(event) =>
+                                                    setTreeSearch(
+                                                        Number(
+                                                            event.target.value
+                                                        )
+                                                    )
+                                                }
+                                                style={{
+                                                    width:
+                                                        "100px",
+
+                                                    padding:
+                                                        "10px",
+
+                                                    border:
+                                                        "1px solid #ccc",
+                                                }}
+                                            />
+
+                                            <GreenButton
+                                                onClick={
+                                                    runTreeSearch
+                                                }
+                                            >
+                                                Search Tree
+                                            </GreenButton>
+
+                                        </div>
+
+                                        {treeVisited.length >
+                                            0 && (
+                                            <p
+                                                style={{
+                                                    color:
+                                                        "#2f8d46",
+
+                                                    fontWeight:
+                                                        700,
+
+                                                    fontSize:
+                                                        "13px",
+                                                }}
+                                            >
+                                                Path:{" "}
+                                                {treeVisited.join(
+                                                    " → "
+                                                )}
+                                            </p>
+                                        )}
+
+                                    </div>
+
+                                </div>
+                            </>
+                        )}
+
+                        {/* =================================================
+                            SEARCH
+                        ================================================= */}
+
+                        {topic === "search" && (
+                            <AlgorithmSection
+                                explanation="Linear Search checks values one at a time until the target is found. It is simple, but the number of checks grows with the size of the dataset."
+                                complexity="Time: O(n)"
+                                onRun={() => {
+                                    setAlgorithmMode("search");
+                                    runSearchStep();
+                                }}
+                                onReset={() => {
+                                    resetAlgorithm();
+                                    setAlgorithmMode(null);
+                                }}
+                                running={algorithmMode === "search"}
+                                code={codeLines.search}
+                                activeLine={activeCodeLine}
+                            >
+                                <SearchVisualizer
+                                    array={
+                                        SEARCH_ARRAY
+                                    }
+                                    index={
+                                        searchIndex
+                                    }
+                                    target={
+                                        searchTarget
+                                    }
+                                    found={
+                                        searchFound
+                                    }
+                                    finished={
+                                        searchFinished
+                                    }
+                                    setTarget={
+                                        setSearchTarget
+                                    }
+                                />
+                            </AlgorithmSection>
+                        )}
+
+                        {/* =================================================
+                            GAME APPLICATION
+                        ================================================= */}
+
+                        {topic === "game" && (
+                            <>
+                                <InfoCard
+                                    title="Where DSA actually appears in Sefirah"
+                                    text="The strongest example in the cooking game is the recipe queue. Cooking actions have to happen in a specific order. The queue makes that order explicit and prevents the player from performing a later action before the required earlier action."
+                                />
+
+                                <div
+                                    style={{
+                                        display:
+                                            "grid",
+
+                                        gridTemplateColumns:
+                                            "1fr 1fr",
+
+                                        gap:
+                                            "24px",
+
+                                        marginTop:
+                                            "25px",
+                                    }}
+                                >
+
+                                    <CodePanel
+                                        code={
+                                            codeLines.game
+                                        }
+                                        activeLine={
+                                            15
+                                        }
+                                    />
+
+                                    <div>
+
+                                        <h3>
+                                            Recipe Queue
+                                        </h3>
+
+                                        <p
+                                            style={{
+                                                color:
+                                                    "#666",
+
+                                                lineHeight:
+                                                    1.6,
+                                            }}
+                                        >
+                                            Each ingredient/action
+                                            waits for its turn.
+                                            The front of the queue
+                                            represents the next
+                                            valid cooking action.
+                                        </p>
+
+                                        <div
+                                            style={{
+                                                border:
+                                                    "1px solid #ddd",
+
+                                                padding:
+                                                    "16px",
+
+                                                background:
+                                                    "#fafafa",
+                                            }}
+                                        >
+
+                                            {recipeIngredients.map(
+                                                (
+                                                    ingredient,
+                                                    index
+                                                ) => {
+
+                                                    const isFront =
+                                                        index === 0;
+
+                                                    return (
+                                                        <div
+                                                            key={
+                                                                ingredient.name
+                                                            }
+                                                            style={{
+                                                                display:
+                                                                    "flex",
+
+                                                                alignItems:
+                                                                    "center",
+
+                                                                gap:
+                                                                    "12px",
+
+                                                                padding:
+                                                                    "10px",
+
+                                                                marginBottom:
+                                                                    "7px",
+
+                                                                background:
+                                                                    isFront
+                                                                        ? "#e8f5e9"
+                                                                        : "#ffffff",
+
+                                                                border:
+                                                                    isFront
+                                                                        ? "2px solid #2f8d46"
+                                                                        : "1px solid #ddd",
+
+                                                                borderRadius:
+                                                                    "5px",
+
+                                                                transform:
+                                                                    isFront
+                                                                        ? "translateX(8px)"
+                                                                        : "none",
+
+                                                                transition:
+                                                                    "all 250ms ease",
+                                                            }}
+                                                        >
+
+                                                            <img
+                                                                src={
+                                                                    imageSrc(
+                                                                        ingredient.image
+                                                                    )
+                                                                }
+                                                                alt={
+                                                                    ingredient.name
+                                                                }
+                                                                style={{
+                                                                    width:
+                                                                        "42px",
+
+                                                                    height:
+                                                                        "42px",
+
+                                                                    objectFit:
+                                                                        "contain",
+                                                                }}
+                                                            />
+
+                                                            <div
+                                                                style={{
+                                                                    flex:
+                                                                        1,
+                                                                }}
+                                                            >
+                                                                <strong>
+                                                                    {ingredient.name}
+                                                                </strong>
+
+                                                                <div
+                                                                    style={{
+                                                                        color:
+                                                                            "#777",
+
+                                                                        fontSize:
+                                                                            "11px",
+
+                                                                        marginTop:
+                                                                            "2px",
+                                                                    }}
+                                                                >
+                                                                    Step{" "}
+                                                                    {index +
+                                                                        1}
+                                                                </div>
+                                                            </div>
+
+                                                            {isFront && (
+                                                                <span
+                                                                    style={{
+                                                                        color:
+                                                                            "#2f8d46",
+
+                                                                        fontSize:
+                                                                            "11px",
+
+                                                                        fontWeight:
+                                                                            800,
+
+                                                                        textTransform:
+                                                                            "uppercase",
+                                                                    }}
+                                                                >
+                                                                    PEEK
+                                                                </span>
+                                                            )}
+
+                                                        </div>
+                                                    );
+                                                }
+                                            )}
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <div
+                                    style={{
+                                        marginTop:
+                                            "30px",
+
+                                        padding:
+                                            "20px",
+
+                                        border:
+                                            "1px solid #ddd",
+
+                                        background:
+                                            "#ffffff",
+                                    }}
+                                >
+
+                                    <h3
+                                        style={{
+                                            marginTop:
+                                                0,
+                                        }}
+                                    >
+                                        Why this matters
+                                    </h3>
+
+                                    <div
+                                        style={{
+                                            display:
+                                                "grid",
+
+                                            gridTemplateColumns:
+                                                "repeat(3, 1fr)",
+
+                                            gap:
+                                                "15px",
+                                        }}
+                                    >
+
+                                        <GamePoint
+                                            number="01"
+                                            title="Correct order"
+                                            text="The queue prevents future recipe actions from becoming available too early."
+                                        />
+
+                                        <GamePoint
+                                            number="02"
+                                            title="State tracking"
+                                            text="Completed actions are tracked so the queue can be reconstructed when the player returns."
+                                        />
+
+                                        <GamePoint
+                                            number="03"
+                                            title="Predictable logic"
+                                            text="peek() tells the game exactly what action should be accepted next."
+                                        />
+
+                                    </div>
+
+                                </div>
+
+                                <div
+                                    style={{
+                                        marginTop:
+                                            "25px",
+
+                                        padding:
+                                            "18px",
+
+                                        background:
+                                            "#1f1f1f",
+
+                                        color:
+                                            "#ffffff",
+
+                                        borderRadius:
+                                            "5px",
+                                    }}
+                                >
+
+                                    <div
+                                        style={{
+                                            color:
+                                                "#7bd88f",
+
+                                            fontSize:
+                                                "11px",
+
+                                            fontWeight:
+                                                800,
+
+                                            marginBottom:
+                                                "8px",
+
+                                            textTransform:
+                                                "uppercase",
+                                        }}
+                                    >
+                                        The important idea
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            fontSize:
+                                                "18px",
+
+                                            lineHeight:
+                                                1.5,
+                                        }}
+                                    >
+                                        DSA is not just something
+                                        implemented for a lab.
+                                        It becomes useful when the
+                                        problem naturally requires
+                                        a particular way of organising
+                                        information.
+                                    </div>
+
+                                </div>
+
+                            </>
+                        )}
+
+                        {/* =================================================
+                            FOOTER NAVIGATION
+                        ================================================= */}
+
+                        <div
+                            style={{
+                                display:
+                                    "flex",
+
+                                justifyContent:
+                                    "space-between",
+
+                                marginTop:
+                                    "45px",
+
+                                paddingTop:
+                                    "20px",
+
+                                borderTop:
+                                    "1px solid #ddd",
+                            }}
+                        >
+
+                            <button
+                                type="button"
+                                onClick={
+                                    previousTopic
+                                }
+                                disabled={
+                                    currentTopicIndex ===
+                                    0
+                                }
+                                style={{
+                                    ...secondaryButton,
+
+                                    opacity:
+                                        currentTopicIndex ===
+                                        0
+                                            ? 0.4
+                                            : 1,
+                                }}
+                            >
+                                ← Previous
+                            </button>
+
+                            <span
+                                style={{
+                                    alignSelf:
+                                        "center",
+
+                                    color:
+                                        "#999",
+
+                                    fontSize:
+                                        "12px",
+                                }}
+                            >
+                                {currentTopicIndex +
+                                    1}{" "}
+                                /{" "}
+                                {topics.length}
+                            </span>
+
+                            <button
+                                type="button"
+                                onClick={
+                                    nextTopic
+                                }
+                                disabled={
+                                    currentTopicIndex ===
+                                    topics.length - 1
+                                }
+                                style={{
+                                    ...secondaryButton,
+
+                                    opacity:
+                                        currentTopicIndex ===
+                                        topics.length - 1
+                                            ? 0.4
+                                            : 1,
+                                }}
+                            >
+                                Next →
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </div>
+
         </div>
+    );
+}
 
+/*
+ * ============================================================
+ * REUSABLE COMPONENTS
+ * ============================================================
+ */
 
+function InfoCard({
+    title,
+    text,
+}: {
+    title: string;
+    text: string;
+}) {
+    return (
         <div
-          style={{
-            marginLeft:
-              "auto",
-            display:
-              "flex",
-            gap:
-              "7px",
-          }}
+            style={{
+                marginTop:
+                    "26px",
+
+                padding:
+                    "18px 20px",
+
+                background:
+                    "#f1f8f3",
+
+                borderLeft:
+                    "4px solid #2f8d46",
+            }}
         >
 
-          <button
-            type="button"
-            onClick={goPrevious}
-            disabled={
-              currentSectionIndex === 0
-            }
-            style={{
-              ...buttonStyle,
-              padding:
-                "6px 10px",
-              opacity:
-                currentSectionIndex === 0
-                  ? 0.35
-                  : 1,
-            }}
-          >
-            ←
-          </button>
+            <strong
+                style={{
+                    color:
+                        "#1f6f32",
+                }}
+            >
+                {title}
+            </strong>
 
+            <p
+                style={{
+                    margin:
+                        "8px 0 0",
 
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={
-              currentSectionIndex ===
-              sections.length - 1
-            }
-            style={{
-              ...buttonStyle,
-              padding:
-                "6px 10px",
-              opacity:
-                currentSectionIndex ===
-                sections.length - 1
-                  ? 0.35
-                  : 1,
-            }}
-          >
-            →
-          </button>
+                    color:
+                        "#555",
+
+                    lineHeight:
+                        1.7,
+                }}
+            >
+                {text}
+            </p>
 
         </div>
-
-      </div>
-
-    </div>
-  );
+    );
 }
 
-
-/*
- * =========================================================
- * SECTION HEADING
- * =========================================================
- */
-
-function SectionHeading({
-  eyebrow,
-  title,
-  subtitle,
+function ConceptCard({
+    title,
+    text,
 }: {
-  eyebrow: string;
-  title: string;
-  subtitle: string;
+    title: string;
+    text: string;
+}) {
+    return (
+        <div
+            style={{
+                padding:
+                    "18px",
+
+                border:
+                    "1px solid #ddd",
+
+                background:
+                    "#fff",
+            }}
+        >
+
+            <div
+                style={{
+                    color:
+                        "#2f8d46",
+
+                    fontWeight:
+                        800,
+
+                    marginBottom:
+                        "7px",
+                }}
+            >
+                {title}
+            </div>
+
+            <div
+                style={{
+                    color:
+                        "#666",
+
+                    fontSize:
+                        "13px",
+
+                    lineHeight:
+                        1.5,
+                }}
+            >
+                {text}
+            </div>
+
+        </div>
+    );
+}
+
+function GamePoint({
+    number,
+    title,
+    text,
+}: {
+    number: string;
+    title: string;
+    text: string;
+}) {
+    return (
+        <div>
+
+            <div
+                style={{
+                    color:
+                        "#2f8d46",
+
+                    fontFamily:
+                        "monospace",
+
+                    fontWeight:
+                        800,
+
+                    fontSize:
+                        "12px",
+
+                    marginBottom:
+                        "5px",
+                }}
+            >
+                {number}
+            </div>
+
+            <strong>
+                {title}
+            </strong>
+
+            <p
+                style={{
+                    color:
+                        "#666",
+
+                    fontSize:
+                        "12px",
+
+                    lineHeight:
+                        1.6,
+                }}
+            >
+                {text}
+            </p>
+
+        </div>
+    );
+}
+
+function CodePanel({
+    code,
+    activeLine,
+}: {
+    code: string[];
+    activeLine: number;
+}) {
+    return (
+        <div>
+
+            <div
+                style={{
+                    display:
+                        "flex",
+
+                    justifyContent:
+                        "space-between",
+
+                    padding:
+                        "10px 12px",
+
+                    background:
+                        "#222",
+
+                    color:
+                        "#fff",
+
+                    fontSize:
+                        "11px",
+
+                    fontWeight:
+                        700,
+                }}
+            >
+                <span>
+                    IMPLEMENTATION
+                </span>
+
+                <span
+                    style={{
+                        color:
+                            "#7bd88f",
+                    }}
+                >
+                    JavaScript
+                </span>
+            </div>
+
+            <pre
+                style={{
+                    margin:
+                        0,
+
+                    padding:
+                        "15px 0",
+
+                    background:
+                        "#181818",
+
+                    color:
+                        "#eeeeee",
+
+                    overflow:
+                        "auto",
+
+                    fontFamily:
+                        "Consolas, Monaco, monospace",
+
+                    fontSize:
+                        "12px",
+
+                    lineHeight:
+                        1.8,
+                }}
+            >
+                {code.map(
+                    (
+                        line,
+                        index
+                    ) => {
+
+                        const lineNumber =
+                            index + 1;
+
+                        const active =
+                            lineNumber ===
+                            activeLine;
+
+                        return (
+                            <div
+                                key={
+                                    lineNumber
+                                }
+                                style={{
+                                    display:
+                                        "flex",
+
+                                    background:
+                                        active
+                                            ? "rgba(47,141,70,0.28)"
+                                            : "transparent",
+
+                                    borderLeft:
+                                        active
+                                            ? "3px solid #2f8d46"
+                                            : "3px solid transparent",
+
+                                    transition:
+                                        "background 150ms ease",
+                                }}
+                            >
+
+                                <span
+                                    style={{
+                                        width:
+                                            "38px",
+
+                                        flexShrink:
+                                            0,
+
+                                        paddingLeft:
+                                            "10px",
+
+                                        color:
+                                            active
+                                                ? "#7bd88f"
+                                                : "#666",
+
+                                        userSelect:
+                                            "none",
+                                    }}
+                                >
+                                    {lineNumber}
+                                </span>
+
+                                <span>
+                                    {line ||
+                                        " "}
+                                </span>
+
+                            </div>
+                        );
+                    }
+                )}
+            </pre>
+
+        </div>
+    );
+}
+
+function AlgorithmSection({
+    explanation,
+    complexity,
+    code,
+    activeLine,
+    onRun,
+    onReset,
+    running,
+    children,
+}: {
+    explanation: string;
+    complexity: string;
+    code: string[];
+    activeLine: number;
+    onRun: () => void;
+    onReset: () => void;
+    running: boolean;
+    children: React.ReactNode;
 }) {
 
-  return (
+    return (
+        <div
+            style={{
+                marginTop:
+                    "26px",
+            }}
+        >
 
-    <div
-      style={{
-        marginBottom:
-          "22px",
-      }}
-    >
+            <div
+                style={{
+                    padding:
+                        "18px 20px",
 
-      <div
-        style={{
-          color:
-            "#69e3a3",
-          fontSize:
-            "10px",
-          fontWeight:
-            800,
-          letterSpacing:
-            "0.1em",
-          marginBottom:
-            "8px",
-        }}
-      >
-        {eyebrow}
-      </div>
+                    background:
+                        "#f1f8f3",
 
+                    borderLeft:
+                        "4px solid #2f8d46",
+                }}
+            >
 
-      <h2
-        style={{
-          margin:
-            0,
-          color:
-            "#fff",
-          fontSize:
-            "27px",
-          lineHeight:
-            1.2,
-          fontWeight:
-            800,
-        }}
-      >
-        {title}
-      </h2>
+                <strong>
+                    How it works
+                </strong>
 
+                <p
+                    style={{
+                        margin:
+                            "8px 0 0",
 
-      <div
-        style={{
-          marginTop:
-            "8px",
-          color:
-            "#818c9b",
-          fontSize:
-            "12px",
-        }}
-      >
-        {subtitle}
-      </div>
+                        color:
+                            "#555",
 
-    </div>
-  );
+                        lineHeight:
+                            1.7,
+                    }}
+                >
+                    {explanation}
+                </p>
+
+                <div
+                    style={{
+                        marginTop:
+                            "10px",
+
+                        color:
+                            "#2f8d46",
+
+                        fontWeight:
+                            800,
+
+                        fontSize:
+                            "12px",
+                    }}
+                >
+                    {complexity}
+                </div>
+
+            </div>
+
+            <div
+                style={{
+                    display:
+                        "grid",
+
+                    gridTemplateColumns:
+                        "1fr 1fr",
+
+                    gap:
+                        "22px",
+
+                    marginTop:
+                        "25px",
+
+                    alignItems:
+                        "start",
+                }}
+            >
+
+                <div>
+
+                    <CodePanel
+                        code={
+                            code
+                        }
+                        activeLine={
+                            activeLine
+                        }
+                    />
+
+                    <div
+                        style={{
+                            display:
+                                "flex",
+
+                            gap:
+                                "8px",
+
+                            marginTop:
+                                "10px",
+                        }}
+                    >
+
+                        <GreenButton
+                            onClick={
+                                onRun
+                            }
+                        >
+                            {running
+                                ? "Next Step"
+                                : "Run"}
+                        </GreenButton>
+
+                        <button
+                            type="button"
+                            onClick={
+                                onReset
+                            }
+                            style={
+                                secondaryButton
+                            }
+                        >
+                            Reset
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <div
+                        style={{
+                            display:
+                                "flex",
+
+                            justifyContent:
+                                "space-between",
+
+                            alignItems:
+                                "center",
+
+                            marginBottom:
+                                "10px",
+                        }}
+                    >
+
+                        <h3
+                            style={{
+                                margin:
+                                    0,
+                            }}
+                        >
+                            Visualizer
+                        </h3>
+
+                        <span
+                            style={{
+                                color:
+                                    "#777",
+
+                                fontSize:
+                                    "11px",
+                            }}
+                        >
+                            Step-by-step
+                        </span>
+
+                    </div>
+
+                    {children}
+
+                </div>
+
+            </div>
+
+        </div>
+    );
 }
 
-
-/*
- * =========================================================
- * CODE BLOCK
- * =========================================================
- */
-
-function CodeBlock({
-  title,
-  code,
+function GreenButton({
+    children,
+    onClick,
 }: {
-  title: string;
-  code: string;
+    children: React.ReactNode;
+    onClick: () => void;
 }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            style={{
+                padding:
+                    "10px 16px",
 
-  return (
+                border:
+                    "none",
 
-    <div
-      style={{
-        background:
-          "#0a0c0f",
-        border:
-          "1px solid rgba(255,255,255,0.09)",
-        borderRadius:
-          "12px",
-        overflow:
-          "hidden",
-      }}
-    >
+                borderRadius:
+                    "4px",
 
-      <div
-        style={{
-          padding:
-            "10px 13px",
-          borderBottom:
-            "1px solid rgba(255,255,255,0.07)",
-          color:
-            "#7d8897",
-          fontSize:
-            "10px",
-          fontFamily:
-            "monospace",
-        }}
-      >
-        {title}
-      </div>
+                background:
+                    "#2f8d46",
 
+                color:
+                    "#fff",
 
-      <pre
-        style={{
-          margin:
-            0,
-          padding:
-            "18px",
-          color:
-            "#dce3ec",
-          fontFamily:
-            "monospace",
-          fontSize:
-            "10px",
-          lineHeight:
-            1.7,
-          overflowX:
-            "auto",
-        }}
-      >
-        <code>
-          {code}
-        </code>
-      </pre>
+                fontWeight:
+                    700,
 
-    </div>
-  );
+                cursor:
+                    "pointer",
+            }}
+        >
+            {children}
+        </button>
+    );
 }
 
+const secondaryButton: React.CSSProperties = {
+    padding:
+        "10px 16px",
 
-/*
- * =========================================================
- * DEMO BUTTON
- * =========================================================
- */
+    border:
+        "1px solid #cfcfcf",
 
-function DemoButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
+    borderRadius:
+        "4px",
 
-  return (
+    background:
+        "#ffffff",
 
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        border:
-          "1px solid rgba(105,227,163,0.22)",
+    color:
+        "#333",
 
-        background:
-          "rgba(105,227,163,0.07)",
+    fontWeight:
+        600,
 
-        color:
-          "#83eab1",
-
-        borderRadius:
-          "8px",
-
-        padding:
-          "9px 13px",
-
-        fontFamily:
-          "Comfortaa, sans-serif",
-
-        fontSize:
-          "10px",
-
-        fontWeight:
-          800,
-
-        cursor:
-          "pointer",
-
-        transition:
-          "all 140ms ease",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-
-/*
- * =========================================================
- * WINDOW DOT
- * =========================================================
- */
-
-function WindowDot({
-  color,
-  onClick,
-}: {
-  color: string;
-  onClick?: () => void;
-}) {
-
-  return (
-
-    <button
-      type="button"
-      onClick={(event) => {
-
-        event.stopPropagation();
-
-        onClick?.();
-      }}
-      style={{
-        width:
-          "11px",
-
-        height:
-          "11px",
-
-        padding:
-          0,
-
-        border:
-          "none",
-
-        borderRadius:
-          "50%",
-
-        background:
-          color,
-
-        cursor:
-          onClick
-            ? "pointer"
-            : "default",
-
-        boxShadow:
-          `inset 0 0 0 1px rgba(0,0,0,0.15)`,
-      }}
-      aria-label={
-        onClick
-          ? "Close"
-          : undefined
-      }
-    />
-
-  );
-}
-
-
-/*
- * =========================================================
- * STYLES
- * =========================================================
- */
-
-const contentStyle:
-  CSSProperties = {
-
-  padding:
-    "28px 30px 35px",
-
-  maxWidth:
-    "930px",
-
-  margin:
-    "0 auto",
-
-  minHeight:
-    "100%",
+    cursor:
+        "pointer",
 };
 
+/*
+ * ============================================================
+ * BUBBLE VISUALIZER
+ * ============================================================
+ */
 
-const heroTitleStyle:
-  CSSProperties = {
+function BubbleVisualizer({
+    array,
+    activeA,
+    activeB,
+    sorted,
+}: {
+    array: number[];
+    activeA: number;
+    activeB: number;
+    sorted: number[];
+}) {
+    return (
+        <div
+            style={{
+                border:
+                    "1px solid #ddd",
 
-  margin:
-    0,
+                minHeight:
+                    "310px",
 
-  color:
-    "#ffffff",
+                padding:
+                    "25px",
 
-  fontSize:
-    "42px",
+                display:
+                    "flex",
 
-  lineHeight:
-    1.08,
+                alignItems:
+                    "center",
 
-  fontWeight:
-    800,
+                justifyContent:
+                    "center",
 
-  letterSpacing:
-    "-0.025em",
-};
+                background:
+                    "#fafafa",
+            }}
+        >
 
+            <div
+                style={{
+                    display:
+                        "flex",
 
-const heroTextStyle:
-  CSSProperties = {
+                    alignItems:
+                        "flex-end",
 
-  maxWidth:
-    "650px",
+                    gap:
+                        "9px",
 
-  marginTop:
-    "16px",
+                    height:
+                        "210px",
+                }}
+            >
 
-  color:
-    "#9aa5b4",
+                {array.map(
+                    (
+                        value,
+                        index
+                    ) => {
 
-  fontSize:
-    "14px",
+                        const active =
+                            index ===
+                                activeA ||
+                            index ===
+                                activeB;
 
-  lineHeight:
-    1.75,
-};
+                        const isSorted =
+                            sorted.includes(
+                                index
+                            );
+
+                        return (
+                            <div
+                                key={
+                                    `${value}-${index}`
+                                }
+                                style={{
+                                    width:
+                                        "42px",
+
+                                    height:
+                                        `${value * 18}px`,
+
+                                    display:
+                                        "flex",
+
+                                    alignItems:
+                                        "center",
+
+                                    justifyContent:
+                                        "center",
+
+                                    background:
+                                        active
+                                            ? "#f1a208"
+                                            : isSorted
+                                                ? "#2f8d46"
+                                                : "#333",
+
+                                    color:
+                                        "#fff",
+
+                                    fontWeight:
+                                        800,
+
+                                    borderRadius:
+                                        "4px 4px 0 0",
+
+                                    transition:
+                                        "all 250ms ease",
+                                }}
+                            >
+                                {value}
+                            </div>
+                        );
+                    }
+                )}
+
+            </div>
+
+        </div>
+    );
+}
+
+/*
+ * ============================================================
+ * QUICK SORT VISUALIZER
+ * ============================================================
+ */
+
+function QuickVisualizer({
+    array,
+    pivot,
+    i,
+    j,
+    low,
+    high,
+    done,
+}: {
+    array: number[];
+    pivot: number | null;
+    i: number;
+    j: number;
+    low: number;
+    high: number;
+    done: boolean;
+}) {
+    return (
+        <div
+            style={{
+                border:
+                    "1px solid #ddd",
+
+                minHeight:
+                    "310px",
+
+                padding:
+                    "25px",
+
+                background:
+                    "#fafafa",
+            }}
+        >
+
+            <div
+                style={{
+                    display:
+                        "flex",
+
+                    alignItems:
+                        "flex-end",
+
+                    justifyContent:
+                        "center",
+
+                    gap:
+                        "8px",
+
+                    height:
+                        "190px",
+                }}
+            >
+
+                {array.map(
+                    (
+                        value,
+                        index
+                    ) => {
+
+                        const isPivot =
+                            pivot ===
+                            value;
+
+                        const inRange =
+                            index >=
+                                low &&
+                            index <=
+                                high;
+
+                        const pointer =
+                            index === i ||
+                            index === j;
+
+                        return (
+                            <div
+                                key={
+                                    `${value}-${index}`
+                                }
+                                style={{
+                                    width:
+                                        "44px",
+
+                                    height:
+                                        `${value * 17}px`,
+
+                                    background:
+                                        isPivot
+                                            ? "#f1a208"
+                                            : pointer
+                                                ? "#2f8d46"
+                                                : inRange
+                                                    ? "#333"
+                                                    : "#bbb",
+
+                                    color:
+                                        "#fff",
+
+                                    display:
+                                        "flex",
+
+                                    alignItems:
+                                        "center",
+
+                                    justifyContent:
+                                        "center",
+
+                                    fontWeight:
+                                        800,
+
+                                    borderRadius:
+                                        "4px 4px 0 0",
+
+                                    transition:
+                                        "all 250ms ease",
+
+                                    position:
+                                        "relative",
+                                }}
+                            >
+
+                                {value}
+
+                                {pointer && (
+                                    <span
+                                        style={{
+                                            position:
+                                                "absolute",
+
+                                            bottom:
+                                                "-22px",
+
+                                            fontSize:
+                                                "9px",
+
+                                            color:
+                                                "#2f8d46",
+                                        }}
+                                    >
+                                        {index === i
+                                            ? "i"
+                                            : "j"}
+                                    </span>
+                                )}
+
+                            </div>
+                        );
+                    }
+                )}
+
+            </div>
+
+            <div
+                style={{
+                    marginTop:
+                        "35px",
+
+                    textAlign:
+                        "center",
+
+                    fontSize:
+                        "12px",
+
+                    color:
+                        "#555",
+                }}
+            >
+                {done
+                    ? "Partition complete."
+                    : pivot === null
+                        ? "Choose the last element as the pivot."
+                        : `Pivot = ${pivot} • compare values against it.`}
+            </div>
+
+        </div>
+    );
+}
+
+/*
+ * ============================================================
+ * SEARCH VISUALIZER
+ * ============================================================
+ */
+
+function SearchVisualizer({
+    array,
+    index,
+    target,
+    found,
+    finished,
+    setTarget,
+}: {
+    array: number[];
+    index: number;
+    target: number;
+    found: boolean;
+    finished: boolean;
+    setTarget: (value: number) => void;
+}) {
+
+    return (
+        <div
+            style={{
+                border:
+                    "1px solid #ddd",
+
+                minHeight:
+                    "310px",
+
+                padding:
+                    "25px",
+
+                background:
+                    "#fafafa",
+            }}
+        >
+
+            <div
+                style={{
+                    display:
+                        "flex",
+
+                    justifyContent:
+                        "center",
+
+                    gap:
+                        "8px",
+
+                    marginTop:
+                        "60px",
+                }}
+            >
+
+                {array.map(
+                    (
+                        value,
+                        i
+                    ) => {
+
+                        const checked =
+                            i <
+                            index ||
+                            (i === index &&
+                                (found ||
+                                    finished));
+
+                        const current =
+                            i ===
+                            index &&
+                            !found &&
+                            !finished;
+
+                        return (
+                            <div
+                                key={
+                                    value
+                                }
+                                style={{
+                                    width:
+                                        "55px",
+
+                                    height:
+                                        "55px",
+
+                                    borderRadius:
+                                        "5px",
+
+                                    border:
+                                        current
+                                            ? "3px solid #f1a208"
+                                            : "1px solid #ccc",
+
+                                    background:
+                                        found &&
+                                        i === index
+                                            ? "#2f8d46"
+                                            : checked
+                                                ? "#eeeeee"
+                                                : "#ffffff",
+
+                                    color:
+                                        found &&
+                                        i === index
+                                            ? "#ffffff"
+                                            : "#222",
+
+                                    display:
+                                        "flex",
+
+                                    alignItems:
+                                        "center",
+
+                                    justifyContent:
+                                        "center",
+
+                                    fontWeight:
+                                        800,
+
+                                    transition:
+                                        "all 250ms ease",
+                                }}
+                            >
+                                {value}
+                            </div>
+                        );
+                    }
+                )}
+
+            </div>
+
+            <div
+                style={{
+                    marginTop:
+                        "35px",
+
+                    textAlign:
+                        "center",
+                }}
+            >
+
+                <label
+                    style={{
+                        fontSize:
+                            "12px",
+
+                        color:
+                            "#777",
+
+                        marginRight:
+                            "8px",
+                    }}
+                >
+                    Target:
+                </label>
+
+                <input
+                    type="number"
+                    value={
+                        target
+                    }
+                    onChange={(event) =>
+                        setTarget(
+                            Number(
+                                event.target.value
+                            )
+                        )
+                    }
+                    style={{
+                        width:
+                            "70px",
+
+                        padding:
+                            "7px",
+
+                        border:
+                            "1px solid #ccc",
+                    }}
+                />
+
+                <div
+                    style={{
+                        marginTop:
+                            "14px",
+
+                        fontWeight:
+                            700,
+
+                        color:
+                            found
+                                ? "#2f8d46"
+                                : finished
+                                    ? "#c33"
+                                    : "#555",
+                    }}
+                >
+                    {found
+                        ? `Found ${target}!`
+                        : finished
+                            ? "Value was not found."
+                            : `Checking index ${index}...`}
+                </div>
+
+            </div>
+
+        </div>
+    );
+}
