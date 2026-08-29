@@ -4,6 +4,7 @@ import fileExplorerIcon from "../../assets/icons/file_explorer.png";
 import notesIcon from "../../assets/icons/notes.png";
 import recycleIcon from "../../assets/icons/recycle.png";
 import dsaLabIcon from "../../assets/icons/settings.png";
+import devOpsLabIcon from "../../assets/icons/settings.png";
 import cookingGameIcon from "../../assets/icons/cooking-game.png";
 
 interface DockApp {
@@ -37,6 +38,11 @@ const dockApps: DockApp[] = [
     id: "dsa",
     name: "Data Structures Lab",
     icon: dsaLabIcon.src,
+  },
+    {
+    id: "devops",
+    name: "Dev Ops Lab",
+    icon: devOpsLabIcon.src,
   },
 ];
 

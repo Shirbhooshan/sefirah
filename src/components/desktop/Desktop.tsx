@@ -10,6 +10,7 @@ import FileExplorer from "@/components/filesystem/FileExplorer";
 import NotesApp from "@/components/notes/NotesApp";
 import CookingGame from "@/components/game/cooking-game/CookingGame";
 import DSALab from "@/components/game/labs/dsa/DSALab";
+import DevOpsLab from "@/components/game/labs/devops/DevOpsLab";
 
 /*
  * =========================================================
@@ -91,6 +92,23 @@ interface DSALabWindow {
 
 /*
  * =========================================================
+ * Dev Ops LAB WINDOW
+ * =========================================================
+ */
+
+interface DevOpsLabWindow {
+  id: string;
+
+  left: number;
+  top: number;
+
+  zIndex: number;
+
+  centered: boolean;
+}
+
+/*
+ * =========================================================
  * LIMITS
  * =========================================================
  */
@@ -154,6 +172,22 @@ export default function Desktop() {
     setDSALabWindow,
   ] =
     useState<DSALabWindow | null>(
+      null
+    );
+
+  /*
+* =========================================================
+* DevOps LAB WINDOW
+*
+* Only one DevOps Lab window is allowed.
+* =========================================================
+*/
+
+  const [
+    devOpsLabWindow,
+    setDevOpsLabWindow,
+  ] =
+    useState<DevOpsLabWindow | null>(
       null
     );
 
@@ -875,7 +909,6 @@ export default function Desktop() {
     );
   };
 
-
   const moveDSALab = (
     left: number,
     top: number
@@ -892,6 +925,105 @@ export default function Desktop() {
           : previous
     );
   };
+
+  /*
+  * =========================================================
+  * DevOps LAB
+  *
+  * Only one Dev Ops Lab window is allowed.
+  * =========================================================
+  */
+
+  const openDevOpsLab = () => {
+    /*
+     * Already open:
+     * bring existing window to front.
+     */
+    if (devOpsLabWindow) {
+      const zIndex = nextZIndex;
+
+      setNextZIndex(
+        (value) => value + 1
+      );
+
+      setDevOpsLabWindow(
+        (previous) =>
+          previous
+            ? {
+              ...previous,
+              zIndex,
+            }
+            : previous
+      );
+
+      return;
+    }
+
+    const zIndex = nextZIndex;
+
+    const newWindow: DevOpsLabWindow = {
+      id: `dev-ops-lab-${Date.now()}`,
+
+      left: 0,
+      top: 0,
+
+      zIndex,
+
+      centered: true,
+    };
+
+    setDevOpsLabWindow(newWindow);
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+  };
+
+
+  const closeDevOpsLab = () => {
+    setDevOpsLabWindow(null);
+  };
+
+
+  const focusDevOpsLab = () => {
+    if (!devOpsLabWindow) {
+      return;
+    }
+
+    const zIndex = nextZIndex;
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+
+    setDevOpsLabWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            zIndex,
+          }
+          : previous
+    );
+  };
+
+  const moveDevOpsLab = (
+    left: number,
+    top: number
+  ) => {
+    setDevOpsLabWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            left,
+            top,
+            centered: false,
+          }
+          : previous
+    );
+  };
+
 
   /*
    * =========================================================
@@ -950,6 +1082,19 @@ export default function Desktop() {
     }
 
     /*
+ * Dev Ops LAB
+ *
+ * This replaces the old Settings app.
+ */
+
+    if (id === "devops") {
+
+      openDevOpsLab();
+
+      return;
+    }
+
+    /*
      * RECYCLE BIN
      */
 
@@ -996,6 +1141,11 @@ export default function Desktop() {
   if (dsaLabWindow) {
 
     openApps.push("dsa");
+  }
+
+  if (devOpsLabWindow) {
+
+    openApps.push("devops");
   }
 
   /*
@@ -1273,6 +1423,46 @@ export default function Desktop() {
 
             centered:
               dsaLabWindow.centered,
+          }}
+        />
+      )}
+
+      {/* =====================================================
+    DEVOPS LAB WINDOW
+===================================================== */}
+
+      {devOpsLabWindow && (
+        <DevOpsLab
+          onClose={
+            closeDevOpsLab
+          }
+
+          onFocus={
+            focusDevOpsLab
+          }
+
+          onMove={(
+            left,
+            top
+          ) =>
+            moveDevOpsLab(
+              left,
+              top
+            )
+          }
+
+          windowPosition={{
+            left:
+              devOpsLabWindow.left,
+
+            top:
+              devOpsLabWindow.top,
+
+            zIndex:
+              devOpsLabWindow.zIndex,
+
+            centered:
+              devOpsLabWindow.centered,
           }}
         />
       )}
