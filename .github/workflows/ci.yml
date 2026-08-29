@@ -1,4 +1,4 @@
-name: Sefirah CI
+name: Sefirah CI/CD
 
 on:
   push:
@@ -9,8 +9,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build:
+  test-and-build:
+    name: Test and Build
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +34,37 @@ jobs:
       - name: Run lint
         run: npm run lint
 
-      - name: Build application
+      - name: Build Next.js application
         run: npm run build
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+
+  docker:
+    name: Build and Publish Docker Image
+    runs-on: ubuntu-latest
+
+    needs: test-and-build
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+            -t ghcr.io/${{ github.repository_owner }}/sefirah:latest \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/sefirah:latest
