@@ -45,11 +45,34 @@ interface NotesAppProps {
     };
 }
 
+type NoteHistoryState = {
+    title: string;
+    content: string;
+};
+
 interface NoteTab {
     id: string;
     itemId?: string;
     title: string;
     content: string;
+
+    /*
+     * =========================================================
+     * UNDO / REDO HISTORY
+     * =========================================================
+     *
+     * Every note tab owns its own history.
+     *
+     * This means:
+     *
+     * Note A → history A
+     * Note B → history B
+     *
+     * Switching tabs will never mix their undo/redo states.
+     */
+
+    undoStack: NoteHistoryState[];
+    redoStack: NoteHistoryState[];
 }
 
 const MAX_NOTE_TABS = 10;
@@ -94,6 +117,9 @@ export default function NotesApp({
                 itemId,
                 title: initialTitle,
                 content: initialContent,
+
+                undoStack: [],
+                redoStack: [],
             },
         ]);
 
@@ -193,6 +219,45 @@ export default function NotesApp({
 
     /*
      * =========================================================
+     * HISTORY HELPERS
+     * =========================================================
+     */
+
+    /*
+     * Pushes the CURRENT state onto the active note's
+     * undo stack before a new edit is made.
+     *
+     * Any new edit clears redo history because the user
+     * has now created a new branch of the document history.
+     */
+
+    const pushToUndoStack = (
+        state: NoteHistoryState
+    ) => {
+        setNoteTabs((previous) =>
+            previous.map((note) => {
+                if (
+                    note.id !== activeNoteId
+                ) {
+                    return note;
+                }
+
+                return {
+                    ...note,
+
+                    undoStack: [
+                        ...note.undoStack,
+                        state,
+                    ],
+
+                    redoStack: [],
+                };
+            })
+        );
+    };
+
+    /*
+     * =========================================================
      * SAVE
      * =========================================================
      */
@@ -212,29 +277,41 @@ export default function NotesApp({
             activeNote.content;
 
         try {
-            const response = await fetch("/api/notes", {
-                method: "POST",
+            const response = await fetch(
+                "/api/notes",
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
 
-                credentials: "include",
+                    credentials: "include",
 
-                body: JSON.stringify({
-                    itemId: activeNote.itemId,
+                    body: JSON.stringify({
+                        itemId:
+                            activeNote.itemId,
 
-                    name: savedTitle,
+                        name:
+                            savedTitle,
 
-                    content: savedContent,
+                        content:
+                            savedContent,
 
-                    parentId: null,
-                }),
-            });
+                        parentId:
+                            null,
+                    }),
+                }
+            );
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
-            if (!response.ok || !data.success) {
+            if (
+                !response.ok ||
+                !data.success
+            ) {
                 throw new Error(
                     data.message ||
                     "Failed to save note."
@@ -247,7 +324,7 @@ export default function NotesApp({
 
             /*
              * =====================================================
-             * UPDATE THE ACTIVE TAB'S DATABASE ID
+             * UPDATE DATABASE ID
              * =====================================================
              */
 
@@ -256,9 +333,15 @@ export default function NotesApp({
                     note.id === activeNoteId
                         ? {
                             ...note,
-                            itemId: savedId,
-                            title: savedTitle,
-                            content: savedContent,
+
+                            itemId:
+                                savedId,
+
+                            title:
+                                savedTitle,
+
+                            content:
+                                savedContent,
                         }
                         : note
                 )
@@ -266,17 +349,22 @@ export default function NotesApp({
 
             /*
              * =====================================================
-             * TELL DESKTOP ABOUT THE UPDATE
+             * TELL DESKTOP ABOUT UPDATE
              * =====================================================
              */
 
             onSave?.({
-                id: savedId,
-                name: savedTitle,
-                content: savedContent,
+                id:
+                    savedId,
+                name:
+                    savedTitle,
+                content:
+                    savedContent,
             });
 
-            setSaveMessage("Saved");
+            setSaveMessage(
+                "Saved"
+            );
 
             window.setTimeout(() => {
                 setSaveMessage("");
@@ -288,7 +376,9 @@ export default function NotesApp({
                 error
             );
 
-            setSaveMessage("Failed to save");
+            setSaveMessage(
+                "Failed to save"
+            );
 
         } finally {
             setIsSaving(false);
@@ -325,6 +415,12 @@ export default function NotesApp({
 
             content:
                 "",
+
+            undoStack:
+                [],
+
+            redoStack:
+                [],
         };
 
         setNoteTabs((previous) => [
@@ -408,7 +504,7 @@ export default function NotesApp({
 
             const nextTab =
                 remainingTabs[
-                nextIndex
+                    nextIndex
                 ];
 
             setActiveNoteId(
@@ -447,13 +543,38 @@ export default function NotesApp({
     };
 
     const finishRenaming = () => {
+        if (!activeNote) {
+            return;
+        }
+
         const trimmed =
             renameValue.trim();
 
+        /*
+         * Only create a history entry if
+         * the title actually changed.
+         */
+
+        const newTitle =
+            trimmed ||
+            "Untitled";
+
+        if (
+            newTitle !==
+            activeNote.title
+        ) {
+            pushToUndoStack({
+                title:
+                    activeNote.title,
+
+                content:
+                    activeNote.content,
+            });
+        }
+
         updateActiveNote({
             title:
-                trimmed ||
-                "Untitled",
+                newTitle,
         });
 
         setIsRenaming(false);
@@ -490,17 +611,176 @@ export default function NotesApp({
 
     /*
      * =========================================================
-     * EDITOR
+     * CONTENT EDITING
      * =========================================================
      */
 
     const handleContentChange = (
-        event: React.ChangeEvent<HTMLTextAreaElement>
+        newContent: string
     ) => {
+        if (!activeNote) {
+            return;
+        }
+
+        /*
+         * Don't create history entries when
+         * the content hasn't actually changed.
+         */
+
+        if (
+            newContent ===
+            activeNote.content
+        ) {
+            return;
+        }
+
+        /*
+         * Store the state BEFORE this edit.
+         */
+
+        pushToUndoStack({
+            title:
+                activeNote.title,
+
+            content:
+                activeNote.content,
+        });
+
         updateActiveNote({
             content:
-                event.target.value,
+                newContent,
         });
+    };
+
+    /*
+     * =========================================================
+     * UNDO
+     * =========================================================
+     */
+
+    const handleUndo = () => {
+        if (
+            !activeNote ||
+            activeNote.undoStack.length === 0
+        ) {
+            return;
+        }
+
+        const previousState =
+            activeNote.undoStack[
+                activeNote.undoStack.length - 1
+            ];
+
+        const currentState: NoteHistoryState = {
+            title:
+                activeNote.title,
+
+            content:
+                activeNote.content,
+        };
+
+        /*
+         * Move current state to REDO.
+         */
+
+        setNoteTabs((previous) =>
+            previous.map((note) => {
+                if (
+                    note.id !== activeNoteId
+                ) {
+                    return note;
+                }
+
+                return {
+                    ...note,
+
+                    title:
+                        previousState.title,
+
+                    content:
+                        previousState.content,
+
+                    undoStack:
+                        note.undoStack.slice(
+                            0,
+                            -1
+                        ),
+
+                    redoStack: [
+                        ...note.redoStack,
+                        currentState,
+                    ],
+                };
+            })
+        );
+
+        /*
+         * React will update the editor through
+         * the active-note synchronization effect.
+         */
+    };
+
+    /*
+     * =========================================================
+     * REDO
+     * =========================================================
+     */
+
+    const handleRedo = () => {
+        if (
+            !activeNote ||
+            activeNote.redoStack.length === 0
+        ) {
+            return;
+        }
+
+        const nextState =
+            activeNote.redoStack[
+                activeNote.redoStack.length - 1
+            ];
+
+        const currentState: NoteHistoryState = {
+            title:
+                activeNote.title,
+
+            content:
+                activeNote.content,
+        };
+
+        /*
+         * Move current state back to UNDO.
+         */
+
+        setNoteTabs((previous) =>
+            previous.map((note) => {
+                if (
+                    note.id !== activeNoteId
+                ) {
+                    return note;
+                }
+
+                return {
+                    ...note,
+
+                    title:
+                        nextState.title,
+
+                    content:
+                        nextState.content,
+
+                    undoStack: [
+                        ...note.undoStack,
+                        currentState,
+                    ],
+
+                    redoStack:
+                        note.redoStack.slice(
+                            0,
+                            -1
+                        ),
+                };
+            })
+        );
     };
 
     /*
@@ -524,7 +804,9 @@ export default function NotesApp({
     const handleHeaderMouseDown = (
         event: React.MouseEvent<HTMLDivElement>
     ) => {
-        if (event.button !== 0) {
+        if (
+            event.button !== 0
+        ) {
             return;
         }
 
@@ -713,8 +995,15 @@ export default function NotesApp({
                 : "default",
     };
 
+    /*
+     * =========================================================
+     * SELECTION HANDLES
+     * =========================================================
+     */
+
     const updateSelectionHandles = () => {
-        const editor = editorRef.current;
+        const editor =
+            editorRef.current;
 
         if (!editor) {
             return;
@@ -723,12 +1012,17 @@ export default function NotesApp({
         const selection =
             window.getSelection();
 
-        if (!selection || selection.rangeCount === 0) {
+        if (
+            !selection ||
+            selection.rangeCount === 0
+        ) {
             setSelectionHandles(null);
             return;
         }
 
-        if (selection.isCollapsed) {
+        if (
+            selection.isCollapsed
+        ) {
             setSelectionHandles(null);
             return;
         }
@@ -793,21 +1087,28 @@ export default function NotesApp({
 
         setSelectionHandles({
             start: {
-                left: startLeft,
-                top: startTop,
+                left:
+                    startLeft,
+
+                top:
+                    startTop,
             },
 
             end: {
-                left: endLeft,
-                top: endTop,
+                left:
+                    endLeft,
+
+                top:
+                    endTop,
             },
         });
     };
 
     useEffect(() => {
-        const handleSelectionChange = () => {
-            updateSelectionHandles();
-        };
+        const handleSelectionChange =
+            () => {
+                updateSelectionHandles();
+            };
 
         document.addEventListener(
             "selectionchange",
@@ -822,6 +1123,11 @@ export default function NotesApp({
         };
     }, []);
 
+    /*
+     * =========================================================
+     * ACTIVE FORMATTING
+     * =========================================================
+     */
 
     const updateActiveFormats = () => {
         if (!editorRef.current) {
@@ -846,15 +1152,42 @@ export default function NotesApp({
         });
     };
 
+    /*
+     * =========================================================
+     * FORMATTING
+     * =========================================================
+     */
+
     const applyFormatting = (
         command:
             | "bold"
             | "italic"
             | "strikeThrough"
     ) => {
-        if (!editorRef.current) {
+        if (
+            !editorRef.current ||
+            !activeNote
+        ) {
             return;
         }
+
+        /*
+         * Store the state BEFORE formatting.
+         */
+
+        const previousState:
+            NoteHistoryState = {
+            title:
+                activeNote.title,
+
+            content:
+                activeNote.content,
+        };
+
+        /*
+         * Preserve selection while applying
+         * the browser formatting command.
+         */
 
         editorRef.current.focus();
 
@@ -863,29 +1196,187 @@ export default function NotesApp({
             false
         );
 
+        const newContent =
+            editorRef.current.innerHTML;
+
         /*
-         * Update React state with the
-         * newly formatted HTML.
+         * Only create a history state if
+         * the formatting actually changed
+         * the HTML.
          */
 
-        updateActiveNote({
-            content:
-                editorRef.current.innerHTML,
-        });
+        if (
+            newContent !==
+            activeNote.content
+        ) {
+            pushToUndoStack(
+                previousState
+            );
+
+            updateActiveNote({
+                content:
+                    newContent,
+            });
+        }
 
         updateActiveFormats();
+        updateSelectionHandles();
     };
+
+    /*
+     * =========================================================
+     * KEYBOARD SHORTCUTS
+     * =========================================================
+     */
+
+    const handleEditorKeyDown = (
+        event: React.KeyboardEvent<HTMLDivElement>
+    ) => {
+        /*
+         * Ctrl + B
+         */
+
+        if (
+            event.ctrlKey &&
+            !event.shiftKey &&
+            event.key.toLowerCase() ===
+                "b"
+        ) {
+            event.preventDefault();
+
+            applyFormatting(
+                "bold"
+            );
+
+            return;
+        }
+
+        /*
+         * Ctrl + I
+         */
+
+        if (
+            event.ctrlKey &&
+            !event.shiftKey &&
+            event.key.toLowerCase() ===
+                "i"
+        ) {
+            event.preventDefault();
+
+            applyFormatting(
+                "italic"
+            );
+
+            return;
+        }
+
+        /*
+         * Ctrl + Shift + X
+         */
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            event.key.toLowerCase() ===
+                "x"
+        ) {
+            event.preventDefault();
+
+            applyFormatting(
+                "strikeThrough"
+            );
+
+            return;
+        }
+
+        /*
+         * Ctrl + Z
+         *
+         * We handle this ourselves so that
+         * the custom React history stack is used.
+         */
+
+        if (
+            event.ctrlKey &&
+            !event.shiftKey &&
+            event.key.toLowerCase() ===
+                "z"
+        ) {
+            event.preventDefault();
+
+            handleUndo();
+
+            return;
+        }
+
+        /*
+         * Ctrl + Y
+         */
+
+        if (
+            event.ctrlKey &&
+            !event.shiftKey &&
+            event.key.toLowerCase() ===
+                "y"
+        ) {
+            event.preventDefault();
+
+            handleRedo();
+
+            return;
+        }
+
+        /*
+         * Ctrl + Shift + Z
+         *
+         * Common alternative redo shortcut.
+         */
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            event.key.toLowerCase() ===
+                "z"
+        ) {
+            event.preventDefault();
+
+            handleRedo();
+
+            return;
+        }
+    };
+
+    /*
+     * =========================================================
+     * ACTIVE NOTE → EDITOR SYNCHRONIZATION
+     * =========================================================
+     *
+     * Whenever the active note changes OR undo/redo changes
+     * its content, update the actual contentEditable element.
+     */
 
     useEffect(() => {
         if (!editorRef.current) {
             return;
         }
 
-        editorRef.current.innerHTML =
+        const newContent =
             activeNote?.content ?? "";
 
+        if (
+            editorRef.current.innerHTML !==
+            newContent
+        ) {
+            editorRef.current.innerHTML =
+                newContent;
+        }
+
         updateActiveFormats();
-    }, [activeNoteId]);
+        updateSelectionHandles();
+    }, [
+        activeNoteId,
+        activeNote?.content,
+    ]);
 
     /*
      * =========================================================
@@ -917,7 +1408,8 @@ export default function NotesApp({
                     alignItems:
                         "center",
 
-                    background: "rgba(238, 201, 68, 0.75)",
+                    background:
+                        "rgba(238, 201, 68, 0.75)",
 
                     paddingLeft:
                         "7px",
@@ -936,6 +1428,7 @@ export default function NotesApp({
                             ? "grabbing"
                             : "grab",
                 }}
+
                 onMouseDown={
                     handleHeaderMouseDown
                 }
@@ -949,8 +1442,13 @@ export default function NotesApp({
                             ? notesIcon
                             : notesIcon.src
                     }
+
                     alt=""
-                    draggable={false}
+
+                    draggable={
+                        false
+                    }
+
                     style={{
                         width:
                             "24px",
@@ -1560,7 +2058,17 @@ export default function NotesApp({
                 {/* UNDO */}
 
                 <button
+                    onClick={
+                        handleUndo
+                    }
+
                     title="Undo"
+
+                    disabled={
+                        !activeNote ||
+                        activeNote.undoStack.length ===
+                            0
+                    }
 
                     onMouseDown={(
                         event
@@ -1591,10 +2099,21 @@ export default function NotesApp({
                             "center",
 
                         cursor:
-                            "pointer",
+                            !activeNote ||
+                            activeNote.undoStack.length ===
+                                0
+                                ? "default"
+                                : "pointer",
 
                         padding:
                             0,
+
+                        opacity:
+                            !activeNote ||
+                            activeNote.undoStack.length ===
+                                0
+                                ? 0.3
+                                : 1,
                     }}
                 >
                     <img
@@ -1627,7 +2146,17 @@ export default function NotesApp({
                 {/* REDO */}
 
                 <button
+                    onClick={
+                        handleRedo
+                    }
+
                     title="Redo"
+
+                    disabled={
+                        !activeNote ||
+                        activeNote.redoStack.length ===
+                            0
+                    }
 
                     onMouseDown={(
                         event
@@ -1658,10 +2187,21 @@ export default function NotesApp({
                             "center",
 
                         cursor:
-                            "pointer",
+                            !activeNote ||
+                            activeNote.redoStack.length ===
+                                0
+                                ? "default"
+                                : "pointer",
 
                         padding:
                             0,
+
+                        opacity:
+                            !activeNote ||
+                            activeNote.redoStack.length ===
+                                0
+                                ? 0.3
+                                : 1,
                     }}
                 >
                     <img
@@ -1732,40 +2272,51 @@ export default function NotesApp({
 
                     <button
                         title="Bold"
-                        onMouseDown={(event) => {
-                            /*
-                             * Prevent the button from stealing
-                             * the text selection before we apply
-                             * formatting.
-                             */
+
+                        onMouseDown={(
+                            event
+                        ) => {
                             event.preventDefault();
+
                             event.stopPropagation();
 
-                            applyFormatting("bold");
+                            applyFormatting(
+                                "bold"
+                            );
                         }}
+
                         style={{
-                            width: "30px",
+                            width:
+                                "30px",
 
-                            height: "30px",
+                            height:
+                                "30px",
 
-                            border: 0,
+                            border:
+                                0,
 
-                            borderRadius: "4px",
+                            borderRadius:
+                                "4px",
 
                             background:
                                 activeFormats.bold
                                     ? "#e8e8e8"
                                     : "transparent",
 
-                            display: "flex",
+                            display:
+                                "flex",
 
-                            alignItems: "center",
+                            alignItems:
+                                "center",
 
-                            justifyContent: "center",
+                            justifyContent:
+                                "center",
 
-                            cursor: "pointer",
+                            cursor:
+                                "pointer",
 
-                            padding: 0,
+                            padding:
+                                0,
 
                             transition:
                                 "background 100ms ease",
@@ -1773,19 +2324,24 @@ export default function NotesApp({
                     >
                         <img
                             src={
-                                typeof boldIcon === "string"
+                                typeof boldIcon ===
+                                    "string"
                                     ? boldIcon
                                     : boldIcon.src
                             }
 
                             alt="Bold"
 
-                            draggable={false}
+                            draggable={
+                                false
+                            }
 
                             style={{
-                                width: "19px",
+                                width:
+                                    "19px",
 
-                                height: "19px",
+                                height:
+                                    "19px",
 
                                 opacity:
                                     activeFormats.bold
@@ -1799,35 +2355,51 @@ export default function NotesApp({
 
                     <button
                         title="Italic"
-                        onMouseDown={(event) => {
+
+                        onMouseDown={(
+                            event
+                        ) => {
                             event.preventDefault();
+
                             event.stopPropagation();
 
-                            applyFormatting("italic");
+                            applyFormatting(
+                                "italic"
+                            );
                         }}
+
                         style={{
-                            width: "30px",
+                            width:
+                                "30px",
 
-                            height: "30px",
+                            height:
+                                "30px",
 
-                            border: 0,
+                            border:
+                                0,
 
-                            borderRadius: "4px",
+                            borderRadius:
+                                "4px",
 
                             background:
                                 activeFormats.italic
                                     ? "#e8e8e8"
                                     : "transparent",
 
-                            display: "flex",
+                            display:
+                                "flex",
 
-                            alignItems: "center",
+                            alignItems:
+                                "center",
 
-                            justifyContent: "center",
+                            justifyContent:
+                                "center",
 
-                            cursor: "pointer",
+                            cursor:
+                                "pointer",
 
-                            padding: 0,
+                            padding:
+                                0,
 
                             transition:
                                 "background 100ms ease",
@@ -1835,19 +2407,24 @@ export default function NotesApp({
                     >
                         <img
                             src={
-                                typeof italicIcon === "string"
+                                typeof italicIcon ===
+                                    "string"
                                     ? italicIcon
                                     : italicIcon.src
                             }
 
                             alt="Italic"
 
-                            draggable={false}
+                            draggable={
+                                false
+                            }
 
                             style={{
-                                width: "22px",
+                                width:
+                                    "22px",
 
-                                height: "22px",
+                                height:
+                                    "22px",
 
                                 opacity:
                                     activeFormats.italic
@@ -1857,41 +2434,55 @@ export default function NotesApp({
                         />
                     </button>
 
-                    {/* Strikethrough */}
+                    {/* STRIKETHROUGH */}
 
                     <button
                         title="Strikethrough"
-                        onMouseDown={(event) => {
+
+                        onMouseDown={(
+                            event
+                        ) => {
                             event.preventDefault();
+
                             event.stopPropagation();
 
                             applyFormatting(
                                 "strikeThrough"
                             );
                         }}
+
                         style={{
-                            width: "30px",
+                            width:
+                                "30px",
 
-                            height: "30px",
+                            height:
+                                "30px",
 
-                            border: 0,
+                            border:
+                                0,
 
-                            borderRadius: "4px",
+                            borderRadius:
+                                "4px",
 
                             background:
                                 activeFormats.strikeThrough
                                     ? "#e8e8e8"
                                     : "transparent",
 
-                            display: "flex",
+                            display:
+                                "flex",
 
-                            alignItems: "center",
+                            alignItems:
+                                "center",
 
-                            justifyContent: "center",
+                            justifyContent:
+                                "center",
 
-                            cursor: "pointer",
+                            cursor:
+                                "pointer",
 
-                            padding: 0,
+                            padding:
+                                0,
 
                             transition:
                                 "background 100ms ease",
@@ -1907,12 +2498,16 @@ export default function NotesApp({
 
                             alt="Strikethrough"
 
-                            draggable={false}
+                            draggable={
+                                false
+                            }
 
                             style={{
-                                width: "22px",
+                                width:
+                                    "22px",
 
-                                height: "22px",
+                                height:
+                                    "22px",
 
                                 opacity:
                                     activeFormats.strikeThrough
@@ -1943,12 +2538,12 @@ export default function NotesApp({
                         "#ffffff",
                 }}
             >
-                {/* Custom translucent selection style injected for this editor wrapper */}
                 <style>{`
                     .marker-editor-field::selection {
                         background-color: rgba(244, 154, 81, 0.35) !important;
                         color: inherit !important;
                     }
+
                     .marker-editor-field *::selection {
                         background-color: rgba(244, 154, 81, 0.35) !important;
                         color: inherit !important;
@@ -1956,7 +2551,9 @@ export default function NotesApp({
                 `}</style>
 
                 <div
-                    ref={editorRef}
+                    ref={
+                        editorRef
+                    }
 
                     contentEditable
 
@@ -1964,67 +2561,29 @@ export default function NotesApp({
 
                     suppressContentEditableWarning
 
-                    spellCheck={true}
+                    spellCheck={
+                        true
+                    }
 
                     onInput={() => {
-                        if (!editorRef.current) {
+                        if (
+                            !editorRef.current
+                        ) {
                             return;
                         }
 
-                        updateActiveNote({
-                            content:
-                                editorRef.current.innerHTML,
-                        });
+                        handleContentChange(
+                            editorRef.current
+                                .innerHTML
+                        );
 
                         updateActiveFormats();
                         updateSelectionHandles();
                     }}
 
-                    onKeyDown={(event) => {
-                        /*
-                         * =====================================================
-                         * KEYBOARD SHORTCUTS
-                         * =====================================================
-                         */
-
-                        if (
-                            event.ctrlKey &&
-                            !event.shiftKey &&
-                            event.key.toLowerCase() === "b"
-                        ) {
-                            event.preventDefault();
-
-                            applyFormatting("bold");
-
-                            return;
-                        }
-
-                        if (
-                            event.ctrlKey &&
-                            !event.shiftKey &&
-                            event.key.toLowerCase() === "i"
-                        ) {
-                            event.preventDefault();
-
-                            applyFormatting("italic");
-
-                            return;
-                        }
-
-                        if (
-                            event.ctrlKey &&
-                            event.shiftKey &&
-                            event.key.toLowerCase() === "x"
-                        ) {
-                            event.preventDefault();
-
-                            applyFormatting(
-                                "strikeThrough"
-                            );
-
-                            return;
-                        }
-                    }}
+                    onKeyDown={
+                        handleEditorKeyDown
+                    }
 
                     onMouseUp={() => {
                         updateActiveFormats();
@@ -2037,44 +2596,55 @@ export default function NotesApp({
                     }}
 
                     style={{
-                        width: "100%",
+                        width:
+                            "100%",
 
-                        height: "100%",
+                        height:
+                            "100%",
 
-                        overflowY: "auto",
+                        overflowY:
+                            "auto",
 
-                        outline: "none",
+                        outline:
+                            "none",
 
-                        padding: "10px 8px",
+                        padding:
+                            "10px 8px",
 
-                        background: "#ffffff",
+                        background:
+                            "#ffffff",
 
-                        color: "#111111",
+                        color:
+                            "#111111",
 
                         fontFamily:
                             "Inter, Arial, sans-serif",
 
-                        fontSize: "16px",
+                        fontSize:
+                            "16px",
 
-                        lineHeight: "1.5",
+                        lineHeight:
+                            "1.5",
 
-                        userSelect: "text",
+                        userSelect:
+                            "text",
 
-                        WebkitUserSelect: "text",
+                        WebkitUserSelect:
+                            "text",
 
-                        cursor: "text",
+                        cursor:
+                            "text",
 
-                        whiteSpace: "pre-wrap",
+                        whiteSpace:
+                            "pre-wrap",
 
-                        wordBreak: "break-word",
+                        wordBreak:
+                            "break-word",
 
-                        position: "relative",
+                        position:
+                            "relative",
                     }}
                 >
-                    {/* =====================================================
-                        EDITOR CONTENT
-                    ====================================================== */}
-
                     {/* Actual editable content is managed by contentEditable. */}
                 </div>
 
@@ -2088,59 +2658,86 @@ export default function NotesApp({
 
                         <div
                             style={{
-                                position: "absolute",
+                                position:
+                                    "absolute",
 
                                 left:
-                                    selectionHandles.start.left,
+                                    selectionHandles
+                                        .start
+                                        .left,
 
                                 top:
-                                    selectionHandles.start.top,
+                                    selectionHandles
+                                        .start
+                                        .top,
 
-                                width: "16px",
-                                height: "20px",
+                                width:
+                                    "16px",
+
+                                height:
+                                    "20px",
 
                                 transform:
                                     "translate(-50%, calc(-100% - 16px))",
 
-                                pointerEvents: "none",
+                                pointerEvents:
+                                    "none",
 
-                                zIndex: 50,
+                                zIndex:
+                                    50,
                             }}
                         >
                             {/* circular handle — TOP */}
 
                             <div
                                 style={{
-                                    position: "absolute",
+                                    position:
+                                        "absolute",
 
-                                    left: "3px",
-                                    top: "0px",
+                                    left:
+                                        "3px",
 
-                                    width: "10px",
-                                    height: "10px",
+                                    top:
+                                        "0px",
 
-                                    borderRadius: "50%",
+                                    width:
+                                        "10px",
 
-                                    background: "#f49a51",
+                                    height:
+                                        "10px",
+
+                                    borderRadius:
+                                        "50%",
+
+                                    background:
+                                        "#f49a51",
 
                                     boxShadow:
                                         "0 1px 3px rgba(0,0,0,0.22)",
                                 }}
                             />
 
-                            {/* vertical stem — extends DOWN from circle */}
+                            {/* vertical stem */}
 
                             <div
                                 style={{
-                                    position: "absolute",
+                                    position:
+                                        "absolute",
 
-                                    left: "7px",
-                                    top: "8px",
+                                    left:
+                                        "7px",
 
-                                    width: "2px",
-                                    height: "10px",
+                                    top:
+                                        "8px",
 
-                                    background: "#f49a51",
+                                    width:
+                                        "2px",
+
+                                    height:
+                                        "10px",
+
+                                    background:
+                                        "#f49a51",
 
                                     borderRadius:
                                         "2px",
@@ -2152,59 +2749,82 @@ export default function NotesApp({
 
                         <div
                             style={{
-                                position: "absolute",
+                                position:
+                                    "absolute",
 
                                 left:
-                                    selectionHandles.end.left,
+                                    selectionHandles
+                                        .end
+                                        .left,
 
                                 top:
-                                    selectionHandles.end.top,
+                                    selectionHandles
+                                        .end
+                                        .top,
 
-                                width: "16px",
+                                width:
+                                    "16px",
 
-                                height: "20px",
+                                height:
+                                    "20px",
 
                                 transform:
                                     "translate(-50%, 0)",
 
-                                pointerEvents: "none",
+                                pointerEvents:
+                                    "none",
 
-                                zIndex: 50,
+                                zIndex:
+                                    50,
                             }}
                         >
                             <div
                                 style={{
-                                    position: "absolute",
+                                    position:
+                                        "absolute",
 
-                                    left: "7px",
+                                    left:
+                                        "7px",
 
-                                    top: "0px",
+                                    top:
+                                        "0px",
 
-                                    width: "2px",
+                                    width:
+                                        "2px",
 
-                                    height: "9px",
+                                    height:
+                                        "9px",
 
-                                    background: "#f49a51",
+                                    background:
+                                        "#f49a51",
 
-                                    borderRadius: "2px",
+                                    borderRadius:
+                                        "2px",
                                 }}
                             />
 
                             <div
                                 style={{
-                                    position: "absolute",
+                                    position:
+                                        "absolute",
 
-                                    left: "3px",
+                                    left:
+                                        "3px",
 
-                                    top: "7px",
+                                    top:
+                                        "7px",
 
-                                    width: "10px",
+                                    width:
+                                        "10px",
 
-                                    height: "10px",
+                                    height:
+                                        "10px",
 
-                                    borderRadius: "50%",
+                                    borderRadius:
+                                        "50%",
 
-                                    background: "#f49a51",
+                                    background:
+                                        "#f49a51",
 
                                     boxShadow:
                                         "0 1px 3px rgba(0,0,0,0.22)",

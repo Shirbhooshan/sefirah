@@ -1,11 +1,6 @@
 "use client";
 
-import {
-    useEffect,
-    useRef,
-    useState,
-} from "react";
-
+import { useEffect, useRef, useState } from "react";
 import type {
     CSSProperties,
     MouseEvent as ReactMouseEvent,
@@ -13,60 +8,44 @@ import type {
 } from "react";
 
 /*
-
-* =========================================================
-* SEFIRAH — DEVOPS LAB
-* =========================================================
-*
-* THEORY
-* * Containerization
-* * Images & Persistence
-* * Docker Compose
-* * Nginx & Load Balancing
-* * Cloud Infrastructure
-* * Git & CI/CD
-*
-* IMPLEMENTATION
-* * Dockerizing Sefirah
-* * Environment variables
-* * Multi-stage builds
-* * Docker Compose
-* * CI/CD with GitHub Actions
-* * Vercel deployment
-* * Docker optimization & cleanup
-*
-* The lab follows the same approach as DSALab:
-*
-* ```
-  concept
-  ```
-* ```
-     ↓
-  ```
-* ```
-  simple explanation
-  ```
-* ```
-     ↓
-  ```
-* ```
-  architecture / visualization
-  ```
-* ```
-     ↓
-  ```
-* ```
-  code
-  ```
-* ```
-     ↓
-  ```
-* ```
-  actual Sefirah implementation
-  ```
-*
-* =========================================================
-  */
+ * =========================================================
+ * SEFIRAH — DEVOPS LAB
+ * =========================================================
+ *
+ * THEORY
+ * 01 DevOps overview
+ * 02 Containerization
+ * 03 Images, layers and persistence
+ * 04 Docker Compose
+ * 05 Nginx and load balancing
+ * 06 Cloud infrastructure
+ * 07 Git and CI/CD
+ *
+ * IMPLEMENTATION
+ * 08 Sefirah architecture
+ * 09 Environment variables
+ * 10 Docker implementation
+ * 11 CI pipeline
+ * 12 Deployment
+ * 13 Optimization
+ *
+ * Every section follows:
+ *
+ * concept
+ *   ↓
+ * command / configuration
+ *   ↓
+ * what this does
+ *   ↓
+ * why we use it
+ *   ↓
+ * what happens without it
+ *   ↓
+ * actual Sefirah implementation
+ *   ↓
+ * verification commands
+ * =========================================================
+ */
 
 interface WindowPosition {
     left: number;
@@ -78,18 +57,11 @@ interface WindowPosition {
 interface DevOpsLabProps {
     onClose?: () => void;
     onFocus?: () => void;
-
-    onMove?: (
-        left: number,
-        top: number
-    ) => void;
-
+    onMove?: (left: number, top: number) => void;
     windowPosition: WindowPosition;
 }
 
-type Group =
-    | "theory"
-    | "implementation";
+type Group = "theory" | "implementation";
 
 type Section =
     | "intro"
@@ -106,29 +78,15 @@ type Section =
     | "deployment"
     | "optimization";
 
-/*
-
-* =========================================================
-* CONSTANTS
-* =========================================================
-  */
-
 const WINDOW_WIDTH = 1120;
 const WINDOW_HEIGHT = 760;
 const TITLE_BAR_HEIGHT = 42;
 
-/*
+/* =========================================================
+ * REUSABLE UI
+ * ========================================================= */
 
-* =========================================================
-* SMALL REUSABLE COMPONENTS
-* =========================================================
-  */
-
-function MiniBadge({
-    children,
-}: {
-    children: ReactNode;
-}) {
+function MiniBadge({ children }: { children: ReactNode }) {
     return (
         <span
             style={{
@@ -143,7 +101,8 @@ function MiniBadge({
                 letterSpacing: "0.08em",
             }}
         >
-            {children} </span>
+            {children}
+        </span>
     );
 }
 
@@ -157,11 +116,7 @@ function SectionTitle({
     description: string;
 }) {
     return (
-        <div
-            style={{
-                marginBottom: "22px",
-            }}
-        >
+        <div style={{ marginBottom: "22px" }}>
             <div
                 style={{
                     color: "#238b45",
@@ -171,7 +126,8 @@ function SectionTitle({
                     marginBottom: "8px",
                 }}
             >
-                {eyebrow} </div>
+                {eyebrow}
+            </div>
 
             <h1
                 style={{
@@ -198,33 +154,51 @@ function SectionTitle({
                 {description}
             </p>
         </div>
-
     );
 }
 
 function CodeBlock({
     code,
+    label,
 }: {
     code: string;
+    label?: string;
 }) {
     return (
-        <pre
-            style={{
-                margin: "14px 0 0",
-                padding: "15px",
-                overflowX: "auto",
-                background: "#17201a",
-                color: "#d9f3df",
-                border: "1px solid #26372b",
-                borderRadius: "2px",
-                fontFamily:
-                    '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-                fontSize: "11px",
-                lineHeight: 1.7,
-                whiteSpace: "pre-wrap",
-            }}
-        >
-            {code} </pre>
+        <div style={{ marginTop: "14px" }}>
+            {label && (
+                <div
+                    style={{
+                        marginBottom: "6px",
+                        color: "#6c7b71",
+                        fontSize: "9px",
+                        fontWeight: 800,
+                        letterSpacing: "0.09em",
+                    }}
+                >
+                    {label}
+                </div>
+            )}
+
+            <pre
+                style={{
+                    margin: 0,
+                    padding: "15px",
+                    overflowX: "auto",
+                    background: "#17201a",
+                    color: "#d9f3df",
+                    border: "1px solid #26372b",
+                    borderRadius: "2px",
+                    fontFamily:
+                        '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+                    fontSize: "11px",
+                    lineHeight: 1.7,
+                    whiteSpace: "pre-wrap",
+                }}
+            >
+                {code}
+            </pre>
+        </div>
     );
 }
 
@@ -257,7 +231,8 @@ function InfoBox({
                     marginBottom: "7px",
                 }}
             >
-                {title} </div>
+                {title}
+            </div>
 
             <div
                 style={{
@@ -269,7 +244,6 @@ function InfoBox({
                 {children}
             </div>
         </div>
-
     );
 }
 
@@ -289,208 +263,39 @@ function Card({
                 ...style,
             }}
         >
-            {children} </div>
+            {children}
+        </div>
     );
 }
 
-/*
-
-* =========================================================
-* VISUALIZERS
-* =========================================================
-  */
-
-function VMVsContainerVisualizer() {
+function CommandLesson({
+    title,
+    command,
+    does,
+    why,
+    without,
+}: {
+    title: string;
+    command: string;
+    does: string;
+    why: string;
+    without: string;
+}) {
     return (
-        <div
-            style={{
-                border: "1px solid #dce5df",
-                background: "#fff",
-                padding: "20px",
-            }}
-        >
-            <div
+        <Card style={{ marginTop: "18px" }}>
+            <MiniBadge>COMMAND BREAKDOWN</MiniBadge>
+
+            <h2
                 style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "16px",
+                    margin: "13px 0 8px",
+                    color: "#1d2921",
+                    fontSize: "17px",
                 }}
-            > <div>
-                    <div
-                        style={{
-                            fontSize: "10px",
-                            fontWeight: 800,
-                            color: "#7b6352",
-                            letterSpacing: "0.08em",
-                            marginBottom: "12px",
-                        }}
-                    >
-                        VIRTUAL MACHINE </div>
+            >
+                {title}
+            </h2>
 
-                    <div
-                        style={{
-                            border: "1px solid #dfd8d1",
-                            background: "#faf8f6",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            color: "#65584e",
-                        }}
-                    >
-                        Application
-                    </div>
-
-                    <div
-                        style={{
-                            height: "7px",
-                            background: "#e9e2db",
-                        }}
-                    />
-
-                    <div
-                        style={{
-                            border: "1px solid #dfd8d1",
-                            background: "#faf8f6",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            color: "#65584e",
-                        }}
-                    >
-                        Guest OS
-                    </div>
-
-                    <div
-                        style={{
-                            height: "7px",
-                            background: "#e9e2db",
-                        }}
-                    />
-
-                    <div
-                        style={{
-                            border: "1px solid #dfd8d1",
-                            background: "#f1ece7",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            color: "#65584e",
-                        }}
-                    >
-                        Hypervisor
-                    </div>
-
-                    <div
-                        style={{
-                            height: "7px",
-                            background: "#e9e2db",
-                        }}
-                    />
-
-                    <div
-                        style={{
-                            border: "1px solid #cfc6bc",
-                            background: "#e8e1d8",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 800,
-                            color: "#51473e",
-                        }}
-                    >
-                        Host Hardware
-                    </div>
-                </div>
-
-                <div>
-                    <div
-                        style={{
-                            fontSize: "10px",
-                            fontWeight: 800,
-                            color: "#238b45",
-                            letterSpacing: "0.08em",
-                            marginBottom: "12px",
-                        }}
-                    >
-                        CONTAINER
-                    </div>
-
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "6px",
-                        }}
-                    >
-                        {["App A", "App B"].map(
-                            (app) => (
-                                <div
-                                    key={app}
-                                    style={{
-                                        border: "1px solid #b9d9c1",
-                                        background: "#f2faf4",
-                                        padding: "12px 6px",
-                                        textAlign: "center",
-                                        fontSize: "10px",
-                                        fontWeight: 800,
-                                        color: "#28713d",
-                                    }}
-                                >
-                                    {app}
-                                </div>
-                            )
-                        )}
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            border: "1px solid #c9dfcf",
-                            background: "#e9f6ed",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            color: "#28683b",
-                        }}
-                    >
-                        Container Runtime
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            border: "1px solid #d4e2d7",
-                            background: "#f5f8f5",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            color: "#506258",
-                        }}
-                    >
-                        Shared Host OS Kernel
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            border: "1px solid #cfc6bc",
-                            background: "#e8e1d8",
-                            padding: "9px",
-                            textAlign: "center",
-                            fontSize: "10px",
-                            fontWeight: 800,
-                            color: "#51473e",
-                        }}
-                    >
-                        Host Hardware
-                    </div>
-                </div>
-            </div>
+            <CodeBlock code={command} />
 
             <div
                 style={{
@@ -498,467 +303,54 @@ function VMVsContainerVisualizer() {
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     gap: "12px",
-                    fontSize: "10px",
                 }}
             >
                 <div
                     style={{
-                        color: "#7a695c",
-                    }}
-                >
-                    Full guest operating systems increase
-                    startup time and resource usage.
-                </div>
-
-                <div
-                    style={{
-                        color: "#28713d",
-                    }}
-                >
-                    Containers share the host kernel, making
-                    deployment smaller and faster.
-                </div>
-            </div>
-        </div>
-
-    );
-}
-
-function DockerArchitectureVisualizer() {
-    const boxStyle: CSSProperties = {
-        border: "1px solid #cbd9cf",
-        background: "#fff",
-        padding: "12px",
-        textAlign: "center",
-        fontSize: "10px",
-        fontWeight: 800,
-        color: "#304037",
-    };
-
-    return (
-        <div
-            style={{
-                border: "1px solid #dce5df",
-                padding: "20px",
-                background: "#f9fbf9",
-            }}
-        >
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                        "1fr 34px 1.1fr 34px 1fr",
-                    alignItems: "center",
-                }}
-            > <div style={boxStyle}>
-                    Docker Client
-                    <div
-                        style={{
-                            marginTop: "5px",
-                            fontWeight: 500,
-                            color: "#7a8780",
-                        }}
-                    >
-                        docker build / run </div> </div>
-
-                <div
-                    style={{
-                        textAlign: "center",
-                        color: "#2f9e44",
-                        fontSize: "18px",
-                    }}
-                >
-                    →
-                </div>
-
-                <div
-                    style={{
-                        ...boxStyle,
-                        background: "#edf8f0",
-                        borderColor: "#9acaa6",
-                        color: "#23713b",
-                    }}
-                >
-                    Docker Daemon
-                    <div
-                        style={{
-                            marginTop: "5px",
-                            fontWeight: 500,
-                            color: "#5f8068",
-                        }}
-                    >
-                        builds & manages
-                    </div>
-                </div>
-
-                <div
-                    style={{
-                        textAlign: "center",
-                        color: "#2f9e44",
-                        fontSize: "18px",
-                    }}
-                >
-                    →
-                </div>
-
-                <div style={boxStyle}>
-                    Registry
-                    <div
-                        style={{
-                            marginTop: "5px",
-                            fontWeight: 500,
-                            color: "#7a8780",
-                        }}
-                    >
-                        Docker Hub / ECR
-                    </div>
-                </div>
-            </div>
-
-            <div
-                style={{
-                    marginTop: "15px",
-                    padding: "13px",
-                    border: "1px dashed #b9cbbf",
-                    color: "#607067",
-                    fontSize: "11px",
-                    lineHeight: 1.6,
-                }}
-            >
-                The Docker client sends instructions.
-                The Docker daemon performs the actual
-                building and container management.
-                Images can be downloaded from or uploaded
-                to registries.
-            </div>
-        </div>
-
-    );
-}
-
-function PersistenceVisualizer() {
-    return (
-        <div
-            style={{
-                border: "1px solid #dce5df",
-                background: "#fff",
-                padding: "20px",
-            }}
-        >
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                        "1fr 50px 1fr",
-                    alignItems: "center",
-                }}
-            > <div>
-                    <div
-                        style={{
-                            padding: "16px",
-                            border: "1px solid #f0c9c9",
-                            background: "#fff7f7",
-                            textAlign: "center",
-                            fontSize: "11px",
-                            fontWeight: 800,
-                            color: "#a64242",
-                        }}
-                    >
-                        Container Filesystem </div>
-
-                    <div
-                        style={{
-                            marginTop: "8px",
-                            textAlign: "center",
-                            color: "#a64242",
-                            fontSize: "10px",
-                        }}
-                    >
-                        Deleted container → data disappears
-                    </div>
-                </div>
-
-                <div
-                    style={{
-                        textAlign: "center",
-                        fontSize: "20px",
-                        color: "#7d8a81",
-                    }}
-                >
-                    vs
-                </div>
-
-                <div>
-                    <div
-                        style={{
-                            padding: "16px",
-                            border: "1px solid #b9d9c1",
-                            background: "#f2faf4",
-                            textAlign: "center",
-                            fontSize: "11px",
-                            fontWeight: 800,
-                            color: "#23713b",
-                        }}
-                    >
-                        Docker Volume
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: "8px",
-                            textAlign: "center",
-                            color: "#39804e",
-                            fontSize: "10px",
-                        }}
-                    >
-                        Container deleted → volume survives
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    );
-}
-
-function ComposeVisualizer() {
-    return (
-        <div
-            style={{
-                border: "1px solid #dce5df",
-                background: "#fff",
-                padding: "20px",
-            }}
-        >
-            <div
-                style={{
-                    textAlign: "center",
-                    color: "#238b45",
-                    fontSize: "10px",
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
-                    marginBottom: "15px",
-                }}
-            >
-                docker compose up </div>
-
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                        "1fr 34px 1fr",
-                    alignItems: "center",
-                }}
-            >
-                <div
-                    style={{
-                        border: "1px solid #b9d9c1",
-                        background: "#edf8f0",
-                        padding: "18px",
-                        textAlign: "center",
-                    }}
-                >
-                    <strong
-                        style={{
-                            display: "block",
-                            color: "#23713b",
-                            fontSize: "12px",
-                        }}
-                    >
-                        Sefirah App
-                    </strong>
-
-                    <span
-                        style={{
-                            display: "block",
-                            marginTop: "5px",
-                            fontSize: "10px",
-                            color: "#62836b",
-                        }}
-                    >
-                        Next.js · Port 3000
-                    </span>
-                </div>
-
-                <div
-                    style={{
-                        textAlign: "center",
-                        color: "#2f9e44",
-                        fontSize: "18px",
-                    }}
-                >
-                    →
-                </div>
-
-                <div
-                    style={{
-                        border: "1px solid #cbd9cf",
-                        background: "#f8faf8",
-                        padding: "18px",
-                        textAlign: "center",
-                    }}
-                >
-                    <strong
-                        style={{
-                            display: "block",
-                            color: "#34433a",
-                            fontSize: "12px",
-                        }}
-                    >
-                        MongoDB Atlas
-                    </strong>
-
-                    <span
-                        style={{
-                            display: "block",
-                            marginTop: "5px",
-                            fontSize: "10px",
-                            color: "#718077",
-                        }}
-                    >
-                        External database
-                    </span>
-                </div>
-            </div>
-
-            <div
-                style={{
-                    marginTop: "15px",
-                    padding: "12px",
-                    border: "1px dashed #c8d7cc",
-                    color: "#647169",
-                    fontSize: "10px",
-                    lineHeight: 1.7,
-                }}
-            >
-                Docker Compose gives the project one
-                configuration for building the application,
-                exposing port 3000, loading environment
-                variables, and managing restart behaviour.
-            </div>
-        </div>
-
-    );
-}
-
-function NginxVisualizer() {
-    return (
-        <div
-            style={{
-                border: "1px solid #dce5df",
-                background: "#fff",
-                padding: "20px",
-            }}
-        >
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                        "1fr 36px 1fr 36px 1fr",
-                    alignItems: "center",
-                }}
-            >
-                <div
-                    style={{
-                        padding: "13px",
-                        border: "1px solid #d8e0da",
-                        textAlign: "center",
-                        fontSize: "10px",
-                        fontWeight: 800,
-                        color: "#47564c",
-                    }}
-                >
-                    Users </div>
-
-                <div
-                    style={{
-                        textAlign: "center",
-                        color: "#2f9e44",
-                        fontSize: "18px",
-                    }}
-                >
-                    →
-                </div>
-
-                <div
-                    style={{
-                        padding: "13px",
-                        border: "1px solid #9bcbaa",
-                        background: "#edf8f0",
-                        textAlign: "center",
+                        padding: "12px",
+                        border: "1px solid #dce5df",
                         fontSize: "11px",
-                        fontWeight: 800,
-                        color: "#23713b",
+                        lineHeight: 1.7,
+                        color: "#5d6a62",
                     }}
                 >
-                    Nginx
-                    <div
-                        style={{
-                            fontSize: "9px",
-                            marginTop: "5px",
-                            fontWeight: 500,
-                            color: "#5d8066",
-                        }}
-                    >
-                        Reverse Proxy
-                    </div>
+                    <strong style={{ color: "#28372e" }}>
+                        THIS DOES
+                    </strong>
+                    <br />
+                    {does}
                 </div>
 
                 <div
                     style={{
-                        textAlign: "center",
-                        color: "#2f9e44",
-                        fontSize: "18px",
+                        padding: "12px",
+                        border: "1px solid #f0d4d4",
+                        background: "#fffafa",
+                        fontSize: "11px",
+                        lineHeight: 1.7,
+                        color: "#755f5f",
                     }}
                 >
-                    →
-                </div>
-
-                <div
-                    style={{
-                        display: "grid",
-                        gap: "7px",
-                    }}
-                >
-                    <div
-                        style={{
-                            padding: "8px",
-                            border: "1px solid #cbd9cf",
-                            textAlign: "center",
-                            fontSize: "9px",
-                            fontWeight: 700,
-                        }}
-                    >
-                        Backend 1
-                    </div>
-
-                    <div
-                        style={{
-                            padding: "8px",
-                            border: "1px solid #cbd9cf",
-                            textAlign: "center",
-                            fontSize: "9px",
-                            fontWeight: 700,
-                        }}
-                    >
-                        Backend 2
-                    </div>
+                    <strong style={{ color: "#a64242" }}>
+                        IF WE DID NOT DO THIS
+                    </strong>
+                    <br />
+                    {without}
                 </div>
             </div>
-        </div>
 
+            <InfoBox title="Why we use it">
+                {why}
+            </InfoBox>
+        </Card>
     );
 }
 
-function CICDVisualizer() {
-    const steps = [
-        "Code",
-        "Git Push",
-        "GitHub Actions",
-        "Build",
-        "Validate",
-        "Vercel",
-    ];
-
+function StepsVisualizer({
+    steps,
+}: {
+    steps: string[];
+}) {
     return (
         <div
             style={{
@@ -975,96 +367,104 @@ function CICDVisualizer() {
                     flexWrap: "wrap",
                 }}
             >
-                {steps.map(
-                    (step, index) => (
+                {steps.map((step, index) => (
+                    <div
+                        key={step}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                        }}
+                    >
                         <div
-                            key={step}
                             style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
+                                minWidth: "105px",
+                                padding: "11px 8px",
+                                textAlign: "center",
+                                border: "1px solid #cbd9cf",
+                                background:
+                                    index === steps.length - 1
+                                        ? "#edf8f0"
+                                        : "#fafbfa",
+                                color:
+                                    index === steps.length - 1
+                                        ? "#23713b"
+                                        : "#4d5c52",
+                                fontSize: "9px",
+                                fontWeight: 800,
                             }}
                         >
-                            <div
+                            {step}
+                        </div>
+
+                        {index < steps.length - 1 && (
+                            <span
                                 style={{
-                                    minWidth: "105px",
-                                    padding: "11px 8px",
-                                    textAlign: "center",
-                                    border:
-                                        index === 2 ||
-                                            index === 3 ||
-                                            index === 4
-                                            ? "1px solid #9bcbaa"
-                                            : "1px solid #d5dfd7",
-                                    background:
-                                        index === 2 ||
-                                            index === 3 ||
-                                            index === 4
-                                            ? "#edf8f0"
-                                            : "#fafbfa",
-                                    color:
-                                        index === 2 ||
-                                            index === 3 ||
-                                            index === 4
-                                            ? "#23713b"
-                                            : "#4d5c52",
-                                    fontSize: "9px",
-                                    fontWeight: 800,
+                                    color: "#2f9e44",
+                                    fontSize: "15px",
                                 }}
                             >
-                                {step} </div>
-
-                            {index <
-                                steps.length - 1 && (
-                                    <span
-                                        style={{
-                                            color: "#2f9e44",
-                                            fontSize: "15px",
-                                        }}
-                                    >
-                                        →
-                                    </span>
-                                )}
-                        </div>
-                    )
-                )}
-            </div>
-
-            <div
-                style={{
-                    marginTop: "17px",
-                    display: "grid",
-                    gridTemplateColumns:
-                        "1fr 1fr",
-                    gap: "10px",
-                }}
-            >
-                <div
-                    style={{
-                        padding: "11px",
-                        border: "1px solid #dce5df",
-                        fontSize: "10px",
-                        color: "#647169",
-                    }}
-                >
-                    CI checks whether the project can build
-                    successfully before deployment.
-                </div>
-
-                <div
-                    style={{
-                        padding: "11px",
-                        border: "1px solid #dce5df",
-                        fontSize: "10px",
-                        color: "#647169",
-                    }}
-                >
-                    Deployment happens only after the code
-                    reaches a valid state.
-                </div>
+                                →
+                            </span>
+                        )}
+                    </div>
+                ))}
             </div>
         </div>
+    );
+}
 
+function VMVsContainerVisualizer() {
+    return (
+        <div
+            style={{
+                border: "1px solid #dce5df",
+                background: "#fff",
+                padding: "20px",
+            }}
+        >
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "16px",
+                }}
+            >
+                <Card style={{ background: "#faf8f6" }}>
+                    <MiniBadge>VIRTUAL MACHINE</MiniBadge>
+                    <p style={{ fontSize: "11px", lineHeight: 1.8 }}>
+                        Application → Guest OS → Hypervisor → Host Hardware
+                    </p>
+                    <p
+                        style={{
+                            fontSize: "11px",
+                            color: "#7b6352",
+                            lineHeight: 1.7,
+                        }}
+                    >
+                        Each VM includes a complete guest operating system.
+                    </p>
+                </Card>
+
+                <Card style={{ background: "#f2faf4" }}>
+                    <MiniBadge>CONTAINER</MiniBadge>
+                    <p style={{ fontSize: "11px", lineHeight: 1.8 }}>
+                        Application → Dependencies → Container Runtime →
+                        Shared Host Kernel
+                    </p>
+                    <p
+                        style={{
+                            fontSize: "11px",
+                            color: "#28713d",
+                            lineHeight: 1.7,
+                        }}
+                    >
+                        Containers share the host kernel and package only the
+                        application environment.
+                    </p>
+                </Card>
+            </div>
+        </div>
     );
 }
 
@@ -1080,46 +480,19 @@ function DockerBuildVisualizer() {
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns:
-                        "1fr 35px 1fr",
+                    gridTemplateColumns: "1fr 35px 1fr",
                     alignItems: "stretch",
                 }}
             >
-                <div
-                    style={{
-                        border: "1px solid #d5dfd7",
-                        background: "#fafbfa",
-                        padding: "15px",
-                    }}
-                >
-                    <div
-                        style={{
-                            color: "#6a786f",
-                            fontSize: "9px",
-                            fontWeight: 800,
-                            letterSpacing: "0.08em",
-                            marginBottom: "10px",
-                        }}
-                    >
-                        BUILDER STAGE </div>
-
-                    <div
-                        style={{
-                            fontFamily: "monospace",
-                            fontSize: "10px",
-                            color: "#405047",
-                            lineHeight: 1.9,
-                        }}
-                    >
-                        node:20-alpine
-                        <br />
-                        npm install
-                        <br />
-                        COPY source
-                        <br />
-                        npm run build
-                    </div>
-                </div>
+                <Card style={{ background: "#fafbfa" }}>
+                    <MiniBadge>BUILDER STAGE</MiniBadge>
+                    <CodeBlock
+                        code={`node:20-alpine
+npm ci
+COPY source
+npm run build`}
+                    />
+                </Card>
 
                 <div
                     style={{
@@ -1133,67 +506,52 @@ function DockerBuildVisualizer() {
                     →
                 </div>
 
-                <div
-                    style={{
-                        border: "1px solid #9bcbaa",
-                        background: "#edf8f0",
-                        padding: "15px",
-                    }}
-                >
-                    <div
-                        style={{
-                            color: "#23713b",
-                            fontSize: "9px",
-                            fontWeight: 800,
-                            letterSpacing: "0.08em",
-                            marginBottom: "10px",
-                        }}
-                    >
-                        RUNTIME STAGE
-                    </div>
-
-                    <div
-                        style={{
-                            fontFamily: "monospace",
-                            fontSize: "10px",
-                            color: "#3d6647",
-                            lineHeight: 1.9,
-                        }}
-                    >
-                        production files
-                        <br />
-                        .next
-                        <br />
-                        node_modules
-                        <br />
-                        npm start
-                    </div>
-                </div>
-            </div>
-
-            <div
-                style={{
-                    marginTop: "15px",
-                    color: "#657269",
-                    fontSize: "10px",
-                    lineHeight: 1.7,
-                }}
-            >
-                Multi-stage builds separate the environment
-                needed to build the application from the
-                environment needed to run it.
+                <Card style={{ background: "#edf8f0" }}>
+                    <MiniBadge>RUNNER STAGE</MiniBadge>
+                    <CodeBlock
+                        code={`node:20-alpine
+public
+.next
+node_modules
+npm start`}
+                    />
+                </Card>
             </div>
         </div>
-
     );
 }
 
-/*
+function LoadBalancerVisualizer() {
+    return (
+        <div
+            style={{
+                border: "1px solid #dce5df",
+                background: "#fff",
+                padding: "20px",
+            }}
+        >
+            <StepsVisualizer
+                steps={[
+                    "Users",
+                    "Nginx :80",
+                    "Sefirah-1",
+                    "Sefirah-2",
+                    "Sefirah-3",
+                ]}
+            />
 
-* =========================================================
-* COMPONENT
-* =========================================================
-  */
+            <InfoBox title="Actual project architecture">
+                Nginx is the public entry point. The three Sefirah services
+                are internal backend replicas listening on port 3000 inside
+                the Docker network.
+            </InfoBox>
+        </div>
+    );
+}
+
+/* =========================================================
+ * COMPONENT
+ * ========================================================= */
 
 export default function DevOpsLab({
     onClose,
@@ -1201,81 +559,35 @@ export default function DevOpsLab({
     onMove,
     windowPosition,
 }: DevOpsLabProps) {
-    const [
-        group,
-        setGroup,
-    ] = useState<Group>(
-        "theory"
-    );
+    const [group, setGroup] = useState<Group>("theory");
+    const [section, setSection] = useState<Section>("intro");
+    const [isDragging, setIsDragging] = useState(false);
+    const [hasMovedFromCenter, setHasMovedFromCenter] =
+        useState(false);
 
-    const [
-        section,
-        setSection,
-    ] = useState<Section>(
-        "intro"
-    );
+    const dragOffset = useRef({ x: 0, y: 0 });
 
-    const [
-        isDragging,
-        setIsDragging,
-    ] = useState(false);
-
-    const [
-        hasMovedFromCenter,
-        setHasMovedFromCenter,
-    ] = useState(false);
-
-    const dragOffset =
-        useRef({
-            x: 0,
-            y: 0,
-        });
-
-    /*
-    
-    * =======================================================
-    * DRAGGING
-    * =======================================================
-      */
-
-    const handleDragStart = (
-        event: ReactMouseEvent
-    ) => {
-        if (
-            event.button !== 0
-        ) {
-            return;
-        }
+    const handleDragStart = (event: ReactMouseEvent) => {
+        if (event.button !== 0) return;
 
         event.preventDefault();
         event.stopPropagation();
-
         onFocus?.();
 
-        const windowElement =
-            event.currentTarget.closest(
-                "[data-devops-window]"
-            ) as HTMLElement | null;
+        const windowElement = event.currentTarget.closest(
+            "[data-devops-window]"
+        ) as HTMLElement | null;
 
-        if (!windowElement) {
-            return;
-        }
+        if (!windowElement) return;
 
-        const rect =
-            windowElement.getBoundingClientRect();
+        const rect = windowElement.getBoundingClientRect();
 
         dragOffset.current = {
-            x:
-                event.clientX -
-                rect.left,
-
-            y:
-                event.clientY -
-                rect.top,
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
         };
 
         setIsDragging(true);
-
     };
 
     useEffect(() => {
@@ -1318,46 +630,34 @@ export default function DevOpsLab({
 
             const maxTop =
                 Math.max(
-                    10,
+                    TITLE_BAR_HEIGHT,
                     window.innerHeight -
                     actualHeight -
-                    50
+                    10
                 );
-
-            const clampedLeft =
-                Math.min(
-                    Math.max(
-                        10,
-                        left
-                    ),
-                    maxLeft
-                );
-
-            const clampedTop =
-                Math.min(
-                    Math.max(
-                        10,
-                        top
-                    ),
-                    maxTop
-                );
-
-            setHasMovedFromCenter(
-                true
-            );
 
             onMove?.(
-                clampedLeft,
-                clampedTop
+                Math.max(
+                    10,
+                    Math.min(
+                        left,
+                        maxLeft
+                    )
+                ),
+                Math.max(
+                    TITLE_BAR_HEIGHT,
+                    Math.min(
+                        top,
+                        maxTop
+                    )
+                )
             );
+            setHasMovedFromCenter(true);
         };
 
-        const handleMouseUp =
-            () => {
-                setIsDragging(
-                    false
-                );
-            };
+        const handleUp = () => {
+            setIsDragging(false);
+        };
 
         window.addEventListener(
             "mousemove",
@@ -1366,7 +666,7 @@ export default function DevOpsLab({
 
         window.addEventListener(
             "mouseup",
-            handleMouseUp
+            handleUp
         );
 
         return () => {
@@ -1377,64 +677,53 @@ export default function DevOpsLab({
 
             window.removeEventListener(
                 "mouseup",
-                handleMouseUp
+                handleUp
             );
         };
-
     }, [
         isDragging,
         onMove,
     ]);
 
-    /*
-    
-    * =======================================================
-    * NAVIGATION
-    * =======================================================
-      */
+    /* =====================================================
+     * NAVIGATION
+     * ===================================================== */
 
     const theoryItems = [
         {
             id: "intro" as Section,
             label: "DevOps Overview",
-            description:
-                "The development-to-deployment lifecycle",
+            description: "The development-to-deployment lifecycle",
         },
         {
             id: "containers" as Section,
             label: "Containerization",
-            description:
-                "VMs, containers and Docker architecture",
+            description: "VMs, containers and Docker architecture",
         },
         {
             id: "images" as Section,
             label: "Images & Persistence",
-            description:
-                "Layers, volumes and optimization",
+            description: "Layers, volumes and optimization",
         },
         {
             id: "compose" as Section,
             label: "Docker Compose",
-            description:
-                "Managing application stacks",
+            description: "Managing application stacks",
         },
         {
             id: "nginx" as Section,
             label: "Nginx",
-            description:
-                "Reverse proxies and load balancing",
+            description: "Reverse proxies and load balancing",
         },
         {
             id: "cloud" as Section,
             label: "Cloud Infrastructure",
-            description:
-                "AWS compute, storage and deployment",
+            description: "Compute, storage and deployment",
         },
         {
             id: "cicd" as Section,
             label: "Git & CI/CD",
-            description:
-                "Automation with GitHub Actions",
+            description: "Automation and validation",
         },
     ];
 
@@ -1442,79 +731,56 @@ export default function DevOpsLab({
         {
             id: "sefirah" as Section,
             label: "Sefirah Architecture",
-            description:
-                "What was actually deployed",
+            description: "What was actually implemented",
         },
         {
             id: "environment" as Section,
             label: "Environment Variables",
-            description:
-                "MongoDB and runtime configuration",
+            description: "Build-time and runtime configuration",
         },
         {
             id: "docker" as Section,
             label: "Docker Implementation",
-            description:
-                "Image, build and container workflow",
+            description: "Image, build and container workflow",
         },
         {
             id: "pipeline" as Section,
             label: "CI Pipeline",
-            description:
-                "GitHub build and validation workflow",
+            description: "Automated validation workflow",
         },
         {
             id: "deployment" as Section,
-            label: "Vercel Deployment",
-            description:
-                "Production deployment and fixes",
+            label: "Deployment",
+            description: "Production deployment and debugging",
         },
         {
             id: "optimization" as Section,
             label: "Optimization",
-            description:
-                "Image size, cache and disk cleanup",
+            description: "Caching, image size and cleanup",
         },
     ];
 
-    const handleSelect =
-        (id: Section) => {
-            setSection(id);
+    const handleSelect = (id: Section) => {
+        setSection(id);
 
-            if (
-                theoryItems.some(
-                    (item) =>
-                        item.id === id
-                )
-            ) {
-                setGroup(
-                    "theory"
-                );
-            } else {
-                setGroup(
-                    "implementation"
-                );
-            }
-        };
+        setGroup(
+            theoryItems.some((item) => item.id === id)
+                ? "theory"
+                : "implementation"
+        );
+    };
 
-    const renderNavItem = (
-        item: {
-            id: Section;
-            label: string;
-            description: string;
-        }
-    ) => {
-        const active =
-            section === item.id;
+    const renderNavItem = (item: {
+        id: Section;
+        label: string;
+        description: string;
+    }) => {
+        const active = section === item.id;
 
         return (
             <button
                 key={item.id}
-                onClick={() =>
-                    handleSelect(
-                        item.id
-                    )
-                }
+                onClick={() => handleSelect(item.id)}
                 style={{
                     width: "100%",
                     textAlign: "left",
@@ -1530,16 +796,13 @@ export default function DevOpsLab({
                         ? "#1e7036"
                         : "#58665e",
                     cursor: "pointer",
-                    fontFamily:
-                        "Inter, sans-serif",
+                    fontFamily: "Inter, sans-serif",
                 }}
             >
                 <div
                     style={{
                         fontSize: "12px",
-                        fontWeight: active
-                            ? 800
-                            : 650,
+                        fontWeight: active ? 800 : 650,
                     }}
                 >
                     {item.label}
@@ -1559,1545 +822,871 @@ export default function DevOpsLab({
                 </div>
             </button>
         );
-
     };
 
-    /*
-    
-    * =======================================================
-    * THEORY CONTENT
-    * =======================================================
-      */
+    /* =====================================================
+     * THEORY
+     * ===================================================== */
 
-    const renderIntro =
-        () => (
-            <> <SectionTitle
+    const renderIntro = () => (
+        <>
+            <SectionTitle
                 eyebrow="01 • THEORY"
                 title="What does DevOps actually connect?"
-                description="DevOps connects the work of building software with the work of reliably delivering and operating it. Instead of treating development and deployment as completely separate activities, the workflow becomes a continuous path."
+                description="DevOps connects software development with the systems and processes used to build, validate, deploy and operate that software."
             />
 
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
-                    }}
-                >
-                    <Card>
-                        <MiniBadge>
-                            DEVELOPMENT
-                        </MiniBadge>
+            <StepsVisualizer
+                steps={[
+                    "Write Code",
+                    "Git Commit",
+                    "Build",
+                    "Test",
+                    "Container",
+                    "Deploy",
+                    "Monitor",
+                ]}
+            />
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                color:
-                                    "#1d2921",
-                                fontSize:
-                                    "18px",
-                            }}
-                        >
-                            Build the software.
-                        </h2>
+            <CommandLesson
+                title="The development workflow"
+                command={`git status
 
-                        <p
-                            style={{
-                                color:
-                                    "#5f6c64",
-                                fontSize:
-                                    "13px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            Developers write
-                            features, fix bugs,
-                            manage source
-                            code and create
-                            production builds.
-                        </p>
-
-                        <CodeBlock
-                            code={`git add .
+git add .
 
 git commit -m "feature"
+
 git push
 
 npm run build`}
-                        /> </Card>
+                does="Git status shows changed files. Git add selects changes for a commit. Git commit records a version of the project. Git push sends that version to the remote repository. npm run build checks whether the production application can actually be created."
+                why="This creates a repeatable path from local development to a version that automation and deployment systems can process."
+                without="Without version control and repeatable build commands, deployments depend more heavily on manual machine state and it becomes harder to know exactly which version is running."
+            />
 
-                    <Card>
-                        <MiniBadge>
-                            OPERATIONS
-                        </MiniBadge>
+            <InfoBox title="How this applies to Sefirah">
+                The Sefirah workflow uses source control, production builds,
+                Docker images, Docker Compose, multiple application
+                containers, Nginx and automated validation concepts to make
+                the application environment reproducible.
+            </InfoBox>
+        </>
+    );
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                color:
-                                    "#1d2921",
-                                fontSize:
-                                    "18px",
-                            }}
-                        >
-                            Run it reliably.
-                        </h2>
-
-                        <p
-                            style={{
-                                color:
-                                    "#5f6c64",
-                                fontSize:
-                                    "13px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            Operations focuses
-                            on environments,
-                            containers,
-                            deployment,
-                            networking and
-                            keeping services
-                            available.
-                        </p>
-
-                        <CodeBlock
-                            code={`docker build
-
-docker run
-docker compose up
-deploy`}
-                        /> </Card> </div>
-
-                <InfoBox title="The main idea">
-                    The important DevOps question is not only
-                    "does the code work on my computer?".
-                    It is also "can this exact project be
-                    reproduced, validated and deployed in a
-                    predictable environment?"
-                </InfoBox>
-
-                <InfoBox
-                    title="How this applies to Sefirah"
-                    accent="#2f9e44"
-                >
-                    In this project, we moved from running
-                    Next.js manually on the development
-                    machine to defining a Docker image,
-                    running it through Docker Compose,
-                    validating the project with GitHub
-                    Actions and deploying the application
-                    through Vercel.
-                </InfoBox>
-            </>
-        );
-
-    const renderContainers =
-        () => (
-            <> <SectionTitle
+    const renderContainers = () => (
+        <>
+            <SectionTitle
                 eyebrow="02 • THEORY"
                 title="Containers and Virtual Machines"
-                description="Both VMs and containers isolate workloads, but they do it at different layers."
+                description="Both technologies isolate workloads, but virtual machines virtualize entire operating systems while containers package application processes on a shared host kernel."
             />
 
-                <VMVsContainerVisualizer />
+            <VMVsContainerVisualizer />
 
-                <div
-                    style={{
-                        marginTop: "18px",
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
-                    }}
-                >
-                    <Card>
-                        <h2
-                            style={{
-                                margin: 0,
-                                color:
-                                    "#1d2921",
-                                fontSize:
-                                    "17px",
-                            }}
-                        >
-                            Virtual Machine
-                        </h2>
+            <CommandLesson
+                title="Download an application image"
+                command={`docker pull node:20-alpine
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            A virtual machine
-                            emulates a complete
-                            computer environment.
-                            Each VM can contain
-                            its own guest
-                            operating system.
-                        </p>
-                    </Card>
+docker images`}
+                does="docker pull downloads an image from a registry. docker images lists images currently stored by Docker on the machine."
+                why="Images provide reusable starting environments. The same image definition can be used repeatedly instead of manually installing every dependency."
+                without="Without a reusable image, every developer or server would need to manually reconstruct the runtime environment, increasing configuration differences."
+            />
 
-                    <Card>
-                        <h2
-                            style={{
-                                margin: 0,
-                                color:
-                                    "#1d2921",
-                                fontSize:
-                                    "17px",
-                            }}
-                        >
-                            Container
-                        </h2>
+            <CommandLesson
+                title="Create and run a container"
+                command={`docker run -it node:20-alpine sh
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            A container packages
-                            an application and
-                            its dependencies while
-                            sharing the host
-                            operating system
-                            kernel.
-                        </p>
-                    </Card>
-                </div>
-
-                <div
-                    style={{
-                        marginTop: "20px",
-                    }}
-                >
-                    <DockerArchitectureVisualizer />
-                </div>
-
-                <InfoBox title="Essential Docker commands">
-                    <CodeBlock
-                        code={`docker pull <image>:<tag>
-
-docker run -it <image>
-
-docker run -p 3000:3000 <image>
+docker ps
 
 docker ps -a`}
-                    /> </InfoBox>
-            </>
-        );
+                does="docker run creates a container from an image and starts it. docker ps lists running containers, while docker ps -a also includes stopped containers."
+                why="A container lets an application run inside the environment described by its image."
+                without="Without containers, the application must depend directly on the host machine's installed runtime and dependencies."
+            />
 
-    const renderImages =
-        () => (
-            <> <SectionTitle
+            <InfoBox title="Important distinction">
+                An image is the reusable blueprint. A container is a running
+                or stopped instance created from that image.
+            </InfoBox>
+        </>
+    );
+
+    const renderImages = () => (
+        <>
+            <SectionTitle
                 eyebrow="03 • THEORY"
-                title="Images, Layers and Persistence"
-                description="An image is the reusable blueprint used to create containers. Containers created from an image have a writable layer, but that container data is temporary."
+                title="Images, layers and persistence"
+                description="Docker images are built from layers. Containers add a writable layer, while persistent data can be stored outside the container through volumes or bind mounts."
             />
 
-                <PersistenceVisualizer />
+            <DockerBuildVisualizer />
 
-                <div
-                    style={{
-                        marginTop: "18px",
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
-                    }}
-                >
-                    <Card>
-                        <MiniBadge>
-                            BIND MOUNT
-                        </MiniBadge>
+            <CommandLesson
+                title="Inspect image layers"
+                command={`docker history sefirah
 
-                        <h2
-                            style={{
-                                fontSize:
-                                    "17px",
-                                margin:
-                                    "13px 0 8px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Host-controlled
-                            storage
-                        </h2>
+docker image inspect sefirah`}
+                does="docker history displays the image's layer history. docker image inspect shows detailed metadata such as configuration and image information."
+                why="Layer inspection helps explain why an image is large and which Dockerfile instructions contributed to the final artifact."
+                without="Without inspecting layers, large images can accumulate unnecessary build tools, caches and files without an obvious explanation."
+            />
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            A host directory is
-                            directly mapped into
-                            a container path.
-                            This is particularly
-                            useful during local
-                            development.
-                        </p>
-                    </Card>
+            <CommandLesson
+                title="Create persistent storage"
+                command={`docker volume create sefirah-data
 
-                    <Card>
-                        <MiniBadge>
-                            DOCKER VOLUME
-                        </MiniBadge>
+docker volume ls
 
-                        <h2
-                            style={{
-                                fontSize:
-                                    "17px",
-                                margin:
-                                    "13px 0 8px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Docker-managed
-                            storage
-                        </h2>
+docker volume inspect sefirah-data`}
+                does="The first command creates a Docker-managed volume. The remaining commands list and inspect Docker volumes."
+                why="Volumes allow data to survive independently from a particular container lifecycle."
+                without="If important data existed only in a container writable layer, deleting that container could also remove the data."
+            />
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            Docker manages the
-                            storage independently
-                            from an individual
-                            container, making it
-                            useful for persistent
-                            services such as
-                            databases.
-                        </p>
-                    </Card>
-                </div>
+            <InfoBox title="Layer ordering matters">
+                Docker can reuse cached layers. Instructions that change
+                frequently should generally appear later than stable
+                dependency installation steps. Otherwise a small source
+                change can invalidate an earlier layer and force expensive
+                work to run again.
+            </InfoBox>
+        </>
+    );
 
-                <div
-                    style={{
-                        marginTop: "20px",
-                    }}
-                >
-                    <DockerBuildVisualizer />
-                </div>
-
-                <InfoBox title="Why image optimization matters">
-                    A production image should contain what is
-                    necessary to run the application, not every
-                    temporary compiler, cache or development
-                    dependency used while building it.
-                </InfoBox>
-            </>
-        );
-
-    const renderCompose =
-        () => (
-            <> <SectionTitle
+    const renderCompose = () => (
+        <>
+            <SectionTitle
                 eyebrow="04 • THEORY"
-                title="Multi-Container Orchestration"
-                description="Docker Compose describes services and their configuration in YAML so an application stack can be started through a single workflow."
+                title="Multi-container orchestration with Docker Compose"
+                description="Docker Compose stores application services and their configuration in one YAML file so the stack can be started, inspected and stopped consistently."
             />
 
-                <ComposeVisualizer />
+            <CodeBlock
+                label="SIMPLE COMPOSE EXAMPLE"
+                code={`services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production`}
+            />
 
-                <div
-                    style={{
-                        marginTop: "18px",
-                    }}
-                >
-                    <CodeBlock
-                        code={`services:
-
-app:
-build: .
-ports:
-- "3000:3000"
-environment:
-NODE_ENV: production`}
-                    /> </div>
-
-                <InfoBox title="Compose lifecycle">
-                    <CodeBlock
-                        code={`docker compose up -d
+            <CommandLesson
+                title="Start the entire stack"
+                command={`docker compose up -d
 
 docker compose ps
 
+docker compose logs`}
+                does="docker compose up creates and starts the declared services. The -d flag runs them in the background. docker compose ps shows service state and docker compose logs displays output."
+                why="One command can reproduce the same multi-service environment instead of starting every service manually."
+                without="Without Compose, service commands, networks, ports and environment settings can become inconsistent and difficult to reproduce."
+            />
+
+            <CommandLesson
+                title="Stop and remove the stack"
+                command={`docker compose down
+
 docker compose down -v`}
-                    /> </InfoBox>
+                does="docker compose down stops and removes containers and networks created for the stack. Adding -v also removes associated volumes."
+                why="This provides a controlled way to reset a development stack."
+                without="If resources are left behind indefinitely, stopped containers, networks and volumes can accumulate and consume disk space."
+            />
+        </>
+    );
 
-                <InfoBox
-                    title="Health checks and dependency ordering"
-                    accent="#e67700"
-                >
-                    In larger multi-container stacks,
-                    <code> depends_on </code>
-                    can work together with health checks so
-                    dependent services wait until another
-                    service is actually ready rather than
-                    merely started.
-                </InfoBox>
-            </>
-        );
-
-    const renderNginx =
-        () => (
-            <> <SectionTitle
-                eyebrow="05 • THEORY"
-                title="Nginx, Reverse Proxies and Load Balancing"
-                description="Nginx can sit between users and application servers, forwarding requests while also providing an important networking and security boundary."
+    const renderNginx = () => (
+        <>
+            <SectionTitle
+                eyebrow="05 • THEORY + IMPLEMENTED ARCHITECTURE"
+                title="Nginx, reverse proxy and load balancing"
+                description="In the Sefirah Compose architecture, Nginx is the public entry point while three internal Sefirah application containers provide backend capacity."
             />
 
-                <NginxVisualizer />
+            <LoadBalancerVisualizer />
 
-                <div
-                    style={{
-                        marginTop: "18px",
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
-                    }}
-                >
-                    <Card>
-                        <h2
-                            style={{
-                                margin: 0,
-                                fontSize:
-                                    "16px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Reverse proxy
-                        </h2>
+            <CodeBlock
+                label="LOAD BALANCER CONCEPT"
+                code={`upstream sefirah_backend {
+    server sefirah-1:3000;
+    server sefirah-2:3000;
+    server sefirah-3:3000;
+}
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            The public client
-                            talks to Nginx.
-                            Nginx forwards the
-                            request internally
-                            using
-                            <code>
-                                {" "}
-                                proxy_pass
-                            </code>.
-                        </p>
-                    </Card>
+server {
+    listen 80;
 
-                    <Card>
-                        <h2
-                            style={{
-                                margin: 0,
-                                fontSize:
-                                    "16px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Client information
-                        </h2>
+    location / {
+        proxy_pass http://sefirah_backend;
+    }
+}`}
+            />
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            Headers such as
-                            <code>
-                                {" "}
-                                X-Real-IP
-                            </code>
-                            can preserve
-                            information about
-                            the original client.
-                        </p>
-                    </Card>
-                </div>
+            <CommandLesson
+                title="Start Nginx and backend replicas"
+                command={`docker compose up -d
 
-                <InfoBox title="Load balancing strategies">
-                    Round Robin distributes requests in
-                    sequence. Weighted Round Robin gives
-                    stronger servers more traffic. Least
-                    Connections prefers the server with fewer
-                    active connections. IP Hash can provide
-                    sticky behaviour based on a client IP.
-                </InfoBox>
+docker compose ps
 
-                <InfoBox
-                    title="Was Nginx added to Sefirah?"
-                    accent="#e67700"
-                >
-                    No. This section documents the DevOps
-                    concepts studied in the module. The current
-                    Sefirah deployment does not claim to use
-                    an Nginx reverse proxy.
-                </InfoBox>
-            </>
-        );
+curl http://localhost`}
+                does="Compose starts Nginx and the Sefirah backend services. The curl command then sends an HTTP request to the public entry point."
+                why="Nginx provides one public address while backend containers remain internal to the Docker network."
+                without="If every backend container were exposed directly to users, separate public ports would need to be managed and clients would need to know which container to contact."
+            />
 
-    const renderCloud =
-        () => (
-            <> <SectionTitle
+            <InfoBox title="What the upstream block does">
+                The upstream group gives Nginx multiple backend servers. The
+                proxy can forward requests to these services rather than
+                sending all traffic to a single application container.
+            </InfoBox>
+
+            <InfoBox title="Important implementation note" accent="#e67700">
+                The exact routing behavior depends on the contents of your
+                actual <code>nginx/nginx.conf</code>. The Compose file supplied
+                for Sefirah confirms the Nginx service, the mounted
+                configuration file and the three application services.
+            </InfoBox>
+        </>
+    );
+
+    const renderCloud = () => (
+        <>
+            <SectionTitle
                 eyebrow="06 • THEORY"
-                title="Cloud Infrastructure and AWS"
-                description="Cloud services provide managed building blocks for storage, container registries and scalable application deployment."
+                title="Cloud infrastructure"
+                description="Cloud platforms provide managed building blocks for compute, storage, networking, registries and deployment."
             />
 
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                            "repeat(3, 1fr)",
-                        gap: "16px",
-                    }}
-                >
-                    {[
-                        {
-                            title:
-                                "Amazon S3",
-                            description:
-                                "Object storage for static files, backups and other durable objects.",
-                        },
-                        {
-                            title:
-                                "Amazon ECR",
-                            description:
-                                "A private container registry integrated with AWS IAM.",
-                        },
-                        {
-                            title:
-                                "Elastic Beanstalk",
-                            description:
-                                "A platform that manages infrastructure around application deployment.",
-                        },
-                    ].map(
-                        (service) => (
-                            <Card
-                                key={
-                                    service.title
-                                }
-                            >
-                                <MiniBadge>
-                                    AWS
-                                </MiniBadge>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "16px",
+                }}
+            >
+                {[
+                    [
+                        "Object Storage",
+                        "Durable storage for files, backups and static objects.",
+                    ],
+                    [
+                        "Container Registry",
+                        "A place to store and distribute built container images.",
+                    ],
+                    [
+                        "Compute Platform",
+                        "Infrastructure capable of running application workloads.",
+                    ],
+                ].map(([title, description]) => (
+                    <Card key={title}>
+                        <MiniBadge>CLOUD</MiniBadge>
+                        <h2
+                            style={{
+                                margin: "13px 0 8px",
+                                fontSize: "16px",
+                            }}
+                        >
+                            {title}
+                        </h2>
+                        <p
+                            style={{
+                                margin: 0,
+                                fontSize: "11px",
+                                lineHeight: 1.7,
+                                color: "#657269",
+                            }}
+                        >
+                            {description}
+                        </p>
+                    </Card>
+                ))}
+            </div>
 
-                                <h2
-                                    style={{
-                                        margin:
-                                            "13px 0 8px",
-                                        color:
-                                            "#1d2921",
-                                        fontSize:
-                                            "16px",
-                                    }}
-                                >
-                                    {
-                                        service.title
-                                    }
-                                </h2>
+            <CommandLesson
+                title="Typical container delivery sequence"
+                command={`docker build -t sefirah:latest .
 
-                                <p
-                                    style={{
-                                        margin: 0,
-                                        color:
-                                            "#657269",
-                                        fontSize:
-                                            "11px",
-                                        lineHeight:
-                                            1.75,
-                                    }}
-                                >
-                                    {
-                                        service.description
-                                    }
-                                </p>
-                            </Card>
-                        )
-                    )}
-                </div>
+docker tag sefirah:latest registry.example/sefirah:latest
 
-                <InfoBox title="Security principles">
-                    Restrict SSH access through Security Groups
-                    instead of exposing port 22 to everyone.
-                    Deployment environments should also receive
-                    only the IAM permissions they actually need.
-                </InfoBox>
+docker push registry.example/sefirah:latest`}
+                does="The application is built locally, tagged for a registry and then pushed so another deployment environment can retrieve the same image."
+                why="The image becomes a deployable artifact that can move independently from the developer's machine."
+                without="Without a registry or another artifact distribution mechanism, production infrastructure has no consistent way to obtain the exact image that was built and validated."
+            />
 
-                <InfoBox
-                    title="How AWS could fit Sefirah"
-                    accent="#e67700"
-                >
-                    AWS was studied as part of the module but
-                    was not deployed for this project. A
-                    possible architecture would be:
-                    GitHub Actions builds a Docker image →
-                    pushes it to ECR → an AWS deployment
-                    service pulls the image → infrastructure
-                    runs and exposes the application.
-                </InfoBox>
-            </>
-        );
+            <InfoBox title="How cloud infrastructure could extend Sefirah">
+                A future architecture could build the Sefirah image in CI,
+                push it to a container registry and run that exact artifact
+                on managed cloud infrastructure.
+            </InfoBox>
+        </>
+    );
 
-    const renderCICD =
-        () => (
-            <> <SectionTitle
+    const renderCICD = () => (
+        <>
+            <SectionTitle
                 eyebrow="07 • THEORY"
-                title="Version Control and Automated CI/CD"
-                description="Git tracks changes through stages, while CI/CD systems automate validation and delivery when those changes are pushed."
+                title="Git and automated CI/CD"
+                description="Git records project history while continuous integration automatically validates changes in a clean environment."
             />
 
-                <CICDVisualizer />
+            <StepsVisualizer
+                steps={[
+                    "Code",
+                    "Git Add",
+                    "Commit",
+                    "Push",
+                    "CI Runner",
+                    "Build",
+                    "Deploy",
+                ]}
+            />
 
-                <div
-                    style={{
-                        marginTop: "18px",
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr 1fr",
-                        gap: "12px",
-                    }}
-                >
-                    {[
-                        {
-                            title:
-                                "Working Directory",
-                            text:
-                                "Files currently being changed.",
-                        },
-                        {
-                            title:
-                                "Staging Area",
-                            text:
-                                "Changes selected using git add.",
-                        },
-                        {
-                            title:
-                                "Local Repository",
-                            text:
-                                "A committed project history.",
-                        },
-                    ].map(
-                        (item) => (
-                            <Card
-                                key={
-                                    item.title
-                                }
-                                style={{
-                                    padding:
-                                        "15px",
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontSize:
-                                            "11px",
-                                        fontWeight:
-                                            800,
-                                        color:
-                                            "#28382e",
-                                    }}
-                                >
-                                    {
-                                        item.title
-                                    }
-                                </div>
+            <CommandLesson
+                title="Record a change with Git"
+                command={`git status
 
-                                <div
-                                    style={{
-                                        marginTop:
-                                            "7px",
-                                        fontSize:
-                                            "10px",
-                                        lineHeight:
-                                            1.6,
-                                        color:
-                                            "#748078",
-                                    }}
-                                >
-                                    {
-                                        item.text
-                                    }
-                                </div>
-                            </Card>
-                        )
-                    )}
-                </div>
+git add .
 
-                <InfoBox title="GitHub Actions structure">
-                    A workflow YAML file defines an event such
-                    as a push, one or more jobs running on a
-                    runner such as <code>ubuntu-latest</code>,
-                    and steps that execute actions or shell
-                    commands.
-                </InfoBox>
+git commit -m "describe the change"
 
-                <CodeBlock
-                    code={`on:
+git push`}
+                does="Git status shows changes, git add places selected changes into the staging area, git commit records a snapshot and git push sends commits to the remote repository."
+                why="This provides traceable project history and creates an event that CI systems can respond to."
+                without="Without version history, it becomes harder to identify what changed, reproduce an earlier version or automate actions from repository events."
+            />
 
-push:
+            <CodeBlock
+                label="GITHUB ACTIONS WORKFLOW STRUCTURE"
+                code={`name: Validate
+
+on:
+  push:
 
 jobs:
-validate:
-runs-on: ubuntu-latest
+  validate:
+    runs-on: ubuntu-latest
 
-steps:
-  - checkout
-  - install dependencies
-  - npm run build`}
-                />
-            </>
-        );
+    steps:
+      - uses: actions/checkout@v4
 
-    /*
-    
-    * =======================================================
-    * IMPLEMENTATION CONTENT
-    * =======================================================
-      */
+      - name: Install dependencies
+        run: npm ci
 
-    const renderSefirah =
-        () => (
-            <> <SectionTitle
-                eyebrow="08 • IMPLEMENTATION"
-                title="DevOps implementation in Sefirah"
-                description="The DevOps work in this project focused on making the existing Next.js application reproducible, containerized, validated and deployable."
+      - name: Build
+        run: npm run build`}
             />
 
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
-                    }}
-                >
-                    <Card>
-                        <MiniBadge>
-                            APPLICATION
-                        </MiniBadge>
+            <InfoBox title="What CI protects against">
+                A local machine may contain cached dependencies, locally
+                generated files or configuration that accidentally hides a
+                problem. A clean CI environment helps reveal whether the
+                repository itself contains everything required to build.
+            </InfoBox>
+        </>
+    );
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                fontSize:
-                                    "18px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Sefirah
-                        </h2>
+    /* =====================================================
+     * IMPLEMENTATION
+     * ===================================================== */
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            The project is a
-                            Next.js application
-                            containing the
-                            desktop interface,
-                            filesystem,
-                            authentication,
-                            notes and the
-                            cooking game.
-                        </p>
-                    </Card>
+    const renderSefirah = () => (
+        <>
+            <SectionTitle
+                eyebrow="08 • IMPLEMENTATION"
+                title="Actual Sefirah DevOps architecture"
+                description="The implemented stack uses a multi-stage Docker build, three Sefirah application services, environment configuration and an Nginx public entry point."
+            />
 
-                    <Card>
-                        <MiniBadge>
-                            DATABASE
-                        </MiniBadge>
+            <LoadBalancerVisualizer />
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                fontSize:
-                                    "18px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            MongoDB
-                        </h2>
+            <CodeBlock
+                label="ACTUAL DOCKER COMPOSE ARCHITECTURE"
+                code={`services:
+  sefirah-1:
+    build: .
+    expose:
+      - "3000"
+    env_file:
+      - .env.local
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            The application
-                            requires the
-                            MongoDB connection
-                            string through
-                            <code>
-                                {" "}
-                                MONGODB_URI
-                            </code>.
-                        </p>
-                    </Card>
-                </div>
+  sefirah-2:
+    build: .
+    expose:
+      - "3000"
+    env_file:
+      - .env.local
 
-                <div
-                    style={{
-                        marginTop: "20px",
-                    }}
-                >
-                    <ComposeVisualizer />
-                </div>
+  sefirah-3:
+    build: .
+    expose:
+      - "3000"
+    env_file:
+      - .env.local
 
-                <InfoBox title="The important DevOps improvement">
-                    Instead of requiring every machine to have
-                    the exact local development setup, Docker
-                    provides a defined application environment.
-                    The same image can be built and run through
-                    a consistent workflow.
-                </InfoBox>
-            </>
-        );
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    depends_on:
+      - sefirah-1
+      - sefirah-2
+      - sefirah-3`}
+            />
 
-    const renderEnvironment =
-        () => (
-            <> <SectionTitle
+            <InfoBox title="What we actually implemented">
+                All three Sefirah services are built from the same
+                Dockerfile. They expose port 3000 inside Docker rather than
+                publishing separate host ports. Nginx publishes port 80 and
+                acts as the public entry point.
+            </InfoBox>
+
+            <InfoBox title="Why this architecture is useful" accent="#2f9e44">
+                The application can have multiple backend replicas while
+                users interact with one public endpoint. This separates
+                public traffic handling from the application containers.
+            </InfoBox>
+
+            <InfoBox
+                title="What would happen without the proxy layer"
+                accent="#e67700"
+            >
+                Multiple replicas could still exist, but clients would need a
+                separate way to choose or discover which backend instance to
+                contact.
+            </InfoBox>
+        </>
+    );
+
+    const renderEnvironment = () => (
+        <>
+            <SectionTitle
                 eyebrow="09 • IMPLEMENTATION"
                 title="Environment variables and MONGODB_URI"
-                description="One of the main problems encountered during containerization was that the application needed MongoDB configuration while Next.js was performing its production build."
+                description="The Sefirah build required MongoDB configuration during the Next.js production build, while the running containers also load environment configuration."
             />
 
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
-                    }}
-                >
-                    <Card>
-                        <MiniBadge>
-                            THE ERROR
-                        </MiniBadge>
+            <CodeBlock
+                label="ACTUAL DOCKERFILE BUILD-TIME CONFIGURATION"
+                code={`# Build-time environment variable.
+# This is supplied by docker-compose.yml.
+ARG MONGODB_URI
+ENV MONGODB_URI=$MONGODB_URI
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                fontSize:
-                                    "17px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Build-time failure
-                        </h2>
+RUN npm run build`}
+            />
 
-                        <CodeBlock
-                            code={`Error:
+            <CodeBlock
+                label="ACTUAL COMPOSE BUILD ARGUMENT"
+                code={`build:
+  context: .
+  dockerfile: Dockerfile
+  args:
+    MONGODB_URI: \${MONGODB_URI}`}
+            />
 
-Invalid/Missing environment variable:
-"MONGODB_URI"`}
-                        />
+            <CodeBlock
+                label="ACTUAL RUNTIME ENVIRONMENT FILE"
+                code={`env_file:
+  - .env.local`}
+            />
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            The application
-                            imported MongoDB
-                            configuration while
-                            Next.js collected
-                            route configuration
-                            during the build.
-                        </p>
-                    </Card>
+            <CommandLesson
+                title="Build with the required MongoDB configuration"
+                command={`docker build \\
+  --build-arg MONGODB_URI="$MONGODB_URI" \\
+  -t sefirah .`}
+                does="The build argument provides MONGODB_URI to the Docker build. The Dockerfile then exposes it to the build environment before npm run build executes."
+                why="The Sefirah project encountered a production build requirement where MongoDB configuration was needed while Next.js generated the application build."
+                without="If the build requires MONGODB_URI but it is only provided after the container starts, the production build can fail before the runtime container exists."
+            />
 
-                    <Card>
-                        <MiniBadge>
-                            THE SOLUTION
-                        </MiniBadge>
+            <InfoBox title="Security principle" accent="#e67700">
+                Environment values such as database connection strings should
+                not be hard-coded into application source or committed to a
+                public repository. Production environments should provide
+                their own secure configuration.
+            </InfoBox>
+        </>
+    );
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                fontSize:
-                                    "17px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Separate build and runtime configuration
-                        </h2>
-
-                        <CodeBlock
-                            code={`docker run \\
--p 3000:3000 \
---env-file .env.local \
-sefirah`}
-                        />
-
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            Docker Compose was
-                            also configured to
-                            load
-                            <code>
-                                {" "}
-                                .env.local
-                            </code>
-                            into the running
-                            container.
-                        </p>
-                    </Card>
-                </div>
-
-                <InfoBox title="Why this matters">
-                    Environment variables should not be hard
-                    coded into application source code. The same
-                    image can therefore run with different
-                    configuration in development, testing and
-                    production environments.
-                </InfoBox>
-
-                <InfoBox
-                    title="Important security practice"
-                    accent="#e67700"
-                >
-                    The actual MongoDB connection string should
-                    remain outside the public Git repository.
-                    Production environments should store their
-                    own secure environment variables.
-                </InfoBox>
-            </>
-        );
-
-    const renderDocker =
-        () => (
-            <> <SectionTitle
+    const renderDocker = () => (
+        <>
+            <SectionTitle
                 eyebrow="10 • IMPLEMENTATION"
                 title="Dockerizing Sefirah"
-                description="The project was built into a Docker image and successfully run as a production Next.js container on port 3000."
+                description="Sefirah uses a multi-stage Dockerfile that builds the Next.js application in one stage and creates a smaller runtime environment in another."
             />
 
-                <DockerBuildVisualizer />
+            <CodeBlock
+                label="ACTUAL SEFIRAH DOCKERFILE"
+                code={`# =========================================================
+# BUILDER
+# =========================================================
 
-                <div
-                    style={{
-                        marginTop: "18px",
-                    }}
-                >
-                    <CodeBlock
-                        code={`docker build -t sefirah .
+FROM node:20-alpine AS builder
 
-docker images sefirah
+WORKDIR /app
 
-docker run \
--p 3000:3000 \
---env-file .env.local \
-sefirah`}
-                    /> </div>
+COPY package*.json ./
 
-                <InfoBox title="What was verified">
-                    The Docker image successfully completed the
-                    production build, the container started with
-                    <code> npm start </code>, and the application
-                    was exposed through host port 3000.
-                </InfoBox>
+RUN npm ci
 
-                <InfoBox title="Container monitoring">
-                    Docker commands were also used to inspect
-                    resource usage and image layers:
-                    <CodeBlock
-                        code={`docker history sefirah-sefirah
+COPY . .
 
-docker stats --no-stream
+ARG MONGODB_URI
+ENV MONGODB_URI=$MONGODB_URI
 
-docker system df`}
-                    /> </InfoBox>
-            </>
-        );
+RUN npm run build
 
-    const renderPipeline =
-        () => (
-            <> <SectionTitle
+
+# =========================================================
+# RUNNER
+# =========================================================
+
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=builder /app/public ./public
+
+COPY --from=builder /app/.next ./.next
+
+COPY --from=builder /app/node_modules ./node_modules
+
+COPY --from=builder /app/package.json ./package.json
+
+EXPOSE 3000
+
+CMD ["npm", "start"]`}
+            />
+
+            <DockerBuildVisualizer />
+
+            <CommandLesson
+                title="Build the actual Sefirah image"
+                command={`docker compose build
+
+docker images`}
+                does="docker compose build processes the Dockerfile for each declared Sefirah service. docker images can then be used to inspect locally stored image artifacts."
+                why="The Dockerfile defines the application environment as code, allowing the same build procedure to be repeated."
+                without="Without an image build definition, each environment would need to manually reproduce the Node.js runtime, dependencies and production build."
+            />
+
+            <CommandLesson
+                title="Inspect the running containers"
+                command={`docker compose up -d
+
+docker compose ps
+
+docker stats --no-stream`}
+                does="The stack starts in the background, service status is displayed and Docker reports container resource usage."
+                why="Verification commands confirm that the configuration not only builds but also produces running containers."
+                without="A successful image build alone does not prove that the runtime command, environment configuration or networking actually works."
+            />
+        </>
+    );
+
+    const renderPipeline = () => (
+        <>
+            <SectionTitle
                 eyebrow="11 • IMPLEMENTATION"
-                title="Continuous Integration with GitHub Actions"
-                description="A CI workflow was added to automatically build and validate the project after code changes were pushed to GitHub."
+                title="Continuous integration pipeline"
+                description="The CI objective is to automatically validate that the repository can install dependencies and produce a production build in an independent environment."
             />
 
-                <CICDVisualizer />
+            <StepsVisualizer
+                steps={[
+                    "Push",
+                    "Checkout",
+                    "npm ci",
+                    "Build",
+                    "Validation",
+                    "Result",
+                ]}
+            />
 
-                <div
+            <CodeBlock
+                label="CI VALIDATION EXAMPLE"
+                code={`name: Sefirah CI
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm run build`}
+            />
+
+            <CommandLesson
+                title="Install dependencies reproducibly"
+                command={`npm ci`}
+                does="npm ci installs dependencies according to the project's lockfile and is designed for clean, repeatable installation environments."
+                why="CI should avoid depending on whatever packages happen to be cached or installed on a developer's machine."
+                without="A non-reproducible dependency installation can make builds differ between environments and make failures harder to reproduce."
+            />
+
+            <CommandLesson
+                title="Validate the production build"
+                command={`npm run build`}
+                does="Next.js performs its production build process and generates the application artifacts required by the configured production runtime."
+                why="This catches problems that development mode may not reveal."
+                without="A project could appear to work while developing but fail only when production compilation or route generation occurs."
+            />
+        </>
+    );
+
+    const renderDeployment = () => (
+        <>
+            <SectionTitle
+                eyebrow="12 • IMPLEMENTATION"
+                title="Deployment and production validation"
+                description="Deployment is another validation environment. A project can compile locally yet expose configuration or build artifact problems when another platform builds it."
+            />
+
+            <Card>
+                <MiniBadge>DEPLOYMENT ISSUE</MiniBadge>
+
+                <h2
                     style={{
-                        marginTop: "18px",
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
+                        margin: "13px 0 8px",
+                        fontSize: "18px",
+                        color: "#1d2921",
                     }}
                 >
-                    <Card>
-                        <MiniBadge>
-                            AUTOMATED CHECK
-                        </MiniBadge>
+                    Build artifact mismatch
+                </h2>
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                fontSize:
-                                    "17px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Production build
-                        </h2>
-
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            The CI pipeline
-                            checks whether
-                            <code>
-                                {" "}
-                                npm run build
-                            </code>
-                            succeeds in a clean
-                            environment.
-                        </p>
-                    </Card>
-
-                    <Card>
-                        <MiniBadge>
-                            RESULT
-                        </MiniBadge>
-
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                fontSize:
-                                    "17px",
-                                color:
-                                    "#1d2921",
-                            }}
-                        >
-                            Build and validation passed
-                        </h2>
-
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            The workflow was
-                            successfully run,
-                            demonstrating that
-                            the project could
-                            be automatically
-                            validated without
-                            manually running
-                            every check.
-                        </p>
-                    </Card>
-                </div>
-
-                <InfoBox title="Why CI is useful">
-                    A local machine can contain cached
-                    dependencies or environment differences.
-                    CI provides an independent environment that
-                    can catch build problems before deployment.
-                </InfoBox>
-            </>
-        );
-
-
-    const renderDeployment =
-        () => (
-            <> <SectionTitle
-                eyebrow="12 • IMPLEMENTATION"
-                title="Deployment through Vercel"
-                description="The production deployment pipeline exposed a Next.js build issue that had to be fixed before the application could deploy successfully."
-            />
-
-                <Card>
-                    <MiniBadge>
-                        DEPLOYMENT ISSUE
-                    </MiniBadge>
-
-                    <h2
-                        style={{
-                            margin:
-                                "13px 0 8px",
-                            fontSize:
-                                "18px",
-                            color:
-                                "#1d2921",
-                        }}
-                    >
-                        Build artifact mismatch
-                    </h2>
-
-                    <CodeBlock
-                        code={`ENOENT:
+                <CodeBlock
+                    code={`ENOENT:
 
 no such file or directory
 
 .next/next-server.js.nft.json`}
-                    />
+                />
 
-                    <p
-                        style={{
-                            color:
-                                "#657269",
-                            fontSize:
-                                "12px",
-                            lineHeight:
-                                1.75,
-                        }}
-                    >
-                        The Vercel build
-                        successfully compiled
-                        and generated pages,
-                        but a build completion
-                        step attempted to
-                        access a file that was
-                        not present in the
-                        generated output.
-                    </p>
-                </Card>
-
-                <InfoBox title="What the deployment process demonstrated">
-                    Deployment is also validation. A project
-                    can work locally and still expose problems
-                    when built inside another environment.
-                    Fixing these differences is part of making
-                    a deployment reproducible.
-                </InfoBox>
-
-                <InfoBox
-                    title="Current project outcome"
-                    accent="#2f9e44"
-                >
-                    The CI build and validation workflow
-                    completed successfully, and the project was
-                    prepared for production deployment through
-                    Vercel.
-                </InfoBox>
-            </>
-        );
-
-    const renderOptimization =
-        () => (
-            <> <SectionTitle
-                eyebrow="13 • IMPLEMENTATION"
-                title="Docker optimization and disk management"
-                description="Container development can consume significant disk space because Docker stores images, stopped containers, networks, volumes and build caches."
-            />
-
-                <div
+                <p
                     style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                            "1fr 1fr",
-                        gap: "18px",
+                        color: "#657269",
+                        fontSize: "12px",
+                        lineHeight: 1.75,
                     }}
                 >
-                    <Card>
-                        <MiniBadge>
-                            THE PROBLEM
-                        </MiniBadge>
+                    The deployment workflow exposed an expected output file
+                    that was not present in the generated build artifact.
+                    This demonstrates why deployment environments are useful
+                    as independent validation systems.
+                </p>
+            </Card>
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                color:
-                                    "#1d2921",
-                                fontSize:
-                                    "17px",
-                            }}
-                        >
-                            Repeated builds accumulated storage
-                        </h2>
+            <CommandLesson
+                title="Reproduce production checks before deployment"
+                command={`npm run build
 
-                        <p
-                            style={{
-                                color:
-                                    "#657269",
-                                fontSize:
-                                    "12px",
-                                lineHeight:
-                                    1.75,
-                            }}
-                        >
-                            Multiple versions of
-                            large Sefirah images,
-                            stopped containers and
-                            build cache objects
-                            accumulated inside
-                            Docker Desktop.
-                        </p>
-                    </Card>
+docker compose build
 
-                    <Card>
-                        <MiniBadge>
-                            THE SOLUTION
-                        </MiniBadge>
+docker compose up -d
 
-                        <h2
-                            style={{
-                                margin:
-                                    "13px 0 8px",
-                                color:
-                                    "#1d2921",
-                                fontSize:
-                                    "17px",
-                            }}
-                        >
-                            Inspect and prune unused resources
-                        </h2>
+docker compose logs`}
+                does="The production application is built, the container image is rebuilt, the stack is started and logs are inspected for runtime failures."
+                why="Running these stages together tests more of the delivery path before relying on a production deployment platform."
+                without="If only local development mode is tested, production-only build or container issues may first appear after deployment."
+            />
 
-                        <CodeBlock
-                            code={`docker system df
+            <InfoBox title="Important outcome">
+                A deployment platform is not merely a hosting destination. It
+                is also an independent environment that can expose hidden
+                assumptions about files, configuration, dependencies and build
+                output.
+            </InfoBox>
+        </>
+    );
 
-docker system prune
+    const renderOptimization = () => (
+        <>
+            <SectionTitle
+                eyebrow="13 • IMPLEMENTATION"
+                title="Docker optimization and disk management"
+                description="Repeated image builds can consume significant storage through images, stopped containers, build cache, networks and volumes."
+            />
+
+            <CommandLesson
+                title="Inspect Docker disk usage"
+                command={`docker system df
+
+docker image ls
+
+docker builder du`}
+                does="docker system df summarizes Docker storage usage, docker image ls lists images and docker builder du examines build cache usage."
+                why="Storage should be inspected before aggressively deleting resources so the source of disk usage is understood."
+                without="Blind cleanup can remove useful caches or data without identifying what was actually consuming disk space."
+            />
+
+            <CommandLesson
+                title="Remove unused resources"
+                command={`docker system prune
 
 docker builder prune -a`}
-                        /> </Card> </div>
+                does="docker system prune removes unused Docker resources. docker builder prune -a removes unused build cache more aggressively."
+                why="Cleanup can reclaim storage after repeated development and build cycles."
+                without="Unused images, stopped containers and cache layers can continue accumulating until local storage becomes constrained."
+            />
 
-                <InfoBox title="What was observed">
-                    Running Docker cleanup reclaimed a large
-                    amount of unused disk space, including
-                    stopped containers and unused build cache.
-                    This demonstrated why image lifecycle
-                    management matters during repeated builds.
-                </InfoBox>
+            <InfoBox title="Why cleanup can make the next build slower" accent="#e67700">
+                Docker caching exists to avoid repeating expensive operations.
+                If build cache is removed, Docker may need to download base
+                images and rerun dependency installation or other build steps.
+                Cleanup saves disk space, but excessive cleanup can trade disk
+                space for slower future builds.
+            </InfoBox>
 
-                <InfoBox
-                    title="Important caution"
-                    accent="#e67700"
-                >
-                    Pruning removes unused Docker resources.
-                    It should be used carefully when containers,
-                    volumes or cached images contain data that
-                    is still needed.
-                </InfoBox>
-            </>
-        );
+            <CodeBlock
+                label="CACHE-FRIENDLY DOCKERFILE ORDER"
+                code={`COPY package*.json ./
 
-    /*
-    
-    * =======================================================
-    * CURRENT SECTION
-    * =======================================================
-      */
+RUN npm ci
 
-    const renderCurrent =
-        () => {
-            switch (
-            section
-            ) {
-                case "intro":
-                    return renderIntro();
+COPY . .
 
-                case "containers":
-                    return renderContainers();
+RUN npm run build`}
+            />
 
-                case "images":
-                    return renderImages();
+            <InfoBox title="What this ordering does">
+                Dependency files are copied before the complete source tree.
+                When only application source changes, Docker can potentially
+                reuse the cached dependency installation layer. If all source
+                files were copied before npm ci, small code changes could
+                invalidate the dependency layer and force installation again.
+            </InfoBox>
+        </>
+    );
 
-                case "compose":
-                    return renderCompose();
+    /* =====================================================
+     * CURRENT SECTION
+     * ===================================================== */
 
-                case "nginx":
-                    return renderNginx();
+    const renderCurrent = () => {
+        switch (section) {
+            case "intro":
+                return renderIntro();
+            case "containers":
+                return renderContainers();
+            case "images":
+                return renderImages();
+            case "compose":
+                return renderCompose();
+            case "nginx":
+                return renderNginx();
+            case "cloud":
+                return renderCloud();
+            case "cicd":
+                return renderCICD();
+            case "sefirah":
+                return renderSefirah();
+            case "environment":
+                return renderEnvironment();
+            case "docker":
+                return renderDocker();
+            case "pipeline":
+                return renderPipeline();
+            case "deployment":
+                return renderDeployment();
+            case "optimization":
+                return renderOptimization();
+            default:
+                return renderIntro();
+        }
+    };
 
-                case "cloud":
-                    return renderCloud();
-
-                case "cicd":
-                    return renderCICD();
-
-                case "sefirah":
-                    return renderSefirah();
-
-                case "environment":
-                    return renderEnvironment();
-
-                case "docker":
-                    return renderDocker();
-
-                case "pipeline":
-                    return renderPipeline();
-
-                case "deployment":
-                    return renderDeployment();
-
-                case "optimization":
-                    return renderOptimization();
-
-                default:
-                    return renderIntro();
-            }
-        };
-
-    /*
-    
-    * =======================================================
-    * RENDER
-    * =======================================================
-      */
+    /* =====================================================
+     * RENDER
+     * ===================================================== */
 
     return (
         <div
             data-devops-window
-            onMouseDown={
-                onFocus
-            }
+            onMouseDown={onFocus}
             style={{
-                position:
-                    "absolute",
-
+                position: "absolute",
                 left:
                     windowPosition.centered &&
                         !hasMovedFromCenter
                         ? "50%"
                         : `${windowPosition.left}px`,
-
                 top:
                     windowPosition.centered &&
                         !hasMovedFromCenter
                         ? "50%"
                         : `${windowPosition.top}px`,
-
                 transform:
                     windowPosition.centered &&
                         !hasMovedFromCenter
                         ? "translate(-50%, -50%)"
                         : "none",
-
-                width:
-                    `min(${WINDOW_WIDTH}px, calc(100vw - 20px))`,
-
-                height:
-                    `min(${WINDOW_HEIGHT}px, calc(100vh - 60px))`,
-
-                minWidth:
-                    "820px",
-
-                minHeight:
-                    "580px",
-
-                zIndex:
-                    windowPosition.zIndex,
-
-                display:
-                    "flex",
-
-                flexDirection:
-                    "column",
-
-                overflow:
-                    "hidden",
-
-                background:
-                    "#ffffff",
-
-                border:
-                    "1px solid #b8c8bc",
-
-                borderRadius:
-                    "2px",
-
+                width: `min(${WINDOW_WIDTH}px, calc(100vw - 20px))`,
+                height: `min(${WINDOW_HEIGHT}px, calc(100vh - 60px))`,
+                minWidth: "820px",
+                minHeight: "580px",
+                zIndex: windowPosition.zIndex,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                background: "#ffffff",
+                border: "1px solid #b8c8bc",
+                borderRadius: "2px",
                 boxShadow:
                     "0 18px 55px rgba(21, 36, 26, 0.22)",
-
-                fontFamily:
-                    "Inter, sans-serif",
-
-                userSelect:
-                    isDragging
-                        ? "none"
-                        : "auto",
+                fontFamily: "Inter, sans-serif",
+                userSelect: isDragging ? "none" : "auto",
             }}
         >
             {/* TITLE BAR */}
 
             <div
-                onMouseDown={
-                    handleDragStart
-                }
+                onMouseDown={handleDragStart}
                 style={{
-                    height:
-                        `${TITLE_BAR_HEIGHT}px`,
-
-                    flexShrink:
-                        0,
-
-                    display:
-                        "flex",
-
-                    alignItems:
-                        "center",
-
-                    justifyContent:
-                        "space-between",
-
-                    padding:
-                        "0 12px 0 14px",
-
+                    height: `${TITLE_BAR_HEIGHT}px`,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0 12px 0 14px",
                     borderBottom:
                         "1px solid rgba(195, 211, 199, 0.8)",
-
                     background:
                         "rgba(255, 255, 255, 0.76)",
-
-                    backdropFilter:
-                        "blur(16px)",
-
-                    cursor:
-                        isDragging
-                            ? "grabbing"
-                            : "grab",
+                    backdropFilter: "blur(16px)",
+                    cursor: isDragging ? "grabbing" : "grab",
                 }}
             >
                 <div
                     style={{
-                        display:
-                            "flex",
-
-                        alignItems:
-                            "center",
-
-                        gap:
-                            "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
                     }}
                 >
-                    <div
-                        style={{
-                            width:
-                                "18px",
-
-                            height:
-                                "18px",
-
-                            display:
-                                "flex",
-
-                            alignItems:
-                                "center",
-
-                            justifyContent:
-                                "center",
-
-                            background:
-                                "#238b45",
-
-                            color:
-                                "#fff",
-
-                            fontSize:
-                                "10px",
-
-                            fontWeight:
-                                900,
-
-                            borderRadius:
-                                "2px",
-                        }}
-                    >
-                        D
-                    </div>
 
                     <span
                         style={{
-                            color:
-                                "#28372e",
-
-                            fontSize:
-                                "12px",
-
-                            fontWeight:
-                                750,
+                            color: "#28372e",
+                            fontSize: "12px",
+                            fontWeight: 750,
                         }}
                     >
                         DevOps Lab
@@ -3105,17 +1694,10 @@ docker builder prune -a`}
 
                     <span
                         style={{
-                            color:
-                                "#8a958e",
-
-                            fontSize:
-                                "9px",
-
-                            borderLeft:
-                                "1px solid #d6dfd8",
-
-                            paddingLeft:
-                                "9px",
+                            color: "#8a958e",
+                            fontSize: "9px",
+                            borderLeft: "1px solid #d6dfd8",
+                            paddingLeft: "9px",
                         }}
                     >
                         Sefirah
@@ -3123,46 +1705,22 @@ docker builder prune -a`}
                 </div>
 
                 <button
-                    onMouseDown={
-                        (event) =>
-                            event.stopPropagation()
+                    onMouseDown={(event) =>
+                        event.stopPropagation()
                     }
-                    onClick={
-                        onClose
-                    }
+                    onClick={onClose}
                     style={{
-                        width:
-                            "26px",
-
-                        height:
-                            "26px",
-
-                        border:
-                            "none",
-
-                        background:
-                            "transparent",
-
-                        color:
-                            "#68746c",
-
-                        cursor:
-                            "pointer",
-
-                        fontSize:
-                            "18px",
-
-                        lineHeight:
-                            1,
-
-                        display:
-                            "flex",
-
-                        alignItems:
-                            "center",
-
-                        justifyContent:
-                            "center",
+                        width: "26px",
+                        height: "26px",
+                        border: "none",
+                        background: "transparent",
+                        color: "#68746c",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        lineHeight: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                     }}
                     aria-label="Close DevOps Lab"
                 >
@@ -3174,96 +1732,52 @@ docker builder prune -a`}
 
             <div
                 style={{
-                    flex:
-                        1,
-
-                    minHeight:
-                        0,
-
-                    display:
-                        "grid",
-
-                    gridTemplateColumns:
-                        "218px 1fr",
-
-                    overflow:
-                        "hidden",
+                    flex: 1,
+                    minHeight: 0,
+                    display: "grid",
+                    gridTemplateColumns: "218px 1fr",
+                    overflow: "hidden",
                 }}
             >
                 {/* SIDEBAR */}
 
                 <aside
                     style={{
-                        borderRight:
-                            "1px solid #dce5df",
-
-                        background:
-                            "#f8faf8",
-
-                        overflowY:
-                            "auto",
-
-                        padding:
-                            "14px 0",
+                        borderRight: "1px solid #dce5df",
+                        background: "#f8faf8",
+                        overflowY: "auto",
+                        padding: "14px 0",
                     }}
                 >
-                    <div
-                        style={{
-                            padding:
-                                "0 13px 10px",
-                        }}
-                    >
+                    <div style={{ padding: "0 13px 10px" }}>
                         <div
                             style={{
-                                display:
-                                    "flex",
-
-                                border:
-                                    "1px solid #d4dfd6",
-
-                                background:
-                                    "#fff",
+                                display: "flex",
+                                border: "1px solid #d4dfd6",
+                                background: "#fff",
                             }}
                         >
                             <button
                                 onClick={() =>
-                                    setGroup(
-                                        "theory"
-                                    )
+                                    setGroup("theory")
                                 }
                                 style={{
-                                    flex:
-                                        1,
-
-                                    border:
-                                        "none",
-
-                                    padding:
-                                        "8px 4px",
-
+                                    flex: 1,
+                                    border: "none",
+                                    padding: "8px 4px",
                                     background:
-                                        group ===
-                                            "theory"
+                                        group === "theory"
                                             ? "#238b45"
                                             : "transparent",
-
                                     color:
-                                        group ===
-                                            "theory"
+                                        group === "theory"
                                             ? "#fff"
                                             : "#738077",
-
-                                    cursor:
-                                        "pointer",
-
+                                    cursor: "pointer",
                                     fontFamily:
                                         "Inter, sans-serif",
-
-                                    fontSize:
-                                        "9px",
-
-                                    fontWeight:
-                                        800,
+                                    fontSize: "9px",
+                                    fontWeight: 800,
                                 }}
                             >
                                 THEORY
@@ -3276,38 +1790,24 @@ docker builder prune -a`}
                                     )
                                 }
                                 style={{
-                                    flex:
-                                        1,
-
-                                    border:
-                                        "none",
-
-                                    padding:
-                                        "8px 4px",
-
+                                    flex: 1,
+                                    border: "none",
+                                    padding: "8px 4px",
                                     background:
                                         group ===
                                             "implementation"
                                             ? "#238b45"
                                             : "transparent",
-
                                     color:
                                         group ===
                                             "implementation"
                                             ? "#fff"
                                             : "#738077",
-
-                                    cursor:
-                                        "pointer",
-
+                                    cursor: "pointer",
                                     fontFamily:
                                         "Inter, sans-serif",
-
-                                    fontSize:
-                                        "9px",
-
-                                    fontWeight:
-                                        800,
+                                    fontSize: "9px",
+                                    fontWeight: 800,
                                 }}
                             >
                                 IMPLEMENTATION
@@ -3317,33 +1817,20 @@ docker builder prune -a`}
 
                     <div
                         style={{
-                            padding:
-                                "8px 13px 6px",
-
-                            color:
-                                "#8a958e",
-
-                            fontSize:
-                                "9px",
-
-                            fontWeight:
-                                800,
-
-                            letterSpacing:
-                                "0.09em",
+                            padding: "8px 13px 6px",
+                            color: "#8a958e",
+                            fontSize: "9px",
+                            fontWeight: 800,
+                            letterSpacing: "0.09em",
                         }}
                     >
-                        {group ===
-                            "theory"
+                        {group === "theory"
                             ? "DEVOPS CONCEPTS"
                             : "SEFIRAH IMPLEMENTATION"}
                     </div>
 
-                    {group ===
-                        "theory"
-                        ? theoryItems.map(
-                            renderNavItem
-                        )
+                    {group === "theory"
+                        ? theoryItems.map(renderNavItem)
                         : implementationItems.map(
                             renderNavItem
                         )}
@@ -3353,20 +1840,14 @@ docker builder prune -a`}
 
                 <main
                     style={{
-                        overflowY:
-                            "auto",
-
-                        background:
-                            "#ffffff",
-
-                        padding:
-                            "30px 34px 48px",
+                        overflowY: "auto",
+                        background: "#ffffff",
+                        padding: "30px 34px 48px",
                     }}
                 >
                     {renderCurrent()}
                 </main>
             </div>
         </div>
-
     );
 }
