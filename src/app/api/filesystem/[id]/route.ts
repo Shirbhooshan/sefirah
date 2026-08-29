@@ -10,6 +10,12 @@ interface RouteContext {
   }>;
 }
 
+/*
+ * =========================================================
+ * AUTHENTICATION
+ * =========================================================
+ */
+
 function hashToken(token: string) {
   return crypto
     .createHash("sha256")
@@ -32,25 +38,34 @@ async function getAuthenticatedUser() {
   const client = await clientPromise;
   const db = client.db("sefirah");
 
-  const session = await db.collection("sessions").findOne({
-    tokenHash,
-  });
+  const session = await db
+    .collection("sessions")
+    .findOne({
+      tokenHash,
+    });
 
   if (!session) {
     return null;
   }
 
   if (session.expiresAt < new Date()) {
-    await db.collection("sessions").deleteOne({
-      _id: session._id,
-    });
+    await db
+      .collection("sessions")
+      .deleteOne({
+        _id: session._id,
+      });
 
     return null;
   }
 
-  const user = await db.collection("users").findOne({
-    _id: new ObjectId(session.userId),
-  });
+  const userId = session.userId;
+
+  const user =
+    await db
+      .collection("users")
+      .findOne({
+        _id: new ObjectId(userId),
+      });
 
   if (!user) {
     return null;
@@ -62,9 +77,67 @@ async function getAuthenticatedUser() {
   };
 }
 
+/*
+ * =========================================================
+ * OBJECT ID HELPERS
+ * =========================================================
+ */
+
+function getQueryId(id: string): ObjectId | null {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+
+  return new ObjectId(id);
+}
+
+function buildItemQuery(id: string) {
+  const queryId = getQueryId(id);
+
+  if (queryId) {
+    return {
+      $or: [
+        {
+          _id: queryId,
+        },
+        {
+          id,
+        },
+      ],
+    };
+  }
+
+  return {
+    id,
+  };
+}
+
+/*
+ * =========================================================
+ * GET
+ *
+ * GET /api/filesystem
+ * GET /api/filesystem?parentId=...
+ * GET /api/filesystem?recycle=true
+ * =========================================================
+ */
+
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const user = await getAuthenticatedUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } =
+      new URL(request.url);
 
     const isRecycle =
       searchParams.get("recycle") === "true";
@@ -78,31 +151,75 @@ export async function GET(request: Request) {
     const db =
       client.db("sefirah");
 
-    const query: any = isRecycle
-      ? {
-        deletedAt: {
-          $ne: null,
-        },
-      }
-      : {
-        $or: [
-          {
+    /*
+     * =======================================================
+     * RECYCLE BIN
+     * =======================================================
+     */
+
+    if (isRecycle) {
+      const items =
+        await db
+          .collection("filesystem")
+          .find({
+            ownerId: user.id,
+
             deletedAt: {
-              $exists: false,
+              $exists: true,
+              $ne: null,
             },
+          })
+          .sort({
+            type: -1,
+            name: 1,
+          })
+          .toArray();
+
+      return NextResponse.json({
+        success: true,
+        items,
+      });
+    }
+
+    /*
+     * =======================================================
+     * NORMAL FILESYSTEM
+     *
+     * Old documents may not have deletedAt.
+     * Therefore we explicitly allow:
+     *
+     * deletedAt doesn't exist
+     * OR
+     * deletedAt === null
+     * =======================================================
+     */
+
+    const query = {
+      ownerId: user.id,
+
+      $or: [
+        {
+          deletedAt: {
+            $exists: false,
           },
-          {
-            deletedAt: null,
-          },
-        ],
-        parentId:
-          parentId ?? null,
-      };
+        },
+        {
+          deletedAt: null,
+        },
+      ],
+
+      parentId:
+        parentId ?? null,
+    };
 
     const items =
       await db
         .collection("filesystem")
         .find(query)
+        .sort({
+          type: -1,
+          name: 1,
+        })
         .toArray();
 
     return NextResponse.json({
@@ -126,15 +243,14 @@ export async function GET(request: Request) {
   }
 }
 
-function getQueryId(id: string) {
-  return ObjectId.isValid(id)
-    ? new ObjectId(id)
-    : id;
-}
-
 /*
  * =========================================================
  * DELETE
+ *
+ * Normal delete = SOFT DELETE
+ *
+ * The item is moved into Recycle Bin rather than
+ * permanently removed from MongoDB.
  * =========================================================
  */
 
@@ -143,7 +259,21 @@ export async function DELETE(
   { params }: RouteContext
 ) {
   try {
-    const { id } = await params;
+    const user =
+      await getAuthenticatedUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        { status: 401 }
+      );
+    }
+
+    const { id } =
+      await params;
 
     const client =
       await clientPromise;
@@ -151,48 +281,38 @@ export async function DELETE(
     const db =
       client.db("sefirah");
 
-    const queryId =
-      getQueryId(id);
-
     /*
-     * =========================================================
+     * =======================================================
      * FIND ITEM
-     * =========================================================
+     * =======================================================
      */
 
     const item =
       await db
         .collection("filesystem")
         .findOne({
-          $or: [
-            {
-              _id: queryId,
-            },
-            {
-              id: id,
-            },
-          ],
+          ...buildItemQuery(id),
+          ownerId: user.id,
         });
 
     if (!item) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Item not found",
+          message: "Item not found",
         },
         { status: 404 }
       );
     }
 
     /*
-     * =========================================================
+     * =======================================================
      * SOFT DELETE ROOT ITEM
-     * =========================================================
+     * =======================================================
      */
 
     const deletedAt =
-      new Date().toISOString();
+      new Date();
 
     const originalParentId =
       item.parentId ?? null;
@@ -202,30 +322,36 @@ export async function DELETE(
       .updateOne(
         {
           _id: item._id,
+          ownerId: user.id,
         },
         {
           $set: {
             deletedAt,
             originalParentId,
             parentId: null,
+            updatedAt: deletedAt,
           },
         }
       );
 
     /*
-     * =========================================================
+     * =======================================================
      * SOFT DELETE DESCENDANTS
-     * =========================================================
+     * =======================================================
      *
-     * Folders can contain folders, so we walk
-     * the hierarchy recursively.
+     * If the deleted item is a folder, every child
+     * underneath it is also moved into the deleted state.
+     *
+     * Their parentId relationships are preserved so that
+     * the hierarchy can be reconstructed on restore.
+     * =======================================================
      */
 
     if (item.type === "folder") {
-      const descendants: string[] = [];
+      const descendants: ObjectId[] = [];
 
-      let currentParentIds = [
-        item._id.toString(),
+      let currentParentIds: ObjectId[] = [
+        item._id,
       ];
 
       while (
@@ -236,35 +362,39 @@ export async function DELETE(
             .collection("filesystem")
             .find({
               parentId: {
-                $in:
-                  currentParentIds,
+                $in: currentParentIds.map(
+                  (parentId) =>
+                    parentId.toString()
+                ),
               },
 
-              ownerId:
-                item.ownerId,
+              ownerId: user.id,
+
+              /*
+               * Don't include already deleted items.
+               */
+              deletedAt: {
+                $exists: false,
+              },
             })
             .toArray();
 
-        if (
-          children.length === 0
-        ) {
+        if (children.length === 0) {
           break;
         }
 
-        const nextParentIds: string[] =
-          [];
+        const nextParentIds: ObjectId[] = [];
 
         for (const child of children) {
           descendants.push(
-            child._id.toString()
+            child._id
           );
 
           if (
-            child.type ===
-            "folder"
+            child.type === "folder"
           ) {
             nextParentIds.push(
-              child._id.toString()
+              child._id
             );
           }
         }
@@ -274,11 +404,10 @@ export async function DELETE(
       }
 
       /*
-       * Mark every descendant
-       * as deleted.
+       * Mark descendants as deleted.
        *
-       * Their existing parentId
-       * relationships are preserved.
+       * IMPORTANT:
+       * We intentionally DO NOT change parentId here.
        */
 
       if (
@@ -289,26 +418,26 @@ export async function DELETE(
           .updateMany(
             {
               _id: {
-                $in:
-                  descendants.map(
-                    (childId) =>
-                      new ObjectId(
-                        childId
-                      )
-                  ),
+                $in: descendants,
               },
 
-              ownerId:
-                item.ownerId,
+              ownerId: user.id,
             },
             {
               $set: {
                 deletedAt,
+                updatedAt: deletedAt,
               },
             }
           );
       }
     }
+
+    /*
+     * =======================================================
+     * RESPONSE
+     * =======================================================
+     */
 
     return NextResponse.json({
       success: true,
@@ -320,8 +449,7 @@ export async function DELETE(
 
         originalParentId,
 
-        parentId:
-          null,
+        parentId: null,
       },
     });
   } catch (error) {
@@ -343,7 +471,14 @@ export async function DELETE(
 
 /*
  * =========================================================
- * RESTORE
+ * PATCH
+ *
+ * Currently supports:
+ *
+ * {
+ *   restore: true
+ * }
+ *
  * =========================================================
  */
 
@@ -352,7 +487,21 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const { id } = await params;
+    const user =
+      await getAuthenticatedUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        { status: 401 }
+      );
+    }
+
+    const { id } =
+      await params;
 
     const body =
       await request.json();
@@ -363,13 +512,10 @@ export async function PATCH(
     const db =
       client.db("sefirah");
 
-    const queryId =
-      getQueryId(id);
-
     /*
-     * =========================================================
+     * =======================================================
      * RESTORE
-     * =========================================================
+     * =======================================================
      */
 
     if (body.restore) {
@@ -377,14 +523,8 @@ export async function PATCH(
         await db
           .collection("filesystem")
           .findOne({
-            $or: [
-              {
-                _id: queryId,
-              },
-              {
-                id: id,
-              },
-            ],
+            ...buildItemQuery(id),
+            ownerId: user.id,
           });
 
       if (!item) {
@@ -399,9 +539,9 @@ export async function PATCH(
       }
 
       /*
-       * =======================================================
+       * =====================================================
        * FIND ORIGINAL PARENT
-       * =======================================================
+       * =====================================================
        */
 
       let newParentId =
@@ -409,26 +549,69 @@ export async function PATCH(
         null;
 
       if (newParentId) {
-        const originalParent =
-          await db
-            .collection("filesystem")
-            .findOne({
-              _id:
-                getQueryId(
-                  newParentId
-                ),
+        const parentQueryId =
+          getQueryId(
+            newParentId.toString()
+          );
 
-              ownerId:
-                item.ownerId,
+        let originalParent = null;
 
-              deletedAt: {
-                $exists: false,
-              },
-            });
+        if (parentQueryId) {
+          originalParent =
+            await db
+              .collection("filesystem")
+              .findOne({
+                _id:
+                  parentQueryId,
+
+                ownerId:
+                  user.id,
+
+                /*
+                 * Parent must currently
+                 * exist outside Recycle Bin.
+                 */
+                $or: [
+                  {
+                    deletedAt: {
+                      $exists: false,
+                    },
+                  },
+                  {
+                    deletedAt: null,
+                  },
+                ],
+              });
+        } else {
+          /*
+           * Support legacy string IDs.
+           */
+
+          originalParent =
+            await db
+              .collection("filesystem")
+              .findOne({
+                id: newParentId,
+
+                ownerId:
+                  user.id,
+
+                $or: [
+                  {
+                    deletedAt: {
+                      $exists: false,
+                    },
+                  },
+                  {
+                    deletedAt: null,
+                  },
+                ],
+              });
+        }
 
         /*
-         * Original folder no longer
-         * exists or is deleted.
+         * Original folder no longer exists
+         * or is itself deleted.
          *
          * Restore to Home instead.
          */
@@ -439,16 +622,20 @@ export async function PATCH(
       }
 
       /*
-       * =======================================================
+       * =====================================================
        * RESTORE SELECTED ITEM
-       * =======================================================
+       * =====================================================
        */
+
+      const restoreTime =
+        new Date();
 
       await db
         .collection("filesystem")
         .updateOne(
           {
             _id: item._id,
+            ownerId: user.id,
           },
           {
             $set: {
@@ -456,7 +643,7 @@ export async function PATCH(
                 newParentId,
 
               updatedAt:
-                new Date(),
+                restoreTime,
             },
 
             $unset: {
@@ -467,20 +654,25 @@ export async function PATCH(
         );
 
       /*
-       * =======================================================
+       * =====================================================
        * RESTORE DESCENDANTS
-       * =======================================================
+       * =====================================================
        *
-       * If the restored item is a folder,
-       * restore all descendants that were
-       * deleted with it.
+       * If the selected item is a folder, restore its
+       * descendants too.
+       *
+       * Their original parentId values were preserved
+       * during deletion.
+       * =====================================================
        */
 
-      if (item.type === "folder") {
-        const descendants: string[] = [];
+      if (
+        item.type === "folder"
+      ) {
+        const descendants: ObjectId[] = [];
 
-        let currentParentIds = [
-          item._id.toString(),
+        let currentParentIds: ObjectId[] = [
+          item._id,
         ];
 
         while (
@@ -491,12 +683,13 @@ export async function PATCH(
               .collection("filesystem")
               .find({
                 parentId: {
-                  $in:
-                    currentParentIds,
+                  $in: currentParentIds.map(
+                    (parentId) =>
+                      parentId.toString()
+                  ),
                 },
 
-                ownerId:
-                  item.ownerId,
+                ownerId: user.id,
 
                 deletedAt: {
                   $exists: true,
@@ -511,20 +704,18 @@ export async function PATCH(
             break;
           }
 
-          const nextParentIds: string[] =
-            [];
+          const nextParentIds: ObjectId[] = [];
 
           for (const child of children) {
             descendants.push(
-              child._id.toString()
+              child._id
             );
 
             if (
-              child.type ===
-              "folder"
+              child.type === "folder"
             ) {
               nextParentIds.push(
-                child._id.toString()
+                child._id
               );
             }
           }
@@ -532,6 +723,13 @@ export async function PATCH(
           currentParentIds =
             nextParentIds;
         }
+
+        /*
+         * Restore descendants.
+         *
+         * We don't change parentId because their original
+         * hierarchy was preserved during deletion.
+         */
 
         if (
           descendants.length > 0
@@ -541,17 +739,10 @@ export async function PATCH(
             .updateMany(
               {
                 _id: {
-                  $in:
-                    descendants.map(
-                      (childId) =>
-                        new ObjectId(
-                          childId
-                        )
-                    ),
+                  $in: descendants,
                 },
 
-                ownerId:
-                  item.ownerId,
+                ownerId: user.id,
 
                 deletedAt: {
                   $exists: true,
@@ -566,7 +757,7 @@ export async function PATCH(
 
                 $set: {
                   updatedAt:
-                    new Date(),
+                    restoreTime,
                 },
               }
             );
@@ -574,9 +765,9 @@ export async function PATCH(
       }
 
       /*
-       * =======================================================
+       * =====================================================
        * RESPONSE
-       * =======================================================
+       * =====================================================
        */
 
       return NextResponse.json({
@@ -588,19 +779,17 @@ export async function PATCH(
           parentId:
             newParentId,
 
-          deletedAt:
-            null,
+          deletedAt: null,
 
-          originalParentId:
-            null,
+          originalParentId: null,
         },
       });
     }
 
     /*
-     * =========================================================
+     * =======================================================
      * INVALID ACTION
-     * =========================================================
+     * =======================================================
      */
 
     return NextResponse.json(
