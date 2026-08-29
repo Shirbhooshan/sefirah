@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
 
   devIndicators: false,
 
-  output: "standalone",
+  output:
+    process.env.VERCEL
+      ? undefined
+      : "standalone",
 };
 
 export default nextConfig;
