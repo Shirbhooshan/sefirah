@@ -1,36 +1,211 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sefirah
 
-## Getting Started
+Sefirah is a desktop-inspired web application built with Next.js. The project brings multiple interactive modules into a single operating-system-style interface, including authentication, notes, a virtual filesystem, a cooking game, and a DSA learning lab.
 
-First, run the development server:
+## Features Implemented
+
+### Desktop Interface
+
+- Desktop-style application interface
+- Window-based application layout
+- Interactive application windows
+- Draggable windows
+- Modular application components
+
+### Authentication
+
+- User authentication system
+- Login and session handling
+- Cookie-based sessions
+- Password hashing with bcrypt
+- Protected API routes
+
+### Virtual Filesystem
+
+- Create and manage filesystem items
+- Folder hierarchy support
+- Soft delete functionality
+- Recycle-bin style deleted items
+- Restore deleted files and folders
+- Recursive handling of folder descendants
+- MongoDB-backed filesystem data
+
+### Notes
+
+- Notes functionality backed by API routes
+- Persistent user data through MongoDB
+- Undo and redo functionality is part of the notes application interface
+
+### Cooking Game
+
+The project includes an interactive cooking game focused on ingredient collection and recipe progress.
+
+Implemented functionality includes:
+
+- Ingredient inventory management
+- Recipe progress tracking
+- Checklist/progress data
+- Persistent cooking progress
+- MongoDB-backed inventory data
+- Ingredient assets used throughout the game interface
+
+The cooking progress system stores data such as the user's inventory, checklist, selected recipe, and timestamps.
+
+### DSA Lab
+
+The project also contains a DSA Lab module integrated into the Sefirah interface.
+
+The lab is intended as an interactive learning area within the application and includes educational content and implementation-oriented sections connected to the project's features.
+
+## Technology Stack
+
+### Frontend
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+- Zustand
+- Lucide React
+- React RND
+
+### Backend
+
+- Next.js Route Handlers
+- MongoDB
+- MongoDB Node.js Driver
+- Mongoose
+- bcrypt
+
+### DevOps and Deployment
+
+The project has been prepared and tested with:
+
+- Docker
+- Docker Compose
+- GitHub Actions CI
+- Vercel deployment
+
+MongoDB credentials and other sensitive configuration are managed through environment variables.
+
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create a local environment file:
+
+```text
+.env.local
+```
+
+Add the required environment variables, including:
+
+```text
+MONGODB_URI=your_mongodb_connection_string
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open the application at:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Production Build
 
-## Learn More
+To test the production build locally:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docker
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The application can be containerized and run using Docker.
 
-## Deploy on Vercel
+Build the image:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+docker build -t sefirah .
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Because the application requires environment variables such as `MONGODB_URI`, run the container with the environment file:
+
+```bash
+docker run -p 3000:3000 --env-file .env.local sefirah
+```
+
+The application will then be available at:
+
+```text
+http://localhost:3000
+```
+
+## Docker Compose
+
+The project also supports Docker Compose.
+
+Run the application:
+
+```bash
+docker compose up --build -d
+```
+
+Check the running containers:
+
+```bash
+docker compose ps
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop the application:
+
+```bash
+docker compose down
+```
+
+The Docker Compose configuration uses the local environment file for runtime variables.
+
+## CI
+
+GitHub Actions is configured to validate the project automatically.
+
+The CI workflow performs the project's configured checks and production build validation when changes are pushed to the repository.
+
+## Deployment
+
+The project has been deployed and tested with Vercel.
+
+Environment variables required by the application, including the MongoDB connection string, must also be configured in the deployment environment.
+
+## Environment Variables
+
+The project uses environment variables for sensitive configuration.
+
+Example:
+
+```text
+MONGODB_URI=your_mongodb_connection_string
+```
+
+Do not commit `.env.local` or production secrets to the repository.
+
+## Project Status
+
+Sefirah is an actively developed project. The current implementation includes the desktop-style application environment, authentication, filesystem functionality, notes, the cooking game, the DSA Lab module, MongoDB persistence, Docker containerization, Docker Compose support, GitHub Actions CI, and Vercel deployment.
