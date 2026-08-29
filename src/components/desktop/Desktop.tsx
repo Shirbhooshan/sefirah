@@ -9,6 +9,13 @@ import Wallpaper from "./Wallpaper";
 import FileExplorer from "@/components/filesystem/FileExplorer";
 import NotesApp from "@/components/notes/NotesApp";
 import CookingGame from "@/components/game/cooking-game/CookingGame";
+import DSALab from "@/components/game/labs/dsa/DSALab";
+
+/*
+ * =========================================================
+ * EXPLORER WINDOW
+ * =========================================================
+ */
 
 interface ExplorerWindow {
   id: string;
@@ -24,6 +31,12 @@ interface ExplorerWindow {
 
   centered: boolean;
 }
+
+/*
+ * =========================================================
+ * NOTES WINDOW
+ * =========================================================
+ */
 
 interface NotesWindow {
   id: string;
@@ -42,8 +55,11 @@ interface NotesWindow {
   centered: boolean;
 }
 
-const MAX_WINDOWS = 5;
-const MAX_NOTES_WINDOWS = 3;
+/*
+ * =========================================================
+ * COOKING GAME WINDOW
+ * =========================================================
+ */
 
 interface CookingGameWindow {
   id: string;
@@ -56,7 +72,40 @@ interface CookingGameWindow {
   centered: boolean;
 }
 
+/*
+ * =========================================================
+ * DSA LAB WINDOW
+ * =========================================================
+ */
+
+interface DSALabWindow {
+  id: string;
+
+  left: number;
+  top: number;
+
+  zIndex: number;
+
+  centered: boolean;
+}
+
+/*
+ * =========================================================
+ * LIMITS
+ * =========================================================
+ */
+
+const MAX_WINDOWS = 5;
+const MAX_NOTES_WINDOWS = 3;
+
+/*
+ * =========================================================
+ * DESKTOP
+ * =========================================================
+ */
+
 export default function Desktop() {
+
   /*
    * =========================================================
    * EXPLORER WINDOWS
@@ -80,18 +129,31 @@ export default function Desktop() {
   ] = useState<NotesWindow[]>([]);
 
   /*
- * =========================================================
- * COOKING GAME WINDOW
- *
- * Only one Cooking Game window is allowed.
- * =========================================================
- */
+   * =========================================================
+   * COOKING GAME WINDOW
+   *
+   * Only one Cooking Game window is allowed.
+   * =========================================================
+   */
 
   const [
     cookingGameWindow,
     setCookingGameWindow,
+  ] = useState<CookingGameWindow | null>(null);
+
+  /*
+   * =========================================================
+   * DSA LAB WINDOW
+   *
+   * Only one DSA Lab window is allowed.
+   * =========================================================
+   */
+
+  const [
+    dsaLabWindow,
+    setDSALabWindow,
   ] =
-    useState<CookingGameWindow | null>(
+    useState<DSALabWindow | null>(
       null
     );
 
@@ -108,11 +170,12 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * WINDOW POSITIONS
+   * EXPLORER WINDOW POSITION
    * =========================================================
    */
 
   const getWindowPosition = () => {
+
     const positions = [
       {
         left: 8,
@@ -153,6 +216,7 @@ export default function Desktop() {
       );
 
     if (available.length > 0) {
+
       return available[
         Math.floor(
           Math.random() *
@@ -169,7 +233,14 @@ export default function Desktop() {
     ];
   };
 
+  /*
+   * =========================================================
+   * NOTES WINDOW POSITION
+   * =========================================================
+   */
+
   const getNotesWindowPosition = () => {
+
     const positions = [
       {
         left: 8,
@@ -202,6 +273,7 @@ export default function Desktop() {
       );
 
     if (available.length > 0) {
+
       return available[
         Math.floor(
           Math.random() *
@@ -218,15 +290,15 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * FOCUS NOTES
+   * NOTES
    * =========================================================
    */
 
   const focusNotes = (
     id: string
   ) => {
-    const zIndex =
-      nextZIndex;
+
+    const zIndex = nextZIndex;
 
     setNextZIndex(
       (value) => value + 1
@@ -246,15 +318,10 @@ export default function Desktop() {
     );
   };
 
-  /*
-   * =========================================================
-   * CLOSE NOTES WINDOW
-   * =========================================================
-   */
-
   const closeNotes = (
     id: string
   ) => {
+
     setNotesWindows(
       (previous) =>
         previous.filter(
@@ -264,17 +331,12 @@ export default function Desktop() {
     );
   };
 
-  /*
-   * =========================================================
-   * MOVE NOTES WINDOW
-   * =========================================================
-   */
-
   const moveNotes = (
     id: string,
     left: number,
     top: number
   ) => {
+
     setNotesWindows(
       (previous) =>
         previous.map(
@@ -294,153 +356,8 @@ export default function Desktop() {
   };
 
   /*
- * =========================================================
- * OPEN COOKING GAME
- *
- * Only one instance can exist.
- *
- * If it is already open, simply bring it to the front.
- * =========================================================
- */
-
-  /*
- * =========================================================
- * COOKING GAME
- * =========================================================
- */
-
-  const openCookingGame = () => {
-    /*
-     * Already open:
-     * simply focus the existing window.
-     */
-
-    if (cookingGameWindow) {
-      const zIndex = nextZIndex;
-
-      setNextZIndex(
-        (value) => value + 1
-      );
-
-      setCookingGameWindow(
-        (previous) =>
-          previous
-            ? {
-              ...previous,
-              zIndex,
-            }
-            : previous
-      );
-
-      return;
-    }
-
-    const zIndex = nextZIndex;
-
-    const newWindow: CookingGameWindow = {
-      id: `cooking-game-${Date.now()}`,
-
-      left: 0,
-      top: 0,
-
-      zIndex,
-
-      centered: true,
-    };
-
-    setCookingGameWindow(
-      newWindow
-    );
-
-    setNextZIndex(
-      (value) => value + 1
-    );
-  };
-
-  const closeCookingGame = () => {
-    setCookingGameWindow(null);
-  };
-
-  const focusCookingGame = () => {
-    if (!cookingGameWindow) {
-      return;
-    }
-
-    const zIndex = nextZIndex;
-
-    setNextZIndex(
-      (value) => value + 1
-    );
-
-    setCookingGameWindow(
-      (previous) =>
-        previous
-          ? {
-            ...previous,
-            zIndex,
-          }
-          : previous
-    );
-  };
-
-  const moveCookingGame = (
-    left: number,
-    top: number
-  ) => {
-    setCookingGameWindow(
-      (previous) =>
-        previous
-          ? {
-            ...previous,
-            left,
-            top,
-            centered: false,
-          }
-          : previous
-    );
-  };
-  /*
    * =========================================================
-   * SAVE NOTES WINDOW
-   *
-   * NotesApp calls this after the API successfully saves.
-   *
-   * This is important because Desktop owns the window state.
-   * Without this callback, the database gets updated but
-   * Desktop continues holding the old title/content.
-   * =========================================================
-   */
-
-  const saveNotesWindow = (
-    windowId: string,
-    item: {
-      id: string;
-      name: string;
-      content: string;
-    }
-  ) => {
-    setNotesWindows(
-      (previous) =>
-        previous.map(
-          (window) =>
-            window.id === windowId
-              ? {
-                ...window,
-
-                itemId: item.id,
-
-                title: item.name,
-
-                content: item.content,
-              }
-              : window
-        )
-    );
-  };
-
-  /*
-   * =========================================================
-   * OPEN NOTE FROM FILE EXPLORER
+   * OPEN NOTE
    * =========================================================
    */
 
@@ -452,11 +369,13 @@ export default function Desktop() {
       content?: string;
     }
   ) => {
+
     const itemId =
       item._id ??
       item.id;
 
     if (!itemId) {
+
       console.error(
         "Cannot open note: missing ID",
         item
@@ -466,19 +385,19 @@ export default function Desktop() {
     }
 
     /*
-     * If this note is already open,
-     * focus its existing window.
+     * Already open.
      */
 
     const existing =
       notesWindows.find(
         (window) =>
-          window.itemId ===
-          itemId
+          window.itemId === itemId
       );
 
     if (existing) {
+
       focusNotes(existing.id);
+
       return;
     }
 
@@ -490,6 +409,7 @@ export default function Desktop() {
       notesWindows.length >=
       MAX_NOTES_WINDOWS
     ) {
+
       return;
     }
 
@@ -507,8 +427,8 @@ export default function Desktop() {
     const zIndex =
       nextZIndex;
 
-    const newWindow: NotesWindow =
-    {
+    const newWindow: NotesWindow = {
+
       id:
         `notes-${Date.now()}-${Math.random()
           .toString(36)
@@ -548,19 +468,17 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * OPEN NEW EMPTY NOTE
+   * OPEN NEW NOTE
    * =========================================================
    */
 
   const openNewNote = () => {
-    /*
-     * Don't allow more than 3 Notes windows.
-     */
 
     if (
       notesWindows.length >=
       MAX_NOTES_WINDOWS
     ) {
+
       return;
     }
 
@@ -578,8 +496,8 @@ export default function Desktop() {
     const zIndex =
       nextZIndex;
 
-    const newWindow: NotesWindow =
-    {
+    const newWindow: NotesWindow = {
+
       id:
         `notes-${Date.now()}-${Math.random()
           .toString(36)
@@ -629,10 +547,12 @@ export default function Desktop() {
       | "home"
       | "recycle"
   ) => {
+
     if (
       explorerWindows.length >=
       MAX_WINDOWS
     ) {
+
       return;
     }
 
@@ -650,8 +570,8 @@ export default function Desktop() {
     const zIndex =
       nextZIndex;
 
-    const newWindow: ExplorerWindow =
-    {
+    const newWindow: ExplorerWindow = {
+
       id:
         `explorer-${Date.now()}-${Math.random()
           .toString(36)
@@ -693,6 +613,7 @@ export default function Desktop() {
   const closeExplorer = (
     id: string
   ) => {
+
     setExplorerWindows(
       (previous) =>
         previous.filter(
@@ -711,6 +632,7 @@ export default function Desktop() {
   const focusExplorer = (
     id: string
   ) => {
+
     const zIndex =
       nextZIndex;
 
@@ -744,6 +666,7 @@ export default function Desktop() {
     left: number,
     top: number
   ) => {
+
     setExplorerWindows(
       (previous) =>
         previous.map(
@@ -764,6 +687,214 @@ export default function Desktop() {
 
   /*
    * =========================================================
+   * COOKING GAME
+   * =========================================================
+   */
+
+  const openCookingGame = () => {
+
+    /*
+     * Already open:
+     * focus it instead.
+     */
+
+    if (cookingGameWindow) {
+
+      const zIndex =
+        nextZIndex;
+
+      setNextZIndex(
+        (value) => value + 1
+      );
+
+      setCookingGameWindow(
+        (previous) =>
+          previous
+            ? {
+              ...previous,
+              zIndex,
+            }
+            : previous
+      );
+
+      return;
+    }
+
+    const zIndex =
+      nextZIndex;
+
+    const newWindow: CookingGameWindow = {
+
+      id:
+        `cooking-game-${Date.now()}`,
+
+      left: 0,
+      top: 0,
+
+      zIndex,
+
+      centered: true,
+    };
+
+    setCookingGameWindow(
+      newWindow
+    );
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+  };
+
+  const closeCookingGame = () => {
+
+    setCookingGameWindow(null);
+  };
+
+  const focusCookingGame = () => {
+
+    if (!cookingGameWindow) {
+      return;
+    }
+
+    const zIndex =
+      nextZIndex;
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+
+    setCookingGameWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            zIndex,
+          }
+          : previous
+    );
+  };
+
+  const moveCookingGame = (
+    left: number,
+    top: number
+  ) => {
+
+    setCookingGameWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+
+            left,
+            top,
+
+            centered: false,
+          }
+          : previous
+    );
+  };
+
+  /*
+   * =========================================================
+   * DSA LAB
+   *
+   * Only one DSA Lab window is allowed.
+   * =========================================================
+   */
+
+  const openDSALab = () => {
+    /*
+     * Already open:
+     * bring existing window to front.
+     */
+    if (dsaLabWindow) {
+      const zIndex = nextZIndex;
+
+      setNextZIndex(
+        (value) => value + 1
+      );
+
+      setDSALabWindow(
+        (previous) =>
+          previous
+            ? {
+              ...previous,
+              zIndex,
+            }
+            : previous
+      );
+
+      return;
+    }
+
+    const zIndex = nextZIndex;
+
+    const newWindow: DSALabWindow = {
+      id: `dsa-lab-${Date.now()}`,
+
+      left: 0,
+      top: 0,
+
+      zIndex,
+
+      centered: true,
+    };
+
+    setDSALabWindow(newWindow);
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+  };
+
+
+  const closeDSALab = () => {
+    setDSALabWindow(null);
+  };
+
+
+  const focusDSALab = () => {
+    if (!dsaLabWindow) {
+      return;
+    }
+
+    const zIndex = nextZIndex;
+
+    setNextZIndex(
+      (value) => value + 1
+    );
+
+    setDSALabWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            zIndex,
+          }
+          : previous
+    );
+  };
+
+
+  const moveDSALab = (
+    left: number,
+    top: number
+  ) => {
+    setDSALabWindow(
+      (previous) =>
+        previous
+          ? {
+            ...previous,
+            left,
+            top,
+            centered: false,
+          }
+          : previous
+    );
+  };
+
+  /*
+   * =========================================================
    * DOCK
    * =========================================================
    */
@@ -771,12 +902,15 @@ export default function Desktop() {
   const handleOpenApp = (
     id: string
   ) => {
+
     /*
      * FILE EXPLORER
      */
 
     if (id === "files") {
+
       openExplorer("home");
+
       return;
     }
 
@@ -785,16 +919,33 @@ export default function Desktop() {
      */
 
     if (id === "notes") {
+
       openNewNote();
+
       return;
     }
 
     /*
- * COOKING GAME
- */
+     * COOKING GAME
+     */
 
     if (id === "cooking-game") {
+
       openCookingGame();
+
+      return;
+    }
+
+    /*
+     * DSA LAB
+     *
+     * This replaces the old Settings app.
+     */
+
+    if (id === "dsa") {
+
+      openDSALab();
+
       return;
     }
 
@@ -803,7 +954,9 @@ export default function Desktop() {
      */
 
     if (id === "recycle") {
+
       openExplorer("recycle");
+
       return;
     }
 
@@ -815,9 +968,7 @@ export default function Desktop() {
 
   /*
    * =========================================================
-   * OPEN APPS FOR DOCK
-   *
-   * Notes was previously missing here.
+   * OPEN APPS
    * =========================================================
    */
 
@@ -826,17 +977,25 @@ export default function Desktop() {
   if (
     explorerWindows.length > 0
   ) {
+
     openApps.push("files");
   }
 
   if (
     notesWindows.length > 0
   ) {
+
     openApps.push("notes");
   }
 
   if (cookingGameWindow) {
+
     openApps.push("cooking-game");
+  }
+
+  if (dsaLabWindow) {
+
+    openApps.push("dsa");
   }
 
   /*
@@ -846,6 +1005,7 @@ export default function Desktop() {
    */
 
   return (
+
     <main
       style={{
         position:
@@ -864,6 +1024,7 @@ export default function Desktop() {
           "#222222",
       }}
     >
+
       {/* =====================================================
           MENU BAR
       ====================================================== */}
@@ -873,7 +1034,8 @@ export default function Desktop() {
           position:
             "relative",
 
-          zIndex: 1000,
+          zIndex:
+            1000,
         }}
       >
         <MenuBar />
@@ -891,6 +1053,7 @@ export default function Desktop() {
 
       {explorerWindows.map(
         (window) => (
+
           <FileExplorer
             key={
               window.id
@@ -950,6 +1113,7 @@ export default function Desktop() {
 
       {notesWindows.map(
         (window) => (
+
           <NotesApp
             key={
               window.id
@@ -1004,15 +1168,8 @@ export default function Desktop() {
               )
             }
 
-            /*
-             * IMPORTANT:
-             *
-             * NotesApp saves to the database.
-             * This callback synchronizes the
-             * Desktop window with the saved DB data.
-             */
-
             onSave={(savedItem) => {
+
               setNotesWindows(
                 (previous) =>
                   previous.map(
@@ -1044,6 +1201,7 @@ export default function Desktop() {
       ====================================================== */}
 
       {cookingGameWindow && (
+
         <CookingGame
           onClose={
             closeCookingGame
@@ -1080,6 +1238,46 @@ export default function Desktop() {
       )}
 
       {/* =====================================================
+    DSA LAB WINDOW
+====================================================== */}
+
+      {dsaLabWindow && (
+        <DSALab
+          onClose={
+            closeDSALab
+          }
+
+          onFocus={
+            focusDSALab
+          }
+
+          onMove={(
+            left,
+            top
+          ) =>
+            moveDSALab(
+              left,
+              top
+            )
+          }
+
+          windowPosition={{
+            left:
+              dsaLabWindow.left,
+
+            top:
+              dsaLabWindow.top,
+
+            zIndex:
+              dsaLabWindow.zIndex,
+
+            centered:
+              dsaLabWindow.centered,
+          }}
+        />
+      )}
+
+      {/* =====================================================
           DOCK
       ====================================================== */}
 
@@ -1092,7 +1290,8 @@ export default function Desktop() {
           handleOpenApp
         }
       />
+
     </main>
   );
 }
-  
+
